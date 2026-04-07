@@ -38,6 +38,7 @@ import com.kuaishou.akdanmaku.data.DanmakuItemData
 import com.kuaishou.akdanmaku.data.DanmakuItem
 import com.kuaishou.akdanmaku.data.DataSource
 import com.kuaishou.akdanmaku.ecs.DanmakuEngine
+import com.kuaishou.akdanmaku.ecs.component.filter.LevelFilter
 import com.kuaishou.akdanmaku.ecs.system.DataSystem
 import com.kuaishou.akdanmaku.ecs.system.RenderSystem
 import com.kuaishou.akdanmaku.ext.endTrace
@@ -301,6 +302,19 @@ class DanmakuPlayer(renderer: DanmakuRenderer, dataSource: DataSource? = null) {
   fun updateConfig(danmakuConfig: DanmakuConfig?) {
     config = danmakuConfig
     engine.updateConfig(danmakuConfig ?: return)
+  }
+
+  fun updateLevelFilter(minLevel: Int) {
+    val cfg = config ?: return
+    Log.d(DanmakuEngine.TAG, "[LevelFilter] updateLevelFilter minLevel=$minLevel")
+    val existing = cfg.dataFilter.filterIsInstance<LevelFilter>().firstOrNull()
+    if (existing != null) {
+      existing.minLevel = minLevel
+    } else {
+      cfg.dataFilter = cfg.dataFilter + LevelFilter(minLevel)
+    }
+    cfg.updateFilter()
+    engine.updateConfig(cfg)
   }
 
   fun getConfig(): DanmakuConfig? = engine.getConfig()

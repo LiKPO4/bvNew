@@ -52,6 +52,7 @@ import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoCodec
 import dev.aaa1115910.bv.player.entity.ControllerButtonConfig
 import dev.aaa1115910.bv.player.entity.DefaultSubtitle
+import dev.aaa1115910.bv.player.entity.LiveCodec
 import dev.aaa1115910.bv.player.entity.getControllerButtonConfigsForEditing
 import dev.aaa1115910.bv.player.entity.getControllerButtonDisplayName
 import dev.aaa1115910.bv.player.entity.serializeControllerButtonsOrder
@@ -92,6 +93,10 @@ fun PlayerSetting(
     var skipPgcIntroOutro by remember { mutableStateOf(Prefs.skipPgcIntroOutro) }
     var showControllerButtonDialog by remember { mutableStateOf(false) }
     var defaultSubtitle by remember { mutableStateOf(Prefs.defaultSubtitle) }
+    var defaultLiveCodec by remember { mutableStateOf(Prefs.defaultLiveCodec) }
+    var defaultDanmakuFilterLevel by remember { mutableStateOf(Prefs.defaultDanmakuFilterLevel) }
+    var defaultLiveDanmakuFilterLevel by remember { mutableStateOf(Prefs.defaultLiveDanmakuFilterLevel) }
+
 
     Column(
         modifier = modifier.fillMaxSize(),
@@ -174,7 +179,7 @@ fun PlayerSetting(
             item {
                 SettingSwitchListItem(
                     title = "启用隧道播放模式",
-                    supportText = "隧道播放模式能改善播放性能，部分设备可能出现播放异常",
+                    supportText = "隧道播放模式能改善播放性能，但是无法改变播放速度、而且部分设备可能会播放异常",
                     checked = enableTunneling,
                     onCheckedChange = {
                         enableTunneling = it
@@ -354,6 +359,49 @@ fun PlayerSetting(
                     title = "控制栏按钮",
                     supportText = "自定义控制栏按钮的显示、排序和默认焦点",
                     onClick = { showControllerButtonDialog = true }
+                )
+            }
+            item {
+                SettingListItemWithDialog(
+                    title = stringResource(R.string.settings_item_live_codec),
+                    supportText = stringResource(R.string.settings_item_live_codec),
+                    options = LiveCodec.entries.toList(),
+                    getDisplayName = { item, ctx -> item.getDisplayName(ctx) },
+                    value = defaultLiveCodec,
+                    onValueChange = {
+                        defaultLiveCodec = it
+                        Prefs.defaultLiveCodec = it
+                    }
+                )
+            }
+            item {
+                SettingNumberListItem(
+                    title = stringResource(R.string.settings_player_danmaku_filter_level_title),
+                    supportText = stringResource(R.string.settings_player_danmaku_filter_level_text),
+                    value = defaultDanmakuFilterLevel.toDouble(),
+                    minValue = 0.0,
+                    maxValue = 10.0,
+                    isInteger = true,
+                    step = 1.0,
+                    onValueChange = {
+                        defaultDanmakuFilterLevel = it.toInt()
+                        Prefs.defaultDanmakuFilterLevel = it.toInt()
+                    }
+                )
+            }
+            item {
+                SettingNumberListItem(
+                    title = stringResource(R.string.settings_live_danmaku_filter_level_title),
+                    supportText = stringResource(R.string.settings_live_danmaku_filter_level_text),
+                    value = defaultLiveDanmakuFilterLevel.toDouble(),
+                    minValue = 0.0,
+                    maxValue = 60.0,
+                    isInteger = true,
+                    step = 1.0,
+                    onValueChange = {
+                        defaultLiveDanmakuFilterLevel = it.toInt()
+                        Prefs.defaultLiveDanmakuFilterLevel = it.toInt()
+                    }
                 )
             }
         }
@@ -578,7 +626,7 @@ private fun PlayerControllerButtonDialog(
                     }
             ) {
                 Text(
-                    text = "左右键排序 · 短按确认显示/隐藏 · 长按确认设为默认焦点",
+                    text = "左右键排序 · 短按确认键显示/隐藏 · 长按确认键设为默认焦点",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

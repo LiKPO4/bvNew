@@ -292,6 +292,8 @@ fun VideoPlayerV3Screen(
             currentDanmakuArea = playerViewModel.currentDanmakuArea,
             currentDanmakuMask = playerViewModel.currentDanmakuMask,
             currentDanmakuRollingDurationFactor = playerViewModel.currentDanmakuRollingDurationFactor,
+            currentDanmakuFilterLevel = playerViewModel.currentDanmakuFilterLevel,
+            currentLiveDanmakuFilterLevel = playerViewModel.currentLiveDanmakuFilterLevel,
             currentSubtitleId = playerViewModel.currentSubtitleId,
             currentSubtitleData = playerViewModel.currentSubtitleData,
             currentSubtitleFontSize = playerViewModel.currentSubtitleFontSize,
@@ -310,6 +312,7 @@ fun VideoPlayerV3Screen(
             availableLiveQualities = playerViewModel.availableLiveQualities.toList(),
             currentLiveQn = playerViewModel.currentLiveQn,
             currentLiveQualityDescription = playerViewModel.currentLiveQualityDescription,
+            currentLiveCodec = playerViewModel.currentLiveCodec,
             controllerButtonsOrder = Prefs.playerControllerButtonsOrder
         ),
         LocalVideoPlayerDanmakuMasksData provides VideoPlayerDanmakuMasksData(
@@ -529,7 +532,7 @@ fun VideoPlayerV3Screen(
                         val time = playerViewModel.videoPlayer?.currentPosition ?: 0
                         logger.info { "Reload video and back to time: ${time.formatHourMinSec()}" }
                         scope.launch {
-                            val toast = Toast.makeText(context, "刷新中...", Toast.LENGTH_SHORT)
+                            val toast = Toast.makeText(context, "刷新", Toast.LENGTH_SHORT)
                             toast.show()
                             playerViewModel.playQuality()
                             delay(300)
@@ -583,6 +586,10 @@ fun VideoPlayerV3Screen(
                 onLiveQualityChange = { qn ->
                     playerViewModel.changeLiveQuality(qn)
                 },
+                onLiveCodecChange = { codec ->
+                    println("VideoPlayerV3Screen: onLiveCodecChange called with codec=$codec")
+                    playerViewModel.changeLiveCodec(codec)
+                },
                 onDanmakuSwitchChange = { enabledDanmakuTypes ->
                     Prefs.defaultDanmakuTypes = enabledDanmakuTypes
                     playerViewModel.currentDanmakuTypes.swapList(enabledDanmakuTypes)
@@ -606,6 +613,15 @@ fun VideoPlayerV3Screen(
                 onDanmakuRollingDurationFactorChange = { factor ->
                     Prefs.defaultDanmakuRollingDurationFactor = factor
                     playerViewModel.currentDanmakuRollingDurationFactor = factor
+                },
+                onDanmakuFilterLevelChange = { filterLevel ->
+                    if (playerViewModel.isLive) {
+                        Prefs.defaultLiveDanmakuFilterLevel = filterLevel
+                        playerViewModel.currentLiveDanmakuFilterLevel = filterLevel
+                    } else {
+                        Prefs.defaultDanmakuFilterLevel = filterLevel
+                        playerViewModel.currentDanmakuFilterLevel = filterLevel
+                    }
                 },
                 onSubtitleChange = { subtitle ->
                     playerViewModel.loadSubtitle(subtitle.id)

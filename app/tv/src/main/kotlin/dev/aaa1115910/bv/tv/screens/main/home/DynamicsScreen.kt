@@ -66,10 +66,6 @@ fun DynamicsScreen(
     val shouldLoadMore by remember {
         derivedStateOf { dynamicViewModel.dynamicVideoList.isNotEmpty() && currentFocusedIndex + 12 > dynamicViewModel.dynamicVideoList.size }
     }
-    val showTip by remember {
-        derivedStateOf { dynamicViewModel.dynamicVideoList.isNotEmpty() && currentFocusedIndex >= 0 }
-    }
-
     val onClickVideo: (DynamicVideo) -> Unit = { dynamic ->
         val proxyArea = ProxyArea.checkProxyArea(dynamic.title)
         val hasSeasonHint = dynamic.seasonId != null || dynamic.epid != null
@@ -111,15 +107,13 @@ fun DynamicsScreen(
     if (dynamicViewModel.isLogin) {
         val padding = dimensionResource(R.dimen.grid_padding)
         val spacedBy = dimensionResource(R.dimen.grid_spacedBy)
-        if (showTip) {
-            Text(
-                modifier = Modifier.fillMaxWidth().offset(x = (-20).dp, y = (-8).dp),
-                text = stringResource(R.string.entry_follow_screen),
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                fontSize = 12.sp,
-                textAlign = TextAlign.End
-            )
-        }
+        Text(
+            modifier = Modifier.fillMaxWidth().offset(x = (-20).dp, y = (-8).dp),
+            text = stringResource(R.string.entry_follow_screen),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            fontSize = 12.sp,
+            textAlign = TextAlign.End
+        )
         ProvideListBringIntoViewSpec {
             LazyVerticalGrid(
                 modifier = listFocusRestorer.containerModifier(modifier.fillMaxSize())

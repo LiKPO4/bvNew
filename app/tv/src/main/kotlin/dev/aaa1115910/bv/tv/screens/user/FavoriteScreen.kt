@@ -163,13 +163,13 @@ fun FavoriteScreen(
                 state = lazyGridState,
                 columns = GridCells.Fixed(4),
                 contentPadding = PaddingValues(
-                    top = if (showPageTitle) 24.dp else 4.dp,
-                    bottom = 24.dp,
-                    start = 24.dp,
-                    end = 24.dp
+                    top = if (showPageTitle) 20.dp else 4.dp,
+                    bottom = 20.dp,
+                    start = 20.dp,
+                    end = 20.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-                horizontalArrangement = Arrangement.spacedBy(24.dp)
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 item(
                     span = { GridItemSpan(4) }

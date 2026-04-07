@@ -413,7 +413,9 @@ fun CommentPanel(
                                 Text(
                                     text = error ?: "加载失败",
                                     color = Color.Red,
-                                    modifier = Modifier.padding(16.dp)
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .padding(16.dp)
                                 )
                             }
                         } else if (comments.isEmpty() && !loading) {
@@ -428,7 +430,9 @@ fun CommentPanel(
                                 Text(
                                     text = "暂无评论",
                                     color = Color.White.copy(alpha = 0.5f),
-                                    modifier = Modifier.padding(16.dp)
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .padding(16.dp)
                                 )
                             }
                         } else {
@@ -449,28 +453,40 @@ fun CommentPanel(
                                                 }
                                                 true
                                             }
-                                            // 下键：逐步滚动，仅在完全可见时转移焦点
+                                            // 下键：逐步滚动，在列表末尾时阻止焦点移出
                                             event.isKeyDown() && event.isDpadDown() -> {
-                                                val currentItemInfo = listState.layoutInfo.visibleItemsInfo
-                                                    .firstOrNull { it.index == focusedCommentIndex }
+                                                // 检查是否已到达列表底部
+                                                val layoutInfo = listState.layoutInfo
+                                                val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()
+                                                val totalItems = layoutInfo.totalItemsCount
+                                                val isScrolledToEnd = lastVisibleItem != null &&
+                                                    lastVisibleItem.index == totalItems - 1
 
-                                                if (currentItemInfo != null) {
-                                                    val viewportEnd = listState.layoutInfo.viewportEndOffset
-                                                    val itemBottom = currentItemInfo.offset + currentItemInfo.size
-
-                                                    // 如果评论底部不可见，逐步滚动
-                                                    if (itemBottom > viewportEnd) {
-                                                        scope.launch {
-                                                            // 每次滚动约 150dp
-                                                            val scrollAmount = with(density) { 150.dp.toPx() }
-                                                            listState.animateScrollBy(scrollAmount)
-                                                        }
-                                                        true // 拦截事件，不允许焦点转移
-                                                    } else {
-                                                        false // 评论已完全可见，允许焦点转移
-                                                    }
+                                                // 到达底部时拦截事件
+                                                if (isScrolledToEnd && comments.isNotEmpty()) {
+                                                    true
                                                 } else {
-                                                    false
+                                                    val currentItemInfo = layoutInfo.visibleItemsInfo
+                                                        .firstOrNull { it.index == focusedCommentIndex }
+
+                                                    if (currentItemInfo != null) {
+                                                        val viewportEnd = layoutInfo.viewportEndOffset
+                                                        val itemBottom = currentItemInfo.offset + currentItemInfo.size
+
+                                                        // 如果评论底部不可见，逐步滚动
+                                                        if (itemBottom > viewportEnd) {
+                                                            scope.launch {
+                                                                // 每次滚动约 100dp
+                                                                val scrollAmount = with(density) { 100.dp.toPx() }
+                                                                listState.animateScrollBy(scrollAmount)
+                                                            }
+                                                            true // 拦截事件，不允许焦点转移
+                                                        } else {
+                                                            false // 评论已完全可见，允许焦点转移
+                                                        }
+                                                    } else {
+                                                        false
+                                                    }
                                                 }
                                             }
                                             else -> false

@@ -42,4 +42,18 @@ class HistoryRepository(
             }
         }
     }
+
+    suspend fun deleteHistory(
+        business: String,
+        kid: Long,
+        preferApiType: ApiType = ApiType.Web
+    ): Boolean {
+        return runCatching {
+            BiliHttpApi.deleteHistory(
+                kid = "${business}_$kid",
+                csrf = authRepository.biliJct!!,
+                sessData = authRepository.sessionData!!
+            ).code == 0
+        }.getOrDefault(false)
+    }
 }

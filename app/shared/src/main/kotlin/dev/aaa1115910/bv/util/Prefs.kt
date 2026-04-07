@@ -21,6 +21,7 @@ import dev.aaa1115910.bv.entity.PlayerType
 import dev.aaa1115910.bv.entity.ThemeType
 import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.DanmakuType
+import dev.aaa1115910.bv.player.entity.LiveCodec
 import dev.aaa1115910.bv.player.entity.PlayMode
 import dev.aaa1115910.bv.player.entity.PortraitVideoFixMode
 import dev.aaa1115910.bv.player.entity.Resolution
@@ -311,6 +312,10 @@ object Prefs {
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPreferOfficialCdnRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPreferOfficialCdn, value) }
 
+    var ipv4Only: Boolean
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefIpv4OnlyRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefIpv4OnlyKey, value) }
+
     var defaultDanmakuMask: Boolean
         get() = runBlocking {
             dsm.getPreferenceFlow(PrefKeys.prefDefaultDanmakuMaskRequest).first()
@@ -429,6 +434,14 @@ object Prefs {
     val showLiveViewerCountTipFlow: Flow<Int>
         get() = dsm.getPreferenceFlow(PrefKeys.prefShowLiveViewerCountTipRequest)
 
+    var defaultLiveCodec: LiveCodec
+        get() = LiveCodec.fromCode(
+            runBlocking { dsm.getPreferenceFlow(PrefKeys.prefDefaultLiveCodecRequest).first() }
+        )
+        set(value) = runBlocking {
+            dsm.editPreference(PrefKeys.prefDefaultLiveCodecKey, value.ordinal)
+        }
+
     // 首页导航项排序和隐藏状态
     val homeNavItemsOrderFlow: Flow<String>
         get() = dsm.getPreferenceFlow(PrefKeys.prefHomeNavItemsOrderRequest)
@@ -452,7 +465,20 @@ object Prefs {
     var pgcNavItemsOrder: String
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPgcNavItemsOrderRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPgcNavItemsOrderKey, value) }
-    
+
+    // 直播导航项排序和隐藏状态
+    val liveNavItemsOrderFlow: Flow<String>
+        get() = dsm.getPreferenceFlow(PrefKeys.prefLiveNavItemsOrderRequest)
+
+    var liveNavItemsOrder: String
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefLiveNavItemsOrderRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefLiveNavItemsOrderKey, value) }
+
+    // 缓存的直播分区列表（供设置页使用）
+    var cachedLiveAreaGroups: String
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefCachedLiveAreaGroupsRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefCachedLiveAreaGroupsKey, value) }
+
     var enableTunneling: Boolean
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefEnableTunnelingRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefEnableTunneling, value) }
@@ -460,7 +486,7 @@ object Prefs {
     var enableAsyncQueueing: Boolean
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefEnableAsyncQueueingRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefEnableAsyncQueueing, value) }
-    
+
     var skipPgcIntroOutro: Boolean
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefSkipPgcIntroOutroRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefSkipPgcIntroOutroKey, value) }
@@ -480,6 +506,14 @@ object Prefs {
     var ugcVideoPlayerHistoryCount: Int
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefUgcVideoPlayerHistoryCountRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefUgcVideoPlayerHistoryCountKey, value) }
+
+    var defaultDanmakuFilterLevel: Int
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefDefaultDanmakuFilterLevelRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefDefaultDanmakuFilterLevelKey, value) }
+
+    var defaultLiveDanmakuFilterLevel: Int
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefDefaultLiveDanmakuFilterLevelRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefDefaultLiveDanmakuFilterLevelKey, value) }
 }
 
 object PrefKeys {
@@ -524,6 +558,7 @@ object PrefKeys {
     val prefLastVersionCodeKey = intPreferencesKey("last_version_code")
     val prefShowedRemoteControllerPanelDemoKey = booleanPreferencesKey("showed_rcpd")
     val prefPreferOfficialCdn = booleanPreferencesKey("prefer_official_cdn")
+    val prefIpv4OnlyKey = booleanPreferencesKey("ipv4_only")
     val prefDefaultDanmakuMask = booleanPreferencesKey("prefer_enable_webmark")
     val prefEnableFfmpegAudioRenderer = booleanPreferencesKey("enable_ffmpeg_audio_renderer")
     val prefBlacklistUserKey = booleanPreferencesKey("blacklist_user")
@@ -544,9 +579,12 @@ object PrefKeys {
     val prefPlayerDefaultStartPositionKey = intPreferencesKey("player_default_start_position")
     val prefShowOnlineViewerCountKey = intPreferencesKey("show_online_viewer_count")
     val prefShowLiveViewerCountTipKey = intPreferencesKey("show_live_viewer_count_tip")
+    val prefDefaultLiveCodecKey = intPreferencesKey("default_live_codec")
     val prefHomeNavItemsOrderKey = stringPreferencesKey("home_nav_items_order")
     val prefUgcNavItemsOrderKey = stringPreferencesKey("ugc_nav_items_order")
     val prefPgcNavItemsOrderKey = stringPreferencesKey("pgc_nav_items_order")
+    val prefLiveNavItemsOrderKey = stringPreferencesKey("live_nav_items_order")
+    val prefCachedLiveAreaGroupsKey = stringPreferencesKey("cached_live_area_groups")
     val prefEnableTunneling = booleanPreferencesKey("enable_tunneling")
     val prefEnableAsyncQueueing = booleanPreferencesKey("enable_async_queueing")
     val prefSkipPgcIntroOutroKey = booleanPreferencesKey("skip_pgc_intro_outro")
@@ -554,6 +592,8 @@ object PrefKeys {
     val prefUgcVideoInfoHistoryCountKey = intPreferencesKey("ugc_video_info_history_count")
     val prefVideoInfoHistoryIncludeFromPlayerKey = booleanPreferencesKey("video_info_history_include_from_player")
     val prefUgcVideoPlayerHistoryCountKey = intPreferencesKey("ugc_video_player_history_count")
+    val prefDefaultDanmakuFilterLevelKey = intPreferencesKey("default_danmaku_filter_level")
+    val prefDefaultLiveDanmakuFilterLevelKey = intPreferencesKey("default_live_danmaku_filter_level")
 
 
     val prefIsLoginRequest = PreferenceRequest(prefIsLoginKey, false)
@@ -612,6 +652,7 @@ object PrefKeys {
     val prefShowedRemoteControllerPanelDemoRequest =
         PreferenceRequest(prefShowedRemoteControllerPanelDemoKey, false)
     val prefPreferOfficialCdnRequest = PreferenceRequest(prefPreferOfficialCdn, false)
+    val prefIpv4OnlyRequest = PreferenceRequest(prefIpv4OnlyKey, false)
     val prefDefaultDanmakuMaskRequest = PreferenceRequest(prefDefaultDanmakuMask, false)
     val prefEnableFfmpegEndererRequest = PreferenceRequest(prefEnableFfmpegAudioRenderer, true)
     val prefBlacklistUserRequest = PreferenceRequest(prefBlacklistUserKey, false)
@@ -632,10 +673,13 @@ object PrefKeys {
     val prefPlayerDefaultStartPositionRequest = PreferenceRequest(prefPlayerDefaultStartPositionKey, PlayerDefaultStartPosition.Beginning.value)
     val prefShowOnlineViewerCountRequest = PreferenceRequest(prefShowOnlineViewerCountKey, 2)  // 0 = 不显示, 1 = 30 秒后隐藏, 2 = 始终显示
     val prefShowLiveViewerCountTipRequest = PreferenceRequest(prefShowLiveViewerCountTipKey, 2)  // 0 = 不显示, 1 = 30 秒后隐藏, 2 = 始终显示
+    val prefDefaultLiveCodecRequest = PreferenceRequest(prefDefaultLiveCodecKey, LiveCodec.HLS.ordinal)
     // 默认留空：表示按枚举原始顺序全部显示（解析侧会处理 blank）
     val prefHomeNavItemsOrderRequest = PreferenceRequest(prefHomeNavItemsOrderKey, "")
     val prefUgcNavItemsOrderRequest = PreferenceRequest(prefUgcNavItemsOrderKey, "")
     val prefPgcNavItemsOrderRequest = PreferenceRequest(prefPgcNavItemsOrderKey, "")
+    val prefLiveNavItemsOrderRequest = PreferenceRequest(prefLiveNavItemsOrderKey, "")
+    val prefCachedLiveAreaGroupsRequest = PreferenceRequest(prefCachedLiveAreaGroupsKey, "")
     val prefEnableTunnelingRequest = PreferenceRequest(prefEnableTunneling, false)
     val prefEnableAsyncQueueingRequest = PreferenceRequest(prefEnableAsyncQueueing, false)
     val prefSkipPgcIntroOutroRequest = PreferenceRequest(prefSkipPgcIntroOutroKey, false)
@@ -643,4 +687,6 @@ object PrefKeys {
     val prefUgcVideoInfoHistoryCountRequest = PreferenceRequest(prefUgcVideoInfoHistoryCountKey, 2)
     val prefVideoInfoHistoryIncludeFromPlayerRequest = PreferenceRequest(prefVideoInfoHistoryIncludeFromPlayerKey, true)
     val prefUgcVideoPlayerHistoryCountRequest = PreferenceRequest(prefUgcVideoPlayerHistoryCountKey, 1)
+    val prefDefaultDanmakuFilterLevelRequest = PreferenceRequest(prefDefaultDanmakuFilterLevelKey, 0)
+    val prefDefaultLiveDanmakuFilterLevelRequest = PreferenceRequest(prefDefaultLiveDanmakuFilterLevelKey, 0)
 }

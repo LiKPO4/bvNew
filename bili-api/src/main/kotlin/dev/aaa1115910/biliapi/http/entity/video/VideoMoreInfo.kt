@@ -219,7 +219,7 @@ data class VideoMoreInfo(
         val hash1: String? = null,
         val url2: String? = null,
         val hash2: String? = null,
-        val ctime: Int
+        val ctime: Int? = null
     )
 
     /**

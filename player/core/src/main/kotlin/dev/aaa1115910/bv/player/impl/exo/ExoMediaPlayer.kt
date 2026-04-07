@@ -178,6 +178,7 @@ class ExoMediaPlayer(
 
     override fun seekTo(time: Long) {
         mPlayer?.seekTo(time)
+        onSeek?.invoke(time)
     }
 
     override fun release() {
@@ -284,6 +285,7 @@ class ExoMediaPlayer(
     fun recoverIfNeeded() {
         val player = mPlayer ?: return
         if (player.playerError != null) {
+            println("recoverIfNeeded: ${player.playerError}")
             val pos = player.currentPosition
             player.prepare()
             if (pos > 0) player.seekTo(pos)

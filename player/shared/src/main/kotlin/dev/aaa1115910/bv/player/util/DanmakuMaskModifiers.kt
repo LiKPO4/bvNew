@@ -104,17 +104,19 @@ fun Modifier.danmakuMobMask(
     areaRatio: Float
 ): Modifier = composed {
     val cachedImage = remember(frame) {
-        val width = 40
-        val height = 180
-        val pixels = IntArray(width * height)
-        val black = Color.BLACK
-        val transparent = Color.TRANSPARENT
-        for (i in pixels.indices) {
-            pixels[i] = if (frame.image[i].toInt() == 0) black else transparent
+        val width = frame.width
+        val height = frame.height
+        val binaryBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+
+        // 1bpp 连续 bit 流，MSB first
+        val pixels = IntArray(width * height) { i ->
+            val byteIndex = i / 8
+            val bitOffset = 7 - (i % 8)
+            val bit = (frame.image[byteIndex].toInt() shr bitOffset) and 1
+            if (bit == 0) Color.TRANSPARENT else Color.BLACK
         }
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-        bitmap.asImageBitmap()
+        binaryBitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+        binaryBitmap.asImageBitmap()
     }
 
     bitmapMask(cachedImage, videoAspectRatio, areaRatio)

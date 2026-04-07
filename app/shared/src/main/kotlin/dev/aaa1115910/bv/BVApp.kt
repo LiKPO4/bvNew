@@ -14,6 +14,7 @@ import de.schnettler.datastore.manager.DataStoreManager
 import dev.aaa1115910.biliapi.http.BiliHttpApi
 import dev.aaa1115910.biliapi.http.BiliHttpProxyApi
 import dev.aaa1115910.biliapi.http.util.BiliAppConf
+import dev.aaa1115910.biliapi.http.util.BiliDns
 import dev.aaa1115910.biliapi.http.util.BiliWebConf
 import dev.aaa1115910.biliapi.repositories.AuthRepository
 import dev.aaa1115910.biliapi.repositories.BiliApiModule
@@ -71,6 +72,7 @@ class BVApp : Application() {
         initFirebase()
         LogCatcherUtil.installLogCatcher()
         initApiConfig()
+        initDns()
         initRepository()
         initProxy()
         instance = this
@@ -105,6 +107,10 @@ class BVApp : Application() {
             WebViewCompat.getCurrentLoadedWebViewPackage()!!.versionName!!
                 .substringBefore(".").toInt()
         }.getOrDefault(144)
+    }
+
+    private fun initDns() {
+        BiliDns.ipv4Only = Prefs.ipv4Only
     }
 
     fun initRepository() {

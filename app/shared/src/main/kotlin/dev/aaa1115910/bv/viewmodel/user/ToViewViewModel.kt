@@ -2,7 +2,6 @@ package dev.aaa1115910.bv.viewmodel.user
 
 import android.content.Context
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -16,7 +15,6 @@ import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.repository.UserRepository
 import dev.aaa1115910.bv.util.Prefs
-import dev.aaa1115910.bv.util.addWithMainContext
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.fWarn
 import dev.aaa1115910.bv.util.formatHourMinSec
@@ -36,11 +34,13 @@ class ToViewViewModel(
         private val logger = KotlinLogging.logger { }
     }
 
-    var histories = mutableStateListOf<VideoCardData>()
+    var histories by mutableStateOf<List<VideoCardData>>(emptyList())
     var noMore by mutableStateOf(false)
 
     private var cursor = 0L
     private var updating = false
+    var deleting by mutableStateOf(false)
+        private set
 
     fun update() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -61,7 +61,7 @@ class ToViewViewModel(
             )
 
             data.data.forEach { ToViewItem ->
-                histories.addWithMainContext(
+                val newCard = 
                     VideoCardData(
                         avid = ToViewItem.oid,
                         title = ToViewItem.title,
@@ -79,7 +79,7 @@ class ToViewViewModel(
                             (ToViewItem.duration * 1000L).formatHourMinSec()
                         )
                     )
-                )
+                withContext(Dispatchers.Main) { histories = histories + newCard }
             }
             //update cursor
             cursor = data.cursor
@@ -110,9 +110,46 @@ class ToViewViewModel(
     }
 
     fun clearData() {
-        histories.clear()
+        histories = emptyList()
         cursor = 0L
         noMore = false
         logger.fInfo { "ToView data cleared" }
+    }
+
+    fun deleteToView(avid: Long) {
+        if (deleting) return
+        deleting = true
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val success = ToViewRepository.deleteToView(
+                    avid = avid,
+                    preferApiType = Prefs.apiType
+                )
+                if (success) {
+                    withContext(Dispatchers.Main) {
+                        histories = histories.filter { it.avid != avid }
+                    }
+                    logger.fInfo { "Delete toview success: avid=$avid" }
+                    withContext(Dispatchers.Main) {
+                        BVApp.context.getString(R.string.toview_delete_success)
+                            .toast(BVApp.context)
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        BVApp.context.getString(R.string.toview_delete_failed)
+                            .toast(BVApp.context)
+                    }
+                }
+            }.onFailure {
+                logger.fWarn { "Delete toview failed: ${it.stackTraceToString()}" }
+                withContext(Dispatchers.Main) {
+                    BVApp.context.getString(R.string.toview_delete_failed)
+                        .toast(BVApp.context)
+                }
+            }
+            withContext(Dispatchers.Main) {
+                deleting = false
+            }
+        }
     }
 }

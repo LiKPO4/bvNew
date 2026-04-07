@@ -65,6 +65,11 @@ class DanmakuItemData(
   val score: Int = 0,
 
   /**
+   * 弹幕等级，用于按等级过滤
+   */
+  val level: Int = 0,
+
+  /**
    * 弹幕定制样式:
    * [DANMAKU_STYLE_NONE, DANMAKU_STYLE_ICON_UP, DANMAKU_STYLE_USER_AVATAR]
    */

@@ -10,6 +10,7 @@ import dev.aaa1115910.biliapi.entity.live.LiveAreaItem
 import dev.aaa1115910.biliapi.entity.live.LiveRoomItem
 import dev.aaa1115910.biliapi.repositories.LiveRepository
 import dev.aaa1115910.bv.BVApp
+import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.toast
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
@@ -132,6 +133,9 @@ class LiveViewModel(
                         parentAreaGroups.clear()
                         parentAreaGroups.addAll(response.data)
                     }
+                    // 缓存分区列表供设置页使用
+                    val cacheString = response.data.joinToString(",") { "${it.id}:${it.name}" }
+                    Prefs.cachedLiveAreaGroups = cacheString
                     logger.info { "Loaded ${response.data.size} parent area groups" }
                 } else {
                     withContext(Dispatchers.Main) {

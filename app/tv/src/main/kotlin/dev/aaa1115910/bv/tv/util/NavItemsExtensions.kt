@@ -1,10 +1,13 @@
 package dev.aaa1115910.bv.tv.util
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import dev.aaa1115910.biliapi.entity.live.LiveAreaGroup
 import dev.aaa1115910.bv.tv.component.HomeTopNavItem
 import dev.aaa1115910.bv.tv.component.PgcTopNavItem
+import dev.aaa1115910.bv.tv.component.TopNavItem
 import dev.aaa1115910.bv.tv.component.UgcTopNavItem
 import dev.aaa1115910.bv.util.Prefs
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +20,220 @@ data class NavItemConfig(
     val ordinal: Int,
     val hidden: Boolean
 )
+
+// ======================== 直播导航项配置 ========================
+
+/**
+ * 直播导航项配置数据类
+ * @param id 标识符："R"=推荐, "F"=关注, 数字字符串=主分区ID
+ * @param hidden 是否隐藏
+ */
+data class LiveNavItemConfig(
+    val id: String,
+    val hidden: Boolean
+)
+
+/**
+ * 缓存的直播分区信息
+ */
+data class CachedLiveAreaInfo(
+    val id: Int,
+    val name: String
+)
+
+/**
+ * 序列化直播分区列表为缓存字符串
+ * 格式: "id1:name1,id2:name2,..."
+ */
+fun serializeLiveAreaGroups(areaGroups: List<LiveAreaGroup>): String {
+    return areaGroups.joinToString(",") { "${it.id}:${it.name}" }
+}
+
+/**
+ * 解析缓存的直播分区字符串
+ * @return 分区ID和名称的列表
+ */
+fun parseCachedLiveAreaGroups(cacheString: String): List<CachedLiveAreaInfo> {
+    if (cacheString.isBlank()) return emptyList()
+    return cacheString.split(",").mapNotNull { part ->
+        val colonIndex = part.indexOf(':')
+        if (colonIndex < 0) return@mapNotNull null
+        val id = part.substring(0, colonIndex).toIntOrNull() ?: return@mapNotNull null
+        val name = part.substring(colonIndex + 1)
+        CachedLiveAreaInfo(id, name)
+    }
+}
+
+/**
+ * 解析直播导航排序字符串为配置列表（用于设置对话框）
+ * @param orderString 逗号分隔的标识符列表，"-"前缀表示隐藏
+ * @param cachedAreas 缓存的分区信息列表
+ * @param isLoggedIn 是否已登录（决定是否包含关注项）
+ * @return 直播导航项配置列表（按显示顺序）
+ */
+fun parseLiveNavItemsOrderToConfig(
+    orderString: String,
+    cachedAreas: List<CachedLiveAreaInfo>,
+    isLoggedIn: Boolean
+): List<LiveNavItemConfig> {
+    if (orderString.isBlank()) {
+        // 默认配置：推荐 → (关注) → 按缓存顺序的各分区
+        return buildList {
+            add(LiveNavItemConfig("R", false))
+            if (isLoggedIn) add(LiveNavItemConfig("F", false))
+            cachedAreas.forEach { add(LiveNavItemConfig(it.id.toString(), false)) }
+        }
+    }
+
+    val configs = orderString.split(",").mapNotNull { part ->
+        val trimmed = part.trim()
+        if (trimmed.isEmpty()) return@mapNotNull null
+        val isHidden = trimmed.startsWith("-")
+        val id = if (isHidden) trimmed.substring(1) else trimmed
+        if (id.isEmpty()) return@mapNotNull null
+        LiveNavItemConfig(id, isHidden)
+    }
+
+    // 收集已有的ID
+    val existingIds = configs.map { it.id }.toSet()
+
+    // 追加默认项中不存在的（新分区等）
+    val result = configs.toMutableList()
+    if ("R" !in existingIds) result.add(0, LiveNavItemConfig("R", false))
+    if (isLoggedIn && "F" !in existingIds) {
+        val rIndex = result.indexOfFirst { it.id == "R" }
+        result.add(rIndex + 1, LiveNavItemConfig("F", false))
+    }
+    // 追加缓存中有但配置中没有的新分区
+    cachedAreas.forEach { area ->
+        val areaId = area.id.toString()
+        if (areaId !in existingIds) {
+            result.add(LiveNavItemConfig(areaId, false))
+        }
+    }
+
+    // 过滤掉未登录时的"关注"项
+    return if (!isLoggedIn) result.filter { it.id != "F" } else result
+}
+
+/**
+ * 获取直播导航项的显示名称
+ */
+fun getLiveNavItemDisplayName(id: String, cachedAreas: List<CachedLiveAreaInfo>): String {
+    return when (id) {
+        "R" -> "推荐"
+        "F" -> "关注"
+        else -> {
+            val areaId = id.toIntOrNull()
+            cachedAreas.firstOrNull { it.id == areaId }?.name ?: "未知分区($id)"
+        }
+    }
+}
+
+// 用于 LiveContent 的 TopNavItem 包装
+private object LiveRecommendNavItemHolder : TopNavItem {
+    override fun getDisplayName(context: Context): String = "推荐"
+}
+
+private object LiveFollowingNavItemHolder : TopNavItem {
+    override fun getDisplayName(context: Context): String = "关注"
+}
+
+private data class LiveParentAreaNavItemHolder(val group: LiveAreaGroup) : TopNavItem {
+    override fun getDisplayName(context: Context): String = group.name
+}
+
+/**
+ * 解析直播导航排序字符串，返回过滤后的 TopNavItem 列表（用于 LiveContent）
+ * @param orderString 排序配置字符串
+ * @param areaGroups 当前 API 返回的主分区列表
+ * @param isLoggedIn 是否已登录
+ * @return 过滤和排序后的 TopNavItem 列表
+ */
+fun parseLiveNavItemsOrder(
+    orderString: String,
+    areaGroups: List<LiveAreaGroup>,
+    isLoggedIn: Boolean
+): List<TopNavItem> {
+    if (orderString.isBlank()) {
+        // 默认：推荐 → (关注) → API 返回顺序的各分区
+        return buildList {
+            add(LiveRecommendNavItemHolder)
+            if (isLoggedIn) add(LiveFollowingNavItemHolder)
+            addAll(areaGroups.map { LiveParentAreaNavItemHolder(it) })
+        }
+    }
+
+    val areaGroupMap = areaGroups.associateBy { it.id }
+    val existingIds = mutableSetOf<String>()
+
+    val result = orderString.split(",").mapNotNull { part ->
+        val trimmed = part.trim()
+        if (trimmed.isEmpty()) return@mapNotNull null
+        val isHidden = trimmed.startsWith("-")
+        val id = if (isHidden) trimmed.substring(1) else trimmed
+        if (id.isEmpty() || isHidden) return@mapNotNull null
+        existingIds.add(id)
+        when (id) {
+            "R" -> LiveRecommendNavItemHolder
+            "F" -> if (isLoggedIn) LiveFollowingNavItemHolder else null
+            else -> {
+                val areaId = id.toIntOrNull() ?: return@mapNotNull null
+                areaGroupMap[areaId]?.let { LiveParentAreaNavItemHolder(it) }
+            }
+        }
+    }.toMutableList()
+
+    // 追加配置中没有的新分区（API 新增的）
+    areaGroups.forEach { group ->
+        if (group.id.toString() !in existingIds) {
+            result.add(LiveParentAreaNavItemHolder(group))
+        }
+    }
+
+    return result
+}
+
+/**
+ * 从 TopNavItem 获取直播导航项的 ID（用于 LiveContent 恢复选中状态等）
+ */
+fun getLiveNavItemId(item: TopNavItem): String? {
+    return when (item) {
+        is LiveRecommendNavItemHolder -> "R"
+        is LiveFollowingNavItemHolder -> "F"
+        is LiveParentAreaNavItemHolder -> item.group.id.toString()
+        else -> null
+    }
+}
+
+/**
+ * 从 TopNavItem 获取 LiveAreaGroup（仅分区项有值）
+ */
+fun getLiveNavItemAreaGroup(item: TopNavItem): LiveAreaGroup? {
+    return (item as? LiveParentAreaNavItemHolder)?.group
+}
+
+/**
+ * 判断 TopNavItem 是否是直播推荐项
+ */
+fun isLiveRecommendItem(item: TopNavItem): Boolean = item is LiveRecommendNavItemHolder
+
+/**
+ * 判断 TopNavItem 是否是直播关注项
+ */
+fun isLiveFollowingItem(item: TopNavItem): Boolean = item is LiveFollowingNavItemHolder
+
+/**
+ * 判断 TopNavItem 是否是直播分区项
+ */
+fun isLiveAreaItem(item: TopNavItem): Boolean = item is LiveParentAreaNavItemHolder
+
+/**
+ * 获取根据设置过滤和排序后的直播导航项列表（Flow 版本）
+ * 需要配合 areaGroups 使用，因此不能像 UGC/PGC 那样纯 Flow
+ */
+val liveNavItemsOrderFlow: Flow<String>
+    get() = Prefs.liveNavItemsOrderFlow
 
 private fun <T> parseTopNavItemsOrder(orderString: String, entries: List<T>): List<T> {
     if (orderString.isBlank()) return entries

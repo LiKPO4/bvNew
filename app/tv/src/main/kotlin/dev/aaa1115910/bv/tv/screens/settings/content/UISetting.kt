@@ -65,6 +65,10 @@ import dev.aaa1115910.bv.tv.component.settings.SettingSwitchListItem
 import dev.aaa1115910.bv.tv.component.HomeTopNavItem
 import dev.aaa1115910.bv.tv.screens.settings.SettingsMenuNavItem
 import dev.aaa1115910.bv.tv.util.NavItemConfig
+import dev.aaa1115910.bv.tv.util.LiveNavItemConfig
+import dev.aaa1115910.bv.tv.util.getLiveNavItemDisplayName
+import dev.aaa1115910.bv.tv.util.parseCachedLiveAreaGroups
+import dev.aaa1115910.bv.tv.util.parseLiveNavItemsOrderToConfig
 import dev.aaa1115910.bv.tv.util.moveNavItemToFirstAndUnhide
 import dev.aaa1115910.bv.tv.util.parseNavItemsOrderToConfig
 import dev.aaa1115910.bv.ui.theme.BVTheme
@@ -85,6 +89,7 @@ fun UISetting(
     var showHomeNavItemsDialog by remember { mutableStateOf(false) }
     var showUgcNavItemsDialog by remember { mutableStateOf(false) }
     var showPgcNavItemsDialog by remember { mutableStateOf(false) }
+    var showLiveNavItemsDialog by remember { mutableStateOf(false) }
     val density by Prefs.densityFlow.collectAsState(context.resources.displayMetrics.widthPixels / 960f)
     val themeType by Prefs.themeTypeFlow.collectAsState(Prefs.themeType)
     val interfaceMode = Prefs.interfaceMode
@@ -219,6 +224,13 @@ fun UISetting(
                         onClick = { showPgcNavItemsDialog = true }
                     )
                 }
+                item {
+                    SettingListItem(
+                        title = stringResource(R.string.settings_ui_live_nav_items_title),
+                        supportText = stringResource(R.string.settings_ui_live_nav_items_text),
+                        onClick = { showLiveNavItemsDialog = true }
+                    )
+                }
             }
         }
     }
@@ -280,6 +292,12 @@ fun UISetting(
         show = showPgcNavItemsDialog,
         onHideDialog = { showPgcNavItemsDialog = false },
         initialOrderString = Prefs.pgcNavItemsOrder
+    )
+
+    LiveNavItemsEditDialog(
+        show = showLiveNavItemsDialog,
+        onHideDialog = { showLiveNavItemsDialog = false },
+        initialOrderString = Prefs.liveNavItemsOrder
     )
 }
 
@@ -992,4 +1010,187 @@ private fun savePgcNavConfigs(navConfigs: List<NavItemConfig>) {
         if (config.hidden) "-${config.ordinal}" else "${config.ordinal}"
     }
     Prefs.pgcNavItemsOrder = finalOrderString
+}
+
+private fun saveLiveNavConfigs(navConfigs: List<LiveNavItemConfig>) {
+    val finalOrderString = navConfigs.joinToString(",") { config ->
+        if (config.hidden) "-${config.id}" else config.id
+    }
+    Prefs.liveNavItemsOrder = finalOrderString
+}
+
+@Composable
+private fun LiveNavItemsEditDialog(
+    modifier: Modifier = Modifier,
+    show: Boolean,
+    onHideDialog: () -> Unit,
+    initialOrderString: String
+) {
+    if (!show) return
+
+    val scope = rememberCoroutineScope()
+    val focusRequester = remember { FocusRequester() }
+
+    val cachedAreas = remember {
+        parseCachedLiveAreaGroups(Prefs.cachedLiveAreaGroups)
+    }
+    val isLoggedIn = remember { Prefs.isLogin }
+
+    val initialConfigs = remember(initialOrderString) {
+        parseLiveNavItemsOrderToConfig(initialOrderString, cachedAreas, isLoggedIn)
+    }
+    var navConfigs by remember { mutableStateOf(initialConfigs) }
+    var selectedIndex by remember { mutableIntStateOf(0) }
+
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(selectedIndex, navConfigs.size) {
+        if (navConfigs.isEmpty()) return@LaunchedEffect
+
+        val layoutInfo = listState.layoutInfo
+        val viewportStart = layoutInfo.viewportStartOffset
+        val viewportEnd = layoutInfo.viewportEndOffset
+        val viewportSize = viewportEnd - viewportStart
+        if (viewportSize <= 0) return@LaunchedEffect
+
+        val visibleItems = layoutInfo.visibleItemsInfo
+        val visibleCount = visibleItems.size
+        if (visibleCount <= 0) return@LaunchedEffect
+
+        val firstVisible = listState.firstVisibleItemIndex
+        val selectedItemInfo = visibleItems.firstOrNull { it.index == selectedIndex }
+
+        if (selectedItemInfo != null) {
+            val itemStart = selectedItemInfo.offset
+            val itemEnd = itemStart + selectedItemInfo.size
+
+            if (itemStart < viewportStart) {
+                listState.animateScrollToItem(index = selectedIndex, scrollOffset = 0)
+                return@LaunchedEffect
+            }
+
+            if (itemEnd > viewportEnd) {
+                val bottomAlignedOffset = (viewportSize - selectedItemInfo.size).coerceAtLeast(0)
+                listState.animateScrollToItem(index = selectedIndex, scrollOffset = bottomAlignedOffset)
+                return@LaunchedEffect
+            }
+
+            val middleIndex = firstVisible + visibleCount / 2
+            if (selectedIndex > middleIndex) {
+                val maxFirstVisible = (navConfigs.size - visibleCount).coerceAtLeast(0)
+                val targetFirstVisible = (selectedIndex - visibleCount / 2)
+                    .coerceIn(0, maxFirstVisible)
+                if (targetFirstVisible != firstVisible) {
+                    listState.animateScrollToItem(index = targetFirstVisible)
+                }
+            }
+            return@LaunchedEffect
+        }
+
+        val maxFirstVisible = (navConfigs.size - visibleCount).coerceAtLeast(0)
+        val targetFirstVisible = (selectedIndex - visibleCount / 2)
+            .coerceIn(0, maxFirstVisible)
+        if (targetFirstVisible != firstVisible) {
+            listState.animateScrollToItem(index = targetFirstVisible)
+        }
+    }
+
+    LaunchedEffect(show) {
+        if (show) focusRequester.requestFocus(scope)
+    }
+
+    TvAlertDialog(
+        modifier = modifier,
+        onDismissRequest = {
+            saveLiveNavConfigs(navConfigs)
+            onHideDialog()
+        },
+        title = { Text(text = stringResource(R.string.settings_ui_live_nav_items_title)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .focusRequester(focusRequester)
+                    .focusable()
+                    .onPreviewKeyEvent {
+                        if (it.type == KeyEventType.KeyDown) {
+                            when (it.key) {
+                                Key.DirectionLeft -> {
+                                    if (selectedIndex > 0) {
+                                        navConfigs = navConfigs.toMutableList().apply {
+                                            val temp = this[selectedIndex]
+                                            this[selectedIndex] = this[selectedIndex - 1]
+                                            this[selectedIndex - 1] = temp
+                                        }
+                                        selectedIndex--
+                                    }
+                                    true
+                                }
+                                Key.DirectionRight -> {
+                                    if (selectedIndex < navConfigs.size - 1) {
+                                        navConfigs = navConfigs.toMutableList().apply {
+                                            val temp = this[selectedIndex]
+                                            this[selectedIndex] = this[selectedIndex + 1]
+                                            this[selectedIndex + 1] = temp
+                                        }
+                                        selectedIndex++
+                                    }
+                                    true
+                                }
+                                Key.DirectionUp -> {
+                                    if (selectedIndex > 0) selectedIndex--
+                                    true
+                                }
+                                Key.DirectionDown -> {
+                                    if (selectedIndex < navConfigs.size - 1) selectedIndex++
+                                    true
+                                }
+                                Key.Enter, Key.DirectionCenter -> {
+                                    val config = navConfigs[selectedIndex]
+                                    navConfigs = navConfigs.toMutableList().apply {
+                                        this[selectedIndex] = config.copy(hidden = !config.hidden)
+                                    }
+                                    true
+                                }
+                                else -> false
+                            }
+                        }
+                        false
+                    }
+            ) {
+                if (cachedAreas.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.settings_ui_live_nav_items_empty_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.settings_ui_live_nav_items_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    itemsIndexed(
+                        items = navConfigs,
+                        key = { index, config -> "$index-live-nav-${config.id}" }
+                    ) { index, config ->
+                        NavItemEditRow(
+                            title = getLiveNavItemDisplayName(config.id, cachedAreas),
+                            hidden = config.hidden,
+                            selected = index == selectedIndex,
+                            onFocus = { selectedIndex = index }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {}
+    )
 }

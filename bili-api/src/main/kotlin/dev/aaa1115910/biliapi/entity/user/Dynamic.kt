@@ -104,7 +104,8 @@ data class DynamicItem(
     var article: DynamicArticleModule? = null,
     var none: DynamicNoneModule? = null,
     val footer: DynamicFooterModule? = null,
-    var orig: DynamicItem? = null
+    var orig: DynamicItem? = null,
+    var jumpUrl: String? = null
 ) {
     companion object {
         fun fromDynamicItem(item: dev.aaa1115910.biliapi.http.entity.dynamic.DynamicItem): DynamicItem {
@@ -125,6 +126,7 @@ data class DynamicItem(
                 DynamicType.Forward -> dynamicItem.apply {
                     word = DynamicWordModule.fromModuleDynamic(item.modules.moduleDynamic)
                     orig = fromDynamicItem(item.orig!!)
+                    jumpUrl = item.orig?.basic?.jumpUrl
                 }
 
                 DynamicType.Word -> dynamicItem.word =
@@ -308,11 +310,14 @@ data class DynamicItem(
         val cover: String,
         val duration: String,
         val play: String,
-        val danmaku: String
+        val danmaku: String,
+        val isChargingArc: Boolean = false,
+        val chargingArcBadge: String = ""
     ) {
         companion object {
-            fun fromModuleArchive(moduleArchive: dev.aaa1115910.biliapi.http.entity.dynamic.DynamicItem.Modules.Dynamic.Major.Archive) =
-                DynamicVideoModule(
+            fun fromModuleArchive(moduleArchive: dev.aaa1115910.biliapi.http.entity.dynamic.DynamicItem.Modules.Dynamic.Major.Archive): DynamicVideoModule {
+                val isChargingArc = moduleArchive.badge.text.contains("充电") || moduleArchive.badge.text.contains("限时免费")
+                return DynamicVideoModule(
                     aid = moduleArchive.aid.toLong(),
                     bvid = moduleArchive.bvid,
                     cid = 0,
@@ -322,10 +327,15 @@ data class DynamicItem(
                     duration = moduleArchive.durationText,
                     play = moduleArchive.stat.play,
                     danmaku = moduleArchive.stat.danmaku,
+                    isChargingArc = isChargingArc,
+                    chargingArcBadge = if (isChargingArc) moduleArchive.badge.text else ""
                 )
+            }
 
-            fun fromModuleArchive(moduleArchive: bilibili.app.dynamic.v2.MdlDynArchive) =
-                DynamicVideoModule(
+            fun fromModuleArchive(moduleArchive: bilibili.app.dynamic.v2.MdlDynArchive): DynamicVideoModule {
+                val badgeText = moduleArchive.badgeList.firstOrNull()?.text ?: ""
+                val isChargingArc = badgeText.contains("充电") || badgeText.contains("限时免费")
+                return DynamicVideoModule(
                     aid = moduleArchive.avid,
                     bvid = moduleArchive.bvid,
                     cid = moduleArchive.cid,
@@ -336,8 +346,11 @@ data class DynamicItem(
                     cover = moduleArchive.cover,
                     duration = moduleArchive.coverLeftText1,
                     play = moduleArchive.coverLeftText2,
-                    danmaku = moduleArchive.coverLeftText3
+                    danmaku = moduleArchive.coverLeftText3,
+                    isChargingArc = isChargingArc,
+                    chargingArcBadge = if (isChargingArc) badgeText else ""
                 )
+            }
         }
     }
 

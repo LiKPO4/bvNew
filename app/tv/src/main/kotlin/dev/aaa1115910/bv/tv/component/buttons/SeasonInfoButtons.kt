@@ -42,7 +42,8 @@ fun SeasonInfoButtons(
     onPlay: () -> Unit,
     onClickFollow: (follow: Boolean) -> Unit,
     onShowComment: () -> Unit = {},
-    commentButtonFocusRequester: FocusRequester = remember { FocusRequester() }
+    commentButtonFocusRequester: FocusRequester = remember { FocusRequester() },
+    playButtonFocusRequester: FocusRequester = remember { FocusRequester() }
 ) {
     Row(
         modifier = modifier
@@ -51,7 +52,10 @@ fun SeasonInfoButtons(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isPublished) {
-            Button(onClick = onPlay) {
+            Button(
+                onClick = onPlay,
+                modifier = Modifier.focusRequester(playButtonFocusRequester)
+            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {

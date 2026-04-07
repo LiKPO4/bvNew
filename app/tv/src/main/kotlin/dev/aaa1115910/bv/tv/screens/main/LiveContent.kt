@@ -21,6 +21,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +43,13 @@ import dev.aaa1115910.bv.tv.component.TopNav
 import dev.aaa1115910.bv.tv.component.TopNavItem
 import dev.aaa1115910.bv.tv.component.live.LiveRoomCard
 import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
+import dev.aaa1115910.bv.tv.util.getLiveNavItemAreaGroup
+import dev.aaa1115910.bv.tv.util.isLiveAreaItem
+import dev.aaa1115910.bv.tv.util.isLiveFollowingItem
+import dev.aaa1115910.bv.tv.util.isLiveRecommendItem
+import dev.aaa1115910.bv.tv.util.liveNavItemsOrderFlow
+import dev.aaa1115910.bv.tv.util.parseLiveNavItemsOrder
+import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.util.toast
 import dev.aaa1115910.bv.viewmodel.live.LiveMode
@@ -52,21 +60,6 @@ import org.koin.androidx.compose.koinViewModel
 import dev.aaa1115910.biliapi.entity.live.LiveAreaGroup
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
 import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
-
-// 固定 TopNavItem：推荐
-private object RecommendNavItem : TopNavItem {
-    override fun getDisplayName(context: Context): String = "推荐"
-}
-
-// 固定 TopNavItem：关注
-private object FollowingNavItem : TopNavItem {
-    override fun getDisplayName(context: Context): String = "关注"
-}
-
-// 主分区 TopNavItem
-private data class ParentAreaNavItem(val group: LiveAreaGroup) : TopNavItem {
-    override fun getDisplayName(context: Context): String = group.name
-}
 
 // 子分区 TopNavItem
 private data class SubAreaNavItem(val area: LiveAreaItem) : TopNavItem {
@@ -82,7 +75,7 @@ fun LiveContent(
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger("LiveContent")
     val context = LocalContext.current
-    
+
     val gridState = rememberLazyGridState()
     // 使用 MainScreen 传入的 FocusRequester 作为默认入口焦点（从侧边栏按右进入内容区）
     val parentNavFocusRequester = navFocusRequester
@@ -137,25 +130,57 @@ fun LiveContent(
         modifier = modifier,
         topBar = {
             androidx.compose.foundation.layout.Column {
-                // 第一行：推荐 + 关注 + 主分区
+                // 第一行：推荐 + 关注 + 主分区（根据设置过滤和排序）
+                val liveNavOrderString by liveNavItemsOrderFlow.collectAsState(
+                    initial = Prefs.liveNavItemsOrder
+                )
+
                 val parentNavItems = remember(
+                    liveNavOrderString,
                     liveViewModel.parentAreaGroups.size,
                     liveViewModel.isLoggedIn
                 ) {
-                    buildList<TopNavItem> {
-                        add(RecommendNavItem)
-                        if (liveViewModel.isLoggedIn) add(FollowingNavItem)
-                        addAll(liveViewModel.parentAreaGroups.map { ParentAreaNavItem(it) })
+                    val items = parseLiveNavItemsOrder(
+                        liveNavOrderString,
+                        liveViewModel.parentAreaGroups,
+                        liveViewModel.isLoggedIn
+                    )
+                    // 全部隐藏时强制显示推荐
+                    items.ifEmpty {
+                        parseLiveNavItemsOrder("", emptyList(), false)
                     }
                 }
 
-                val initialSelectedParent = remember(liveViewModel.currentMode, liveViewModel.currentParentGroup) {
+                val initialSelectedParent = remember(liveViewModel.currentMode, liveViewModel.currentParentGroup, parentNavItems) {
                     when (liveViewModel.currentMode) {
-                        LiveMode.RECOMMEND -> RecommendNavItem
-                        LiveMode.FOLLOWING -> FollowingNavItem
+                        LiveMode.RECOMMEND -> parentNavItems.firstOrNull { isLiveRecommendItem(it) }
+                        LiveMode.FOLLOWING -> parentNavItems.firstOrNull { isLiveFollowingItem(it) }
                         LiveMode.AREA -> parentNavItems.firstOrNull {
-                            it is ParentAreaNavItem && it.group.id == liveViewModel.currentParentGroup?.id
+                            isLiveAreaItem(it) && getLiveNavItemAreaGroup(it)?.id == liveViewModel.currentParentGroup?.id
                         }
+                    } ?: parentNavItems.firstOrNull()
+                }
+
+                // 当配置变化导致当前选中项被隐藏时，自动切换到第一个可见项
+                LaunchedEffect(parentNavItems) {
+                    val currentInList = when (liveViewModel.currentMode) {
+                        LiveMode.RECOMMEND -> parentNavItems.any { isLiveRecommendItem(it) }
+                        LiveMode.FOLLOWING -> parentNavItems.any { isLiveFollowingItem(it) }
+                        LiveMode.AREA -> parentNavItems.any {
+                            isLiveAreaItem(it) && getLiveNavItemAreaGroup(it)?.id == liveViewModel.currentParentGroup?.id
+                        }
+                    }
+                    if (!currentInList && parentNavItems.isNotEmpty()) {
+                        val firstItem = parentNavItems.first()
+                        liveViewModel.lastFocusedRoomIndex = 0
+                        when {
+                            isLiveRecommendItem(firstItem) -> liveViewModel.switchToRecommend()
+                            isLiveFollowingItem(firstItem) -> liveViewModel.switchToFollowing()
+                            isLiveAreaItem(firstItem) -> getLiveNavItemAreaGroup(firstItem)?.let {
+                                liveViewModel.switchParentArea(it)
+                            }
+                        }
+                        gridState.scrollToItem(0)
                     }
                 }
 
@@ -171,17 +196,19 @@ fun LiveContent(
                         onSelectedChanged = { nav ->
                             liveViewModel.lastFocusedRoomIndex = 0
                             scope.launch { gridState.scrollToItem(0) }
-                            when (nav) {
-                                is RecommendNavItem -> liveViewModel.switchToRecommend()
-                                is FollowingNavItem -> liveViewModel.switchToFollowing()
-                                is ParentAreaNavItem -> liveViewModel.switchParentArea(nav.group)
+                            when {
+                                isLiveRecommendItem(nav) -> liveViewModel.switchToRecommend()
+                                isLiveFollowingItem(nav) -> liveViewModel.switchToFollowing()
+                                isLiveAreaItem(nav) -> getLiveNavItemAreaGroup(nav)?.let {
+                                    liveViewModel.switchParentArea(it)
+                                }
                             }
                         },
                         onClick = { nav ->
-                            val isSameSelection = when (nav) {
-                                is RecommendNavItem -> liveViewModel.currentMode == LiveMode.RECOMMEND
-                                is FollowingNavItem -> liveViewModel.currentMode == LiveMode.FOLLOWING
-                                is ParentAreaNavItem -> liveViewModel.currentMode == LiveMode.AREA && nav.group.id == liveViewModel.currentParentGroup?.id
+                            val isSameSelection = when {
+                                isLiveRecommendItem(nav) -> liveViewModel.currentMode == LiveMode.RECOMMEND
+                                isLiveFollowingItem(nav) -> liveViewModel.currentMode == LiveMode.FOLLOWING
+                                isLiveAreaItem(nav) -> liveViewModel.currentMode == LiveMode.AREA && getLiveNavItemAreaGroup(nav)?.id == liveViewModel.currentParentGroup?.id
                                 else -> false
                             }
                             if (isSameSelection) {
@@ -195,7 +222,7 @@ fun LiveContent(
                         }
                     )
                 }
-                
+
                 // 第二行：子分区（仅在分区模式下显示）
                 if (liveViewModel.currentMode == LiveMode.AREA && liveViewModel.subAreaList.isNotEmpty()) {
                     // 监听 currentParentGroup 变化以触发子分区列表更新
@@ -262,8 +289,8 @@ fun LiveContent(
                         state = gridState,
                         columns = GridCells.Fixed(4),
                         contentPadding = PaddingValues(20.dp, 0.dp, 20.dp, 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(20.dp)
+                        verticalArrangement = Arrangement.spacedBy(13.dp),
+                        horizontalArrangement = Arrangement.spacedBy(13.dp)
                     ) {
                         itemsIndexed(
                             items = liveViewModel.roomList,

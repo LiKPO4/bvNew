@@ -212,7 +212,6 @@ fun VideoInfoScreen(
     val containsVerticalScreenVideo by remember {
         derivedStateOf {
             videoDetailViewModel.videoDetail?.pages?.any { it.dimension.isVertical } ?: false
-                    || videoDetailViewModel.videoDetail?.ugcSeason?.sections?.any { section -> section.episodes.any { it.dimension!!.isVertical } } ?: false
         }
     }
 
@@ -1550,7 +1549,7 @@ private fun VideoPartButton(
     }
     val focusedBorderColor = when {
         isLastPlayed -> null
-        isCurrentIntent -> Color(0xFF00BFFF)
+        isCurrentIntent -> Color(0xFFE39B17)
         else -> null
     }
 

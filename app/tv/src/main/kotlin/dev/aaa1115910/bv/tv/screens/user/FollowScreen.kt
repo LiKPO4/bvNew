@@ -170,7 +170,7 @@ fun FollowScreen(
         LazyVerticalGrid(
             modifier = gridFocusRestorer.containerModifier(Modifier.padding(innerPadding)),
             columns = GridCells.Fixed(3),
-            contentPadding = PaddingValues(24.dp),
+            contentPadding = PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
             horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {

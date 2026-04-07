@@ -19,6 +19,7 @@ class LauncherActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Prefs.currentPlaySpeed = Prefs.defaultPlaySpeed
         routeToCorrectActivity()
     }
     

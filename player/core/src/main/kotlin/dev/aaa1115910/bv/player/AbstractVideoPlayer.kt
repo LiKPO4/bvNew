@@ -4,6 +4,9 @@ abstract class AbstractVideoPlayer {
     /** 播放器事件回调 */
     protected var mPlayerEventListener: VideoPlayerListener? = null
 
+    /** 跳转播放位置后的回调 */
+    var onSeek: ((Long) -> Unit)? = null
+
     /** 标记是否处于后台/生命周期过渡期，用于抑制 Surface 相关的非致命错误 */
     @Volatile
     var isInBackground: Boolean = false

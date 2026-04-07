@@ -2,7 +2,6 @@ package dev.aaa1115910.bv.viewmodel.user
 
 import android.content.Context
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -17,7 +16,7 @@ import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.repository.UserRepository
 import dev.aaa1115910.bv.util.Prefs
-import dev.aaa1115910.bv.util.addWithMainContext
+
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.fWarn
 import dev.aaa1115910.bv.util.formatHourMinSec
@@ -37,11 +36,13 @@ class HistoryViewModel(
         private val logger = KotlinLogging.logger { }
     }
 
-    var histories = mutableStateListOf<VideoCardData>()
+    var histories by mutableStateOf<List<VideoCardData>>(emptyList())
     var noMore by mutableStateOf(false)
 
     private var cursor = 0L
     var updating by mutableStateOf(false)
+    var deleting by mutableStateOf(false)
+        private set
 
     fun update() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -61,28 +62,35 @@ class HistoryViewModel(
                 preferApiType = Prefs.apiType
             )
 
-            data.data.forEach { historyItem ->
+            val newItems = data.data.map { historyItem ->
                 val isPgc = historyItem.type == HistoryItemType.Pgc
-                histories.addWithMainContext(
-                    VideoCardData(
-                        avid = historyItem.oid,
-                        title = historyItem.title,
-                        cover = historyItem.cover,
-                        upName = historyItem.author,
-                        upId = historyItem.authorId,
-                        upFace = historyItem.authorFace,
-                        timeString = if (historyItem.progress == -1) context.getString(R.string.play_time_finish)
-                        else context.getString(
-                            R.string.play_time_history,
-                            (historyItem.progress * 1000L).formatHourMinSec(),
-                            (historyItem.duration * 1000L).formatHourMinSec()
-                        ),
-                        jumpToSeason = isPgc,
-                        epId = historyItem.epid,
-                        seasonId = historyItem.seasonId ?: if (isPgc) historyItem.kid.toInt() else null,
-                        pubTime = historyItem.viewAt.toSmartDate() + context.getString(R.string.view_at)
-                    )
+                VideoCardData(
+                    avid = historyItem.oid,
+                    title = historyItem.title,
+                    cover = historyItem.cover,
+                    upName = historyItem.author,
+                    upId = historyItem.authorId,
+                    upFace = historyItem.authorFace,
+                    timeString = if (historyItem.progress == -1) context.getString(R.string.play_time_finish)
+                    else context.getString(
+                        R.string.play_time_history,
+                        (historyItem.progress * 1000L).formatHourMinSec(),
+                        (historyItem.duration * 1000L).formatHourMinSec()
+                    ),
+                    jumpToSeason = isPgc,
+                    epId = historyItem.epid,
+                    seasonId = historyItem.seasonId ?: if (isPgc) historyItem.kid.toInt() else null,
+                    pubTime = historyItem.viewAt.toSmartDate() + context.getString(R.string.view_at),
+                    historyBusiness = when (historyItem.type) {
+                        HistoryItemType.Archive -> "archive"
+                        HistoryItemType.Pgc -> "pgc"
+                        HistoryItemType.Unknown -> null
+                    },
+                    historyKid = historyItem.kid
                 )
+            }
+            withContext(Dispatchers.Main) {
+                histories = histories + newItems
             }
             //update cursor
             cursor = data.cursor
@@ -113,9 +121,47 @@ class HistoryViewModel(
     }
 
     fun clearData() {
-        histories.clear()
+        histories = emptyList()
         cursor = 0L
         noMore = false
         logger.fInfo { "History data cleared" }
+    }
+
+    fun deleteHistory(business: String?, kid: Long?) {
+        if (deleting || business == null || kid == null) return
+        deleting = true
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val success = historyRepository.deleteHistory(
+                    business = business,
+                    kid = kid,
+                    preferApiType = Prefs.apiType
+                )
+                if (success) {
+                    withContext(Dispatchers.Main) {
+                        histories = histories.filter { !(it.historyBusiness == business && it.historyKid == kid) }
+                    }
+                    logger.fInfo { "Delete history success: business=$business, kid=$kid" }
+                    withContext(Dispatchers.Main) {
+                        BVApp.context.getString(R.string.history_delete_success)
+                            .toast(BVApp.context)
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        BVApp.context.getString(R.string.history_delete_failed)
+                            .toast(BVApp.context)
+                    }
+                }
+            }.onFailure {
+                logger.fWarn { "Delete history failed: ${it.stackTraceToString()}" }
+                withContext(Dispatchers.Main) {
+                    BVApp.context.getString(R.string.history_delete_failed)
+                        .toast(BVApp.context)
+                }
+            }
+            withContext(Dispatchers.Main) {
+                deleting = false
+            }
+        }
     }
 }

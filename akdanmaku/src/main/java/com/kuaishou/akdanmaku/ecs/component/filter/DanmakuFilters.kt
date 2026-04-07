@@ -76,5 +76,6 @@ class DanmakuFilters {
     const val FILTER_TYPE_SCREEN_PART = 1 shl 10
     const val FILTER_TYPE_BLOCKED_TEXT = 1 shl 11
     const val FILTER_TYPE_DUPLICATE_MERGED = 1 shl 12
+    const val FILTER_TYPE_LEVEL = 1 shl 13
   }
 }

@@ -73,6 +73,7 @@ import dev.aaa1115910.biliapi.http.entity.video.VideoShot
 import dev.aaa1115910.biliapi.http.entity.web.NavResponseData
 import dev.aaa1115910.biliapi.http.plugins.BiliUserAgent
 import dev.aaa1115910.biliapi.http.util.BiliAppConf
+import dev.aaa1115910.biliapi.http.util.BiliDns
 import dev.aaa1115910.biliapi.http.util.encApiSign
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -96,6 +97,7 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.coroutines.CoroutineScope
+import bilibili.community.service.dm.v1.DmSegMobileReply
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -142,6 +144,11 @@ object BiliHttpApi {
 
     private fun createClient() {
         client = HttpClient(OkHttp) {
+            engine {
+                config {
+                    dns(BiliDns)
+                }
+            }
             BiliUserAgent()
             install(ContentNegotiation) {
                 json(json)
@@ -374,6 +381,48 @@ object BiliHttpApi {
     }
 
     /**
+     * 通过[cid]和[avid]获取视频弹幕
+     * 支持分段获取
+     *
+     * @param cid 视频 cid
+     * @param avid 视频 avid
+     * @param segmentIndex 分段索引，从 1 开始。每 6min 一包
+     * @param sessData 用户认证 cookie
+     * @return 弹幕数据列表
+     */
+    suspend fun getDanmakuSeg(
+        cid: Long,
+        avid: Long,
+        segmentIndex: Int = 1,
+        sessData: String = ""
+    ): List<DanmakuData> {
+        val responseBytes = client.get("/x/v2/dm/wbi/web/seg.so") {
+            parameter("type", 1) // 1:视频
+            parameter("oid", cid)
+            parameter("pid", avid)
+            parameter("segment_index", segmentIndex)
+            header("Cookie", "SESSDATA=$sessData;")
+        }.readRawBytes()
+
+        val reply = bilibili.community.service.dm.v1.DmSegMobileReply.parseFrom(responseBytes)
+
+        return reply.elemsList.map { elem ->
+            DanmakuData(
+                time = elem.progress / 1000f, // ms -> s
+                type = elem.mode,
+                size = elem.fontsize,
+                color = elem.color,
+                timestamp = (elem.ctime / 1000).toInt(), // ms -> s
+                pool = elem.pool,
+                midHash = elem.midHash,
+                dmid = elem.id,
+                level = elem.weight, // weight 用于屏蔽等级
+                text = elem.content
+            )
+        }
+    }
+
+    /**
      * 获取动态列表
      *
      * @param type 返回数据额类型 all:全部 video:视频投稿 pgc:追番追剧 article：专栏
@@ -497,6 +546,44 @@ object BiliHttpApi {
         // parameter("business", business)
         // parameter("view_at", viewAt)
         // parameter("ps", pageSize)
+        header("Cookie", "SESSDATA=$sessData;")
+    }.body()
+
+    /**
+     * 删除历史记录[kid]
+     */
+    suspend fun deleteHistory(
+        kid: String,
+        csrf: String,
+        sessData: String
+    ): BiliResponseWithoutData = client.post("/x/v2/history/delete") {
+        setBody(
+            FormDataContent(
+                Parameters.build {
+                    append("kid", kid)
+                    append("csrf", csrf)
+                }
+            )
+        )
+        header("Cookie", "SESSDATA=$sessData;")
+    }.body()
+
+    /**
+     * 从稍后再看列表中删除视频[avid]
+     */
+    suspend fun deleteToView(
+        avid: Long,
+        csrf: String,
+        sessData: String
+    ): BiliResponseWithoutData = client.post("/x/v2/history/toview/v2/dels") {
+        setBody(
+            FormDataContent(
+                Parameters.build {
+                    append("aid", "$avid")
+                    append("csrf", csrf)
+                }
+            )
+        )
         header("Cookie", "SESSDATA=$sessData;")
     }.body()
 
@@ -970,7 +1057,8 @@ object BiliHttpApi {
         keyword: String? = null,
         pageNumber: Int = 1,
         pageSize: Int = 30,
-        sessData: String
+        sessData: String,
+        dedeUserID: Long? = null
     ): BiliResponse<WebSpaceVideoData> = client.get("/x/space/wbi/arc/search") {
         parameter("mid", mid)
         parameter("order", order)
@@ -983,7 +1071,7 @@ object BiliHttpApi {
         parameter("dm_img_str", "V2ViR0wgMS4wIChPcGVuR0wgRVMgMi4wIENocm9taXVtKQ")
         parameter("dm_cover_img_str", "QU5HTEUgKEFNRCwgQU1EIFJhZGVvbiA3ODBNIEdyYXBoaWNzICgweDAwMDAxNUJGKSBEaXJlY3QzRDExIHZzXzVfMCBwc181XzAsIEQzRDExKUdvb2dsZSBJbmMuIChBTU")
         parameter("dm_img_inter", "{\"ds\":[],\"wh\":[4769,2793,43],\"of\":[285,570,285]}")
-        header("Cookie", "SESSDATA=$sessData;")
+        header("Cookie", "SESSDATA=$sessData;DedeUserID=$dedeUserID;")
         header("referer", "https://space.bilibili.com")
     }.body()
 
@@ -1980,6 +2068,44 @@ object BiliHttpApi {
         parameter("plat", plat)
         sessData?.let { header("Cookie", "SESSDATA=$it;") }
     }.body()
+
+    /**
+     * 一键三连
+     */
+    suspend fun tripleLike(
+        avid: Long? = null,
+        bvid: String? = null,
+        csrf: String? = null,
+        sessData: String? = null,
+        accessKey: String? = null
+    ): Pair<Boolean, String> {
+        checkToken(accessKey, sessData)
+        require(avid != null || bvid != null) { "avid and bvid cannot be null at the same time" }
+
+        // 使用 App API（当只有 accessKey 时）
+        val useAppApi = accessKey != null && sessData == null
+        val url = if (useAppApi) {
+            "https://app.bilibili.com/x/v2/view/like/triple"
+        } else {
+            "/x/web-interface/archive/like/triple"
+        }
+
+        val response = client.post(url) {
+            setBody(
+                FormDataContent(
+                    Parameters.build {
+                        avid?.let { append("aid", "$it") }
+                        bvid?.let { append("bvid", it) }
+                        if (!useAppApi) {
+                            csrf?.let { append("csrf", it) }
+                        }
+                        accessKey?.let { append("access_key", it) }
+                    }
+                ))
+            sessData?.let { header("Cookie", "SESSDATA=$it;") }
+        }.body<BiliResponseWithoutData>()
+        return Pair(response.code == 0, response.message)
+    }
 }
 
 enum class SeasonIndexType(val id: Int) {

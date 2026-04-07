@@ -48,6 +48,7 @@ fun DanmakuMenuList(
     onDanmakuAreaChange: (Float) -> Unit,
     onDanmakuMaskChange: (Boolean) -> Unit,
     onDanmakuRollingDurationFactorChange: (Float) -> Unit,
+    onDanmakuFilterLevelChange: (Int) -> Unit,
     onFocusStateChange: (MenuFocusState) -> Unit
 ) {
     val context = LocalContext.current
@@ -167,6 +168,27 @@ fun DanmakuMenuList(
                         parentMenuFocusRequester.requestFocus()
                     }
                 )
+
+                VideoPlayerDanmakuMenuItem.FilterLevel -> {
+                    val (minValue, maxValue) = if (videoPlayerConfigData.isLive) 0 to 60 else 0 to 10
+                    val currentValue = if (videoPlayerConfigData.isLive)
+                        videoPlayerConfigData.currentLiveDanmakuFilterLevel
+                    else
+                        videoPlayerConfigData.currentDanmakuFilterLevel
+
+                    // 直播弹幕实时生效，视频弹幕下次加载生效
+                    val description = if (videoPlayerConfigData.isLive) "用户等级低于设定值的弹幕将被过滤" else "等级低于设定值的弹幕将被过滤"
+
+                    StepLessMenuItem(
+                        modifier = menuItemsModifier,
+                        value = currentValue.toFloat(),
+                        step = 1f,
+                        range = minValue.toFloat()..maxValue.toFloat(),
+                        text = "等级 $currentValue\n$description",
+                        onValueChange = { onDanmakuFilterLevelChange(it.toInt()) },
+                        onFocusBackToParent = { onFocusStateChange(MenuFocusState.Menu) }
+                    )
+                }
             }
         }
 

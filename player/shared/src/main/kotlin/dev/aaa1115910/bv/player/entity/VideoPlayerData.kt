@@ -123,6 +123,8 @@ data class VideoPlayerConfigData(
     val currentDanmakuArea: Float = 1f,
     val currentDanmakuMask: Boolean = false,
     val currentDanmakuRollingDurationFactor: Float = 1f,
+    val currentDanmakuFilterLevel: Int = 0,
+    val currentLiveDanmakuFilterLevel: Int = 0,
     val currentSubtitleId: Long = 0,
     val currentSubtitleData: List<SubtitleItem> = emptyList(),
     val currentSubtitleFontSize: TextUnit = 24.sp,
@@ -142,6 +144,8 @@ data class VideoPlayerConfigData(
     val currentLiveQn: Int = 0,
     val currentLiveQualityDescription: String = "",
     val controllerButtonsOrder: String = "",
+    val availableLiveCodecs: List<LiveCodec> = LiveCodec.entries,
+    val currentLiveCodec: LiveCodec = LiveCodec.HLS,
 )
 
 data class VideoPlayerDanmakuMasksData(

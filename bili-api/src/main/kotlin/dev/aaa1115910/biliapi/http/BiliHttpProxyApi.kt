@@ -6,6 +6,7 @@ import dev.aaa1115910.biliapi.http.entity.search.SearchResultData
 import dev.aaa1115910.biliapi.http.entity.video.PlayUrlData
 import dev.aaa1115910.biliapi.http.entity.video.PlayUrlV2Data
 import dev.aaa1115910.biliapi.http.plugins.BiliUserAgent
+import dev.aaa1115910.biliapi.http.util.BiliDns
 import dev.aaa1115910.biliapi.http.util.encApiSign
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -32,6 +33,11 @@ object BiliHttpProxyApi {
 
     fun createClient(proxyServer: String) {
         client = HttpClient(OkHttp) {
+            engine {
+                config {
+                    dns(BiliDns)
+                }
+            }
             BiliUserAgent()
             install(ContentNegotiation) {
                 json(json)

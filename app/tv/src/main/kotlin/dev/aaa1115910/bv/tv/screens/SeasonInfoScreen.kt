@@ -163,8 +163,8 @@ fun SeasonInfoScreen(
     var paused by remember { mutableStateOf(false) }
     var showSeasonSelector by remember { mutableStateOf(false) }
     var showCommentPanel by remember { mutableStateOf(false) }
-    val defaultFocusRequester = remember { FocusRequester() }
     val commentButtonFocusRequester = remember { FocusRequester() }
+    val playButtonFocusRequester = remember { FocusRequester() }
 
     val onClickVideo: (avid: Long, cid: Long, epid: Int, episodeTitle: String, startTime: Int) -> Unit =
         { avid, cid, epid, episodeTitle, startTime ->
@@ -249,9 +249,9 @@ fun SeasonInfoScreen(
         seasonViewModel.seasonData?.let {
             logger.fInfo { "season data change: ${seasonViewModel.seasonData}" }
             seasonViewModel.lastPlayProgress = it.userStatus.progress
-            //请求默认焦点到剧集封面上
+            //请求默认焦点到播放按钮上
             delay(300)
-            defaultFocusRequester.requestFocus(scope)
+            playButtonFocusRequester.requestFocus(scope)
         }
     }
 
@@ -306,7 +306,7 @@ fun SeasonInfoScreen(
             ) {
                 item {
                     SeasonInfoPart(
-                        modifier = Modifier.focusRequester(defaultFocusRequester),
+                        playButtonFocusRequester = playButtonFocusRequester,
                         title = seasonData.title,
                         cover = seasonData.cover,
                         newEpDesc = seasonData.newEpDesc,
@@ -471,7 +471,7 @@ fun SeasonInfoScreen(
         onHideSelector = {
             showSeasonSelector = false
             runCatching {
-                defaultFocusRequester.requestFocus(scope)
+                playButtonFocusRequester.requestFocus(scope)
             }
         },
         currentSeasonId = seasonViewModel.seasonId ?: 0,
@@ -577,7 +577,8 @@ fun SeasonBaseInfo(
     onPlay: () -> Unit,
     onClickFollow: (follow: Boolean) -> Unit,
     onShowComment: () -> Unit = {},
-    commentButtonFocusRequester: FocusRequester = remember { FocusRequester() }
+    commentButtonFocusRequester: FocusRequester = remember { FocusRequester() },
+    playButtonFocusRequester: FocusRequester
 ) {
     Column(
         modifier = modifier
@@ -607,7 +608,8 @@ fun SeasonBaseInfo(
             onPlay = onPlay,
             onClickFollow = onClickFollow,
             onShowComment= onShowComment,
-            commentButtonFocusRequester = commentButtonFocusRequester
+            commentButtonFocusRequester = commentButtonFocusRequester,
+            playButtonFocusRequester = playButtonFocusRequester,
         )
     }
 }
@@ -629,7 +631,8 @@ fun SeasonInfoPart(
     onClickFollow: (follow: Boolean) -> Unit,
     onClickCover: () -> Unit,
     onShowComment: () -> Unit = {},
-    commentButtonFocusRequester: FocusRequester = remember { FocusRequester() }
+    commentButtonFocusRequester: FocusRequester = remember { FocusRequester() },
+    playButtonFocusRequester: FocusRequester
 ) {
     Row(
         modifier = modifier
@@ -654,7 +657,8 @@ fun SeasonInfoPart(
             onPlay = onPlay,
             onClickFollow = onClickFollow,
             onShowComment = onShowComment,
-            commentButtonFocusRequester = commentButtonFocusRequester
+            commentButtonFocusRequester = commentButtonFocusRequester,
+            playButtonFocusRequester = playButtonFocusRequester
         )
     }
 }
@@ -672,7 +676,7 @@ fun SeasonEpisodeButton(
     onClick: () -> Unit
 ) {
     val isPreview = LocalInspectionMode.current
-    val borderColor = if (isLastPlayed) Color(0xFFE39B17) else null
+    val borderColor = Color(0xFFE39B17)
 
     Surface(
         modifier = modifier,
@@ -684,24 +688,20 @@ fun SeasonEpisodeButton(
         scale = ClickableSurfaceDefaults.scale(scale = 1f, focusedScale = 1f),
         shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
         border = ClickableSurfaceDefaults.border(
-            border = borderColor?.let {
+            border = if (isLastPlayed) {
                 Border(
-                    border = BorderStroke(2.dp, it),
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
                     shape = MaterialTheme.shapes.medium
                 )
-            } ?: Border.None,
-            focusedBorder = borderColor?.let {
-                Border(
-                    border = BorderStroke(2.dp, it),
-                    shape = MaterialTheme.shapes.medium
-                )
-            } ?: Border.None,
-            pressedBorder = borderColor?.let {
-                Border(
-                    border = BorderStroke(2.dp, it),
-                    shape = MaterialTheme.shapes.medium
-                )
-            } ?: Border.None
+            } else Border.None,
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, Color(0xFFE39B17)),
+                shape = MaterialTheme.shapes.medium
+            ),
+            pressedBorder = Border(
+                border = BorderStroke(2.dp, Color(0xFFE39B17)),
+                shape = MaterialTheme.shapes.medium
+            )
         ),
         onClick = onClick
     ) {
@@ -1237,7 +1237,8 @@ fun SeasonInfoPartPreview() {
             seasonCount = 0,
             onPlay = {},
             onClickFollow = {},
-            onClickCover = {}
+            onClickCover = {},
+            playButtonFocusRequester = remember { FocusRequester() }
         )
     }
 }

@@ -226,6 +226,18 @@ class VideoPlayerV3Activity : ComponentActivity() {
         super.onPause()
     }
 
+    override fun onResume() {
+        super.onResume()
+        // 直播从后台恢复时重新获取直播流，避免画面停留在之前的时间点
+        if (playerViewModel.isLive && playerViewModel.liveRoomId > 0) {
+            logger.info { "Resume live stream for room ${playerViewModel.liveRoomId}" }
+            playerViewModel.loadLiveStreamWithQuality(
+                playerViewModel.liveRoomId,
+                playerViewModel.currentLiveQn
+            )
+        }
+    }
+
     private fun initVideoPlayer() {
         dev.aaa1115910.bv.tv.activities.video.VideoPlayerV3Activity.Companion.logger.info { "Init video player: ${Prefs.playerType.name}" }
         val options = VideoPlayerOptions(

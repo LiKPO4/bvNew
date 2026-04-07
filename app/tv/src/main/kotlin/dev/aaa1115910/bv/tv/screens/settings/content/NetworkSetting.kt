@@ -30,6 +30,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.http.BiliHttpProxyApi
+import dev.aaa1115910.biliapi.http.util.BiliDns
 import dev.aaa1115910.biliapi.repositories.ChannelRepository
 import dev.aaa1115910.bv.BVApp
 import dev.aaa1115910.bv.R
@@ -52,6 +53,7 @@ fun NetworkSetting(
     var proxyHttpServer by remember { mutableStateOf(Prefs.proxyHttpServer) }
     var proxyGRPCServer by remember { mutableStateOf(Prefs.proxyGRPCServer) }
     var preferOfficialCdn by remember { mutableStateOf(Prefs.preferOfficialCdn) }
+    var ipv4Only by remember { mutableStateOf(Prefs.ipv4Only) }
     var showProxyHttpServerEditDialog by remember { mutableStateOf(false) }
     var showProxyGRPCServerEditDialog by remember { mutableStateOf(false) }
 
@@ -115,6 +117,19 @@ fun NetworkSetting(
                         onCheckedChange = { enable ->
                             preferOfficialCdn = enable
                             Prefs.preferOfficialCdn = enable
+                        }
+                    )
+                }
+
+                item {
+                    SettingSwitchListItem(
+                        title = stringResource(R.string.settings_network_ipv4_only_title),
+                        supportText = stringResource(R.string.settings_network_ipv4_only_text),
+                        checked = Prefs.ipv4Only,
+                        onCheckedChange = { enable ->
+                            ipv4Only = enable
+                            Prefs.ipv4Only = enable
+                            BiliDns.ipv4Only = enable
                         }
                     )
                 }
