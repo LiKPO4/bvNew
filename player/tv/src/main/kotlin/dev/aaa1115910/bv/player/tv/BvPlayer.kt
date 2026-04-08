@@ -52,6 +52,7 @@ import dev.aaa1115910.bv.player.entity.LocalVideoPlayerDebugInfoData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerHistoryData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerLoadStateData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerLogsData
+import dev.aaa1115910.bv.player.entity.LocalVideoPlayerPaymentData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekState
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerStateData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerVideoInfoData
@@ -152,6 +153,7 @@ fun BvPlayer(
     val videoPlayerHistoryData = LocalVideoPlayerHistoryData.current
     val videoPlayerLoadStateData = LocalVideoPlayerLoadStateData.current
     val videoPlayerLogsData = LocalVideoPlayerLogsData.current
+    val videoPlayerPaymentData = LocalVideoPlayerPaymentData.current
     val videoPlayerVideoInfoData = LocalVideoPlayerVideoInfoData.current
 
     val focusRequester = remember { FocusRequester() }
@@ -332,7 +334,11 @@ fun BvPlayer(
                 if (totalTime == 0) {
                     -2 // 无法正常播放
                 } else if (currentTime >= totalTime - 1) {
-                    -1 // 播放完后上报的时间应为 -1
+                    if (videoPlayerPaymentData.needPay) {
+                        currentTime // 试看结束不能按完整播放上报 -1
+                    } else {
+                        -1 // 播放完后上报的时间应为 -1
+                    }
                 } else {
                     currentTime // 播放中上报当前时间
                 }

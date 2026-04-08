@@ -91,6 +91,7 @@ import dev.aaa1115910.bv.util.toast
 import dev.aaa1115910.bv.util.formatHourMinSec
 import dev.aaa1115910.bv.util.swapList
 import dev.aaa1115910.bv.viewmodel.VideoPlayerV3ViewModel
+import dev.aaa1115910.bv.tv.component.GeetestTvVerifyDialog
 import dev.aaa1115910.biliapi.http.BiliHttpApi
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
@@ -890,6 +891,24 @@ fun VideoPlayerV3Screen(
                 popularityText = playerViewModel.livePopularityText,
                 onlineCount = playerViewModel.liveOnlineCount
             )
+
+            // 风控 Geetest 验证弹窗（TV 遥控器十字光标 + WebView）
+            if (playerViewModel.showGeetestDialog) {
+                GeetestTvVerifyDialog(
+                    gt = playerViewModel.geetestGt,
+                    challenge = playerViewModel.geetestChallenge,
+                    onResult = { result ->
+                        playerViewModel.onGeetestResult(
+                            challenge = result.challenge,
+                            validate = result.validate,
+                            seccode = result.seccode,
+                        )
+                    },
+                    onDismiss = {
+                        playerViewModel.onGeetestCancelled()
+                    },
+                )
+            }
         }
     }
 }

@@ -64,7 +64,8 @@ class VideoPlayRepository(
                     fnver = 0,
                     fourk = 1,
                     sessData = authRepository.sessionData,
-                    dedeUserID = authRepository.mid
+                    dedeUserID = authRepository.mid,
+                    gaiaVtoken = authRepository.gaiaVtoken
                 ).getResponseData()
                 PlayData.fromPlayUrlData(playUrlData)
             }
@@ -145,7 +146,8 @@ class VideoPlayRepository(
                         qn = 127,
                         fnver = 0,
                         fourk = 1,
-                        sessData = authRepository.sessionData
+                        sessData = authRepository.sessionData,
+                        gaiaVtoken = authRepository.gaiaVtoken
 //                        buvid3 = authRepository.buvid3
                     )
                 }.getResponseData()

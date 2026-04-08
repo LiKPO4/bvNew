@@ -26,6 +26,7 @@ import dev.aaa1115910.biliapi.entity.video.SubtitleType
 import dev.aaa1115910.biliapi.entity.video.VideoShot
 import dev.aaa1115910.biliapi.http.BiliHttpApi
 import dev.aaa1115910.biliapi.http.BiliLiveHttpApi
+import dev.aaa1115910.biliapi.http.entity.VVoucherException
 import dev.aaa1115910.biliapi.http.entity.live.DanmakuEvent
 import dev.aaa1115910.biliapi.http.entity.live.LiveEvent
 import dev.aaa1115910.biliapi.http.entity.live.OnlineRankCountEvent
@@ -75,12 +76,14 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.annotation.KoinViewModel
+import dev.aaa1115910.biliapi.repositories.AuthRepository
 import java.net.URI
 
 @KoinViewModel
 class VideoPlayerV3ViewModel(
     private val videoInfoRepository: VideoInfoRepository,
     private val videoPlayRepository: VideoPlayRepository,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
     private val logger = KotlinLogging.logger { }
 
@@ -263,6 +266,12 @@ class VideoPlayerV3ViewModel(
     // 点播弹幕管理
     private var danmakuSegmentWatchJob: Job? = null
     private var currentDanmakuSegmentIndex = -1
+
+    // 风控 Geetest 验证状态
+    var showGeetestDialog by mutableStateOf(false)
+    var geetestGt by mutableStateOf("")
+    var geetestChallenge by mutableStateOf("")
+    private var pendingGaiaToken: String? = null
     private val loadedDanmakuSegmentCounts = mutableMapOf<Int, Int>()
     var currentLoadedDanmakuTotal by mutableIntStateOf(0)
 
@@ -582,6 +591,12 @@ class VideoPlayerV3ViewModel(
             }
 
         }.onFailure {
+            if (it is VVoucherException) {
+                logger.fWarn { "Risk control v_voucher detected: ${it.vVoucher}" }
+                addLogs("触发风控，正在申请验证…")
+                handleVVoucher(it.vVoucher)
+                return@onFailure
+            }
             addLogs("加载视频地址失败：${it.localizedMessage}")
             errorMessage = it.localizedMessage ?: "Unknown error"
             loadState = RequestState.Failed
@@ -590,6 +605,87 @@ class VideoPlayerV3ViewModel(
             addLogs("加载视频地址成功")
             loadState = RequestState.Success
             logger.fInfo { "Load play url success" }
+        }
+    }
+
+    private suspend fun handleVVoucher(vVoucher: String) {
+        runCatching {
+            val registerResponse = BiliHttpApi.gaiaVgateRegister(
+                vVoucher = vVoucher,
+                sessData = authRepository.sessionData,
+                csrf = authRepository.biliJct
+            ).getResponseData()
+            val token = registerResponse.token
+            val gt = registerResponse.geetest.gt
+            val challenge = registerResponse.geetest.challenge
+            if (token.isBlank() || gt.isBlank() || challenge.isBlank()) {
+                error("gaia_vgate_register 返回数据不完整")
+            }
+            withContext(Dispatchers.Main) {
+                pendingGaiaToken = token
+                geetestGt = gt
+                geetestChallenge = challenge
+                showGeetestDialog = true
+            }
+            addLogs("请完成人机验证")
+        }.onFailure {
+            addLogs("风控验证申请失败：${it.localizedMessage}")
+            withContext(Dispatchers.Main) {
+                errorMessage = "风控验证申请失败：${it.localizedMessage}"
+                loadState = RequestState.Failed
+            }
+            logger.fException(it) { "gaiaVgateRegister failed" }
+        }
+    }
+
+    fun onGeetestResult(challenge: String, validate: String, seccode: String) {
+        val token = pendingGaiaToken ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                addLogs("正在提交验证结果…")
+                val validateResponse = BiliHttpApi.gaiaVgateValidate(
+                    token = token,
+                    geetestChallenge = challenge,
+                    validate = validate,
+                    seccode = seccode,
+                    sessData = authRepository.sessionData,
+                    csrf = authRepository.biliJct
+                ).getResponseData()
+                if (validateResponse.isValid != 1) {
+                    error("验证未通过")
+                }
+                val griskId = validateResponse.griskId
+                if (griskId.isBlank()) {
+                    error("grisk_id 为空")
+                }
+                authRepository.gaiaVtoken = griskId
+                withContext(Dispatchers.Main) {
+                    showGeetestDialog = false
+                    pendingGaiaToken = null
+                }
+                addLogs("验证通过，正在重试加载…")
+                logger.fInfo { "Gaia vgate validate success, retrying play url" }
+                loadPlayUrl(currentAid, currentCid, currentEpid, preferApi = Prefs.apiType, proxyArea = proxyArea)
+            }.onFailure {
+                addLogs("风控验证失败：${it.localizedMessage}")
+                withContext(Dispatchers.Main) {
+                    errorMessage = "风控验证失败：${it.localizedMessage}"
+                    loadState = RequestState.Failed
+                    showGeetestDialog = false
+                    pendingGaiaToken = null
+                }
+                logger.fException(it) { "gaiaVgateValidate failed" }
+            }
+        }
+    }
+
+    fun onGeetestCancelled() {
+        showGeetestDialog = false
+        pendingGaiaToken = null
+        errorMessage = "验证已取消"
+        loadState = RequestState.Failed
+        viewModelScope.launch {
+            addLogs("用户取消了风控验证")
         }
     }
 
