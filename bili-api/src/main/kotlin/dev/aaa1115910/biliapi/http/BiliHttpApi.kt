@@ -230,7 +230,7 @@ object BiliHttpApi {
         sessData: String? = null,
         dedeUserID: Long? = null
     ): BiliResponse<PlayUrlData> {
-        val response = client.get("/x/player/playurl") {
+        val response = client.get("/x/player/wbi/playurl") {
             require(av != null || bv != null) { "av and bv cannot be null at the same time" }
             parameter("avid", av)
             parameter("bvid", bv)
@@ -252,7 +252,7 @@ object BiliHttpApi {
             }
             sessData?.let { header("Cookie", "SESSDATA=$sessData;DedeUserID=$dedeUserID") }
         }
-        // println(response.bodyAsText())
+        println(response.bodyAsText())
         return response.body()
     }
 

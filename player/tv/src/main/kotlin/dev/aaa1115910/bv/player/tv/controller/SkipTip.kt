@@ -19,6 +19,7 @@ import androidx.tv.material3.Text
 import dev.aaa1115910.bv.player.entity.DefaultStartPosition
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerHistoryData
+import dev.aaa1115910.bv.player.entity.LocalVideoPlayerPaymentData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerStateData
 import dev.aaa1115910.bv.util.formatHourMinSec
 
@@ -120,14 +121,22 @@ fun SkipTips(
 ) {
     val videoPlayerHistoryData = LocalVideoPlayerHistoryData.current
     val videoPlayerStateData = LocalVideoPlayerStateData.current
+    val videoPlayerPaymentData = LocalVideoPlayerPaymentData.current
 
     Box(modifier = modifier.fillMaxSize()) {
         BackToHistoryTip(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(bottom = 32.dp),
+                .padding(bottom = 36.dp),
             show = videoPlayerStateData.showBackToHistory,
             time = videoPlayerHistoryData.lastPlayed.toLong().formatHourMinSec()
+        )
+        SkipTip(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(bottom = 12.dp),
+            show = videoPlayerPaymentData.showPreviewTip,
+            text = "视频需付费，当前为试看片段"
         )
     }
 }

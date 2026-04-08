@@ -86,6 +86,7 @@ data class VideoPlayerHistoryData(
 data class VideoPlayerPaymentData(
     val needPay: Boolean = false,
     val epid: Int = 0,
+    val showPreviewTip: Boolean = false,
 )
 
 data class VideoPlayerLoadStateData(

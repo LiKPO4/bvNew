@@ -268,6 +268,7 @@ fun VideoPlayerV3Screen(
         LocalVideoPlayerPaymentData provides VideoPlayerPaymentData(
             needPay = playerViewModel.needPay,
             epid = playerViewModel.epid,
+            showPreviewTip = playerViewModel.showPreviewTip,
         ),
         LocalVideoPlayerLoadStateData provides VideoPlayerLoadStateData(
             loadState = playerViewModel.loadState,

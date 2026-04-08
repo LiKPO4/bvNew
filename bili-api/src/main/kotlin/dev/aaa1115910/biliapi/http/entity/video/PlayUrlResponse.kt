@@ -104,25 +104,25 @@ data class PlayUrlData(
     @SerialName("has_paid")
     val hasPaid: Boolean = false,
     val status: Int = 0,
-    val from: String,
-    val result: String,
-    val message: String,
-    val quality: Int,
-    val format: String,
+    val from: String = "",
+    val result: String = "",
+    val message: String = "",
+    val quality: Int = 0,
+    val format: String = "",
     @SerialName("timelength")
-    val timeLength: Int,
+    val timeLength: Int = 0,
     @SerialName("accept_format")
-    val acceptFormat: String,
+    val acceptFormat: String = "",
     @SerialName("accept_description")
     val acceptDescription: List<String> = emptyList(),
     @SerialName("accept_quality")
     val acceptQuality: List<Int> = emptyList(),
     @SerialName("video_codecid")
-    val videoCodecId: Int,
+    val videoCodecId: Int = 0,
     @SerialName("seek_param")
-    val seekParam: String,
+    val seekParam: String = "",
     @SerialName("seek_type")
-    val seekType: String,
+    val seekType: String = "",
     val durl: List<Durl> = emptyList(),
     val dash: Dash? = null,
     @SerialName("support_formats")

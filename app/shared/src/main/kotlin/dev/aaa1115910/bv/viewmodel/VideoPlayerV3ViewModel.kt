@@ -218,6 +218,7 @@ class VideoPlayerV3ViewModel(
     // 点播CDN URL自动刷新（修复CDN有效期2h导致长视频无法播放的问题）
     private var playUrlAutoRefreshJob: Job? = null
     private var playUrlAutoRefreshToken: Int = 0
+    private var previewTipJob: Job? = null
 
     companion object {
         // 提前刷新的时间（毫秒），默认60秒
@@ -276,6 +277,7 @@ class VideoPlayerV3ViewModel(
     var isFollowingUp by mutableStateOf(false)
 
     var needPay by mutableStateOf(false)
+    var showPreviewTip by mutableStateOf(false)
 
     var logs by mutableStateOf("")
     var lastChangedLog by mutableLongStateOf(System.currentTimeMillis())
@@ -484,9 +486,8 @@ class VideoPlayerV3ViewModel(
                 )
             }
 
-            //检查是否需要购买，如果未购买，则正片返回的dash为null，非正片例如可以免费观看的预告片等则会返回数据，此时不做提示
+            //检查是否需要购买/充电，如果是试看则继续播放试看片段
             withContext(Dispatchers.Main) { needPay = playData.needPay }
-            if (needPay) return@runCatching
 
             withContext(Dispatchers.Main) { this@VideoPlayerV3ViewModel.playData = playData }
             withContext(Dispatchers.Main) { this@VideoPlayerV3ViewModel.clipInfoList = playData.clipInfoList }
@@ -575,6 +576,11 @@ class VideoPlayerV3ViewModel(
 
             playQuality(qn = currentQuality.code, codec = currentVideoCodec)
 
+            // 充电/付费视频预览状态提示
+            if (playData.needPay) {
+                startShowPreviewTipCountdown()
+            }
+
         }.onFailure {
             addLogs("加载视频地址失败：${it.localizedMessage}")
             errorMessage = it.localizedMessage ?: "Unknown error"
@@ -646,14 +652,14 @@ class VideoPlayerV3ViewModel(
 
         val videoItem = playData!!.dashVideos.find {
             when (Prefs.apiType) {
-                ApiType.Web -> it.quality == qn && it.codecs!!.startsWith(codec.prefix)
+                ApiType.Web -> it.quality == qn && it.codecs?.startsWith(codec.prefix) == true
                 ApiType.App -> {
                     if (playData!!.codec.isEmpty()) it.quality == qn
-                    else it.quality == qn && it.codecs!!.startsWith(codec.prefix)
+                    else it.quality == qn && it.codecs?.startsWith(codec.prefix) == true
                 }
             }
-        }
-        var videoUrl = videoItem?.baseUrl ?: playData!!.dashVideos.firstOrNull()?.baseUrl
+        } ?: playData!!.dashVideos.firstOrNull()
+        var videoUrl = videoItem?.baseUrl
         if (videoUrl == null) {
             logger.fError { "Failed to get video URL" }
             errorMessage = "获取视频地址失败"
@@ -728,6 +734,15 @@ class VideoPlayerV3ViewModel(
                 audioUrl = audioUrl,
                 reason = "play_quality"
             )
+        }
+    }
+
+    private fun startShowPreviewTipCountdown() {
+        previewTipJob?.cancel()
+        previewTipJob = viewModelScope.launch {
+            showPreviewTip = true
+            delay(5000)
+            showPreviewTip = false
         }
     }
 

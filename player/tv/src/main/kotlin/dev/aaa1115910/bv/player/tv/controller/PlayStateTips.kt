@@ -24,6 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.tooling.preview.Preview
@@ -76,9 +78,16 @@ fun PlayStateTips(
                 exception = videoPlayerStateData.exception!!
             )
         }
-        if (videoPlayerPaymentData.needPay) {
+        if (videoPlayerPaymentData.needPay && videoPlayerPaymentData.epid > 0) {
             PaidRequireTip(
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(24.dp)
+                    .graphicsLayer {
+                        scaleX = 0.5f
+                        scaleY = 0.5f
+                        transformOrigin = TransformOrigin(1f, 1f)
+                    },
                 epid = videoPlayerPaymentData.epid
             )
         }
@@ -205,11 +214,11 @@ fun PaidRequireTip(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "请先购买影片",
+                text = "当前为试看片段，请购买影片",
                 style = MaterialTheme.typography.titleLarge
             )
             // TODO 使用颜文字显示影片价格
-            Text(text = "(・∀・)つ㊿")
+            // Text(text = "(・∀・)つ㊿")
             Spacer(modifier = Modifier.height(12.dp))
             AnimatedVisibility(visible = qrImage != null) {
                 Image(bitmap = qrImage!!, contentDescription = "EP$epid QR Code")
