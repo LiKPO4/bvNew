@@ -51,9 +51,11 @@ import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
 import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.tv.util.stableItemKey
+import dev.aaa1115910.bv.repository.VideoInfoRepository
 import dev.aaa1115910.bv.viewmodel.user.HistoryViewModel
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun HistoryScreen(
@@ -63,6 +65,7 @@ fun HistoryScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val videoInfoRepository: VideoInfoRepository = koinInject()
     val listFocusRestorer = rememberTvLazyListFocusRestorer()
     val lazyGridState = rememberLazyGridState()
     var currentIndex by remember { mutableIntStateOf(0) }
@@ -194,6 +197,8 @@ fun HistoryScreen(
                                     selectedIndex = index
                                     showDeleteConfirmDialog = true
                                 } else {
+                                    videoInfoRepository.preloadedVideoList.clear()
+                                    videoInfoRepository.preloadedVideoList.addAll(historyViewModel.histories)
                                     if (history.jumpToSeason) {
                                         SeasonInfoActivity.actionStart(
                                             context = context,

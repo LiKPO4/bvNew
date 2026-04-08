@@ -48,6 +48,8 @@ import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.PortraitVideoFixMode
 import dev.aaa1115910.bv.player.entity.PlayerLoadNextAction
 import dev.aaa1115910.bv.player.entity.PlayerDefaultStartPosition
+import dev.aaa1115910.bv.player.entity.NextVideoStrategy
+import dev.aaa1115910.bv.player.entity.NextVideoStrategyConfig
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoCodec
 import dev.aaa1115910.bv.player.entity.ControllerButtonConfig
@@ -78,7 +80,7 @@ fun PlayerSetting(
     var playerShowBottomProgressBar by remember { mutableStateOf(Prefs.playerShowBottomProgressBar) }
     var playerShowDebugInfo by remember { mutableStateOf(Prefs.playerShowDebugInfo) }
     var playerExitWhenAllIsPlayed by remember { mutableStateOf(Prefs.playerExitWhenAllIsPlayed) }
-    var playerLoadNextAction by remember { mutableStateOf(Prefs.playerLoadNextAction) }
+    var showNextVideoStrategyDialog by remember { mutableStateOf(false) }
     var playerDefaultStartPosition by remember { mutableStateOf(Prefs.playerDefaultStartPosition) }
     var defaultPlaybackSpeed by remember { mutableDoubleStateOf(Prefs.defaultPlaySpeed.toDouble()) }
     var playerSeekForwardStep by remember { mutableDoubleStateOf(Prefs.playerSeekForwardStep.toDouble()) }
@@ -223,15 +225,20 @@ fun PlayerSetting(
                 )
             }
             item {
-                SettingListItemWithDialog(
+                SettingListItem(
                     title = stringResource(R.string.settings_player_load_next_action_title),
                     supportText = stringResource(R.string.settings_player_load_next_action_text),
-                    options = PlayerLoadNextAction.entries,
-                    getDisplayName = { item, ctx -> item.displayName(ctx) },
-                    value = playerLoadNextAction,
-                    onValueChange = {
-                        playerLoadNextAction = it
-                        Prefs.playerLoadNextAction = it
+                    onClick = { showNextVideoStrategyDialog = true }
+                )
+            }
+            item {
+                SettingSwitchListItem(
+                    title = stringResource(R.string.settings_player_exit_when_all_is_played_title),
+                    supportText = stringResource(R.string.settings_player_exit_when_all_is_played_text),
+                    checked = playerExitWhenAllIsPlayed,
+                    onCheckedChange = {
+                        playerExitWhenAllIsPlayed = it
+                        Prefs.playerExitWhenAllIsPlayed = it
                     }
                 )
             }
@@ -245,17 +252,6 @@ fun PlayerSetting(
                     onValueChange = {
                         playerDefaultStartPosition = it
                         Prefs.playerDefaultStartPosition = it
-                    }
-                )
-            }
-            item {
-                SettingSwitchListItem(
-                    title = stringResource(R.string.settings_player_exit_when_all_is_played_title),
-                    supportText = stringResource(R.string.settings_player_exit_when_all_is_played_text),
-                    checked = playerExitWhenAllIsPlayed,
-                    onCheckedChange = {
-                        playerExitWhenAllIsPlayed = it
-                        Prefs.playerExitWhenAllIsPlayed = it
                     }
                 )
             }
@@ -424,6 +420,11 @@ fun PlayerSetting(
             show = showControllerButtonDialog,
             onHideDialog = { showControllerButtonDialog = false },
             initialOrderString = Prefs.playerControllerButtonsOrder
+        )
+
+        NextVideoStrategyEditDialog(
+            show = showNextVideoStrategyDialog,
+            onHideDialog = { showNextVideoStrategyDialog = false }
         )
     }
 }
@@ -704,6 +705,232 @@ private fun ControllerButtonEditRow(
             } else {
                 Text(
                     text = "显示",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (selected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NextVideoStrategyEditDialog(
+    modifier: Modifier = Modifier,
+    show: Boolean,
+    onHideDialog: () -> Unit
+) {
+    if (!show) return
+
+    val scope = rememberCoroutineScope()
+    val focusRequester = remember { FocusRequester() }
+
+    var strategyConfigs by remember {
+        mutableStateOf(
+            run {
+                val parsedConfigs = Prefs.playerNextVideoStrategyOrder.split(",").mapNotNull {
+                    if (it.isBlank()) return@mapNotNull null
+                    val hidden = it.startsWith("-")
+                    val id = it.replace("-", "").toIntOrNull() ?: return@mapNotNull null
+                    NextVideoStrategyConfig(NextVideoStrategy.fromOrdinal(id), hidden, id)
+                }.toMutableList()
+                val allStrategies = NextVideoStrategy.entries
+                val existingIds = parsedConfigs.map { it.ordinal }.toSet()
+                allStrategies.forEach { strategy ->
+                    if (strategy.ordinalValue !in existingIds) {
+                        parsedConfigs.add(NextVideoStrategyConfig(strategy, hidden = false, ordinal = strategy.ordinalValue))
+                    }
+                }
+                parsedConfigs.toList()
+            }
+        )
+    }
+    var selectedIndex by remember { mutableIntStateOf(0) }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(selectedIndex, strategyConfigs.size) {
+        if (strategyConfigs.isEmpty()) return@LaunchedEffect
+
+        val layoutInfo = listState.layoutInfo
+        val viewportStart = layoutInfo.viewportStartOffset
+        val viewportEnd = layoutInfo.viewportEndOffset
+        val viewportSize = viewportEnd - viewportStart
+        if (viewportSize <= 0) return@LaunchedEffect
+
+        val visibleItems = layoutInfo.visibleItemsInfo
+        val visibleCount = visibleItems.size
+        if (visibleCount <= 0) return@LaunchedEffect
+
+        val firstVisible = listState.firstVisibleItemIndex
+        val selectedItemInfo = visibleItems.firstOrNull { it.index == selectedIndex }
+
+        if (selectedItemInfo != null) {
+            val itemStart = selectedItemInfo.offset
+            val itemEnd = itemStart + selectedItemInfo.size
+
+            if (itemStart < viewportStart) {
+                listState.animateScrollToItem(index = selectedIndex, scrollOffset = 0)
+                return@LaunchedEffect
+            }
+
+            if (itemEnd > viewportEnd) {
+                val bottomAlignedOffset = (viewportSize - selectedItemInfo.size).coerceAtLeast(0)
+                listState.animateScrollToItem(index = selectedIndex, scrollOffset = bottomAlignedOffset)
+                return@LaunchedEffect
+            }
+
+            val middleIndex = firstVisible + visibleCount / 2
+            if (selectedIndex > middleIndex) {
+                val maxFirstVisible = (strategyConfigs.size - visibleCount).coerceAtLeast(0)
+                val targetFirstVisible = (selectedIndex - visibleCount / 2)
+                    .coerceIn(0, maxFirstVisible)
+                if (targetFirstVisible != firstVisible) {
+                    listState.animateScrollToItem(index = targetFirstVisible)
+                }
+            }
+            return@LaunchedEffect
+        }
+
+        val maxFirstVisible = (strategyConfigs.size - visibleCount).coerceAtLeast(0)
+        val targetFirstVisible = (selectedIndex - visibleCount / 2)
+            .coerceIn(0, maxFirstVisible)
+        if (targetFirstVisible != firstVisible) {
+            listState.animateScrollToItem(index = targetFirstVisible)
+        }
+    }
+
+    LaunchedEffect(show) {
+        if (show) focusRequester.requestFocus(scope)
+    }
+
+    TvAlertDialog(
+        modifier = modifier,
+        onDismissRequest = {
+            Prefs.playerNextVideoStrategyOrder = strategyConfigs.joinToString(",") { config ->
+                if (config.hidden) "-${config.ordinal}" else "${config.ordinal}"
+            }
+            onHideDialog()
+        },
+        title = { Text(text = stringResource(R.string.settings_player_load_next_action_title)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .focusRequester(focusRequester)
+                    .focusable()
+                    .onPreviewKeyEvent {
+                        if (it.type == KeyEventType.KeyDown) {
+                            when (it.key) {
+                                Key.DirectionLeft -> {
+                                    if (selectedIndex > 0) {
+                                        strategyConfigs = strategyConfigs.toMutableList().apply {
+                                            val temp = this[selectedIndex]
+                                            this[selectedIndex] = this[selectedIndex - 1]
+                                            this[selectedIndex - 1] = temp
+                                        }
+                                        selectedIndex--
+                                    }
+                                    true
+                                }
+                                Key.DirectionRight -> {
+                                    if (selectedIndex < strategyConfigs.size - 1) {
+                                        strategyConfigs = strategyConfigs.toMutableList().apply {
+                                            val temp = this[selectedIndex]
+                                            this[selectedIndex] = this[selectedIndex + 1]
+                                            this[selectedIndex + 1] = temp
+                                        }
+                                        selectedIndex++
+                                    }
+                                    true
+                                }
+                                Key.DirectionUp -> {
+                                    if (selectedIndex > 0) selectedIndex--
+                                    true
+                                }
+                                Key.DirectionDown -> {
+                                    if (selectedIndex < strategyConfigs.size - 1) selectedIndex++
+                                    true
+                                }
+                                Key.Enter, Key.DirectionCenter -> {
+                                    val config = strategyConfigs[selectedIndex]
+                                    strategyConfigs = strategyConfigs.toMutableList().apply {
+                                        this[selectedIndex] = config.copy(hidden = !config.hidden)
+                                    }
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else false
+                    }
+            ) {
+                Text(
+                    text = "左右键排序 · 短按确认键禁用/启用",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    itemsIndexed(
+                        items = strategyConfigs,
+                        key = { index, config -> "${index}-strategy-${config.ordinal}" }
+                    ) { index, config ->
+                        NextVideoStrategyEditRow(
+                            title = config.strategy.displayName(LocalContext.current),
+                            hidden = config.hidden,
+                            selected = index == selectedIndex
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {}
+    )
+}
+
+@Composable
+private fun NextVideoStrategyEditRow(
+    title: String,
+    hidden: Boolean,
+    selected: Boolean
+) {
+    val shape = remember { RoundedCornerShape(12.dp) }
+    val bgColor = if (selected) MaterialTheme.colorScheme.onBackground else Color.Transparent
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(color = bgColor, shape = shape)
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = title,
+            textDecoration = if (hidden) TextDecoration.LineThrough else null,
+            color = if (selected) {
+                MaterialTheme.colorScheme.background
+            } else if (hidden) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            }
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (hidden) {
+                Text(
+                    text = "禁用",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (selected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.error
+                )
+            } else {
+                Text(
+                    text = "启用",
                     style = MaterialTheme.typography.bodySmall,
                     color = if (selected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurfaceVariant
                 )

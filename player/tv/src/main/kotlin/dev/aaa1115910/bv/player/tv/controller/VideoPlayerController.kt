@@ -91,7 +91,7 @@ fun VideoPlayerController(
     onRefreshVideo: () -> Unit,
     onOpenDanmaku: () -> Unit,
     onHideDanmaku: () -> Unit,
-    onLoopPlayModeChange: (Boolean) -> Unit,
+    onPlayModeChange: (PlayMode) -> Unit,
     userActionContent: @Composable (
         modifier: Modifier,
         focusMap: Map<String, FocusRequester>,
@@ -119,7 +119,6 @@ fun VideoPlayerController(
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
-    onPlayModeChange: (PlayMode) -> Unit,
     onLoadNextVideo: (Boolean) -> Unit,
 
     onRequestFocus: () -> Unit,
@@ -509,7 +508,7 @@ fun VideoPlayerController(
                 showInfo = false
                 showMenuController = true
             },
-            onLoopPlayModeChange = onLoopPlayModeChange,
+            onPlayModeChange = onPlayModeChange,
             onRotationChange = onRotationChange,
             userActionContent = userActionContent,
             onSeekBack = {

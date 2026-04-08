@@ -6,6 +6,7 @@ import android.view.TextureView
 import androidx.annotation.OptIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -39,9 +40,13 @@ fun BvVideoPlayer(
     val screenWidth = with(density) { context.resources.displayMetrics.widthPixels.toFloat() }
 
 
-    DisposableEffect(Unit) {
+    // Listener registration separated from player lifecycle
+    // so it updates when videoPlayerConfigData changes via recomposition
+    LaunchedEffect(playerListener) {
         videoPlayer.setPlayerEventListener(playerListener)
+    }
 
+    DisposableEffect(Unit) {
         onDispose {
             videoPlayer.release()
         }

@@ -33,6 +33,7 @@ data class BiliResponse<T>(
             0 -> {}
             -101 -> throw AuthFailureException(message)
             -352 -> throw RiskControlException(message)
+            87008 -> throw IllegalStateException("该视频为专属视频，需要充电才能观看 (code: $code)")
             else -> throw IllegalStateException(message)
         }
         check(data != null || result != null) { "response data and result are both null" }

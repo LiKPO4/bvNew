@@ -48,10 +48,12 @@ import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
 import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
+import dev.aaa1115910.bv.repository.VideoInfoRepository
 import dev.aaa1115910.bv.viewmodel.home.DynamicViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun DynamicsScreen(
@@ -61,6 +63,7 @@ fun DynamicsScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val videoInfoRepository: VideoInfoRepository = koinInject()
     val listFocusRestorer = rememberTvLazyListFocusRestorer()
     var currentFocusedIndex by remember { mutableIntStateOf(-1) }
     val shouldLoadMore by remember {
@@ -69,6 +72,22 @@ fun DynamicsScreen(
     val onClickVideo: (DynamicVideo) -> Unit = { dynamic ->
         val proxyArea = ProxyArea.checkProxyArea(dynamic.title)
         val hasSeasonHint = dynamic.seasonId != null || dynamic.epid != null
+
+        videoInfoRepository.preloadedVideoList.clear()
+        videoInfoRepository.preloadedVideoList.addAll(
+            dynamicViewModel.dynamicVideoList.map { item ->
+                VideoCardData(
+                    avid = item.aid,
+                    title = item.title,
+                    cover = item.cover,
+                    upName = item.author,
+                    play = item.play,
+                    danmaku = item.danmaku,
+                    time = item.duration * 1000L,
+                    pubTime = item.pubTime
+                )
+            }
+        )
 
         if (hasSeasonHint) {
             SeasonInfoActivity.actionStart(

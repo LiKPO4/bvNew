@@ -8,4 +8,5 @@ import org.koin.core.annotation.Single
 class VideoInfoRepository {
     val videoList = mutableListOf<VideoListItem>()
     val relatedVideos = mutableListOf<VideoCardData>()
+    val preloadedVideoList = mutableListOf<VideoCardData>()
 }

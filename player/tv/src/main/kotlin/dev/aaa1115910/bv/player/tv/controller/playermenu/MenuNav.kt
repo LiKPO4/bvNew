@@ -29,7 +29,10 @@ fun MenuNavList(
     val focusRequester = remember { FocusRequester() }
     val navItems = remember(videoPlayerConfigData.isLive) {
         VideoPlayerMenuNavItem.entries.toMutableList().apply {
-            if (videoPlayerConfigData.isLive) remove(VideoPlayerMenuNavItem.ClosedCaption)
+            if (videoPlayerConfigData.isLive) {
+                remove(VideoPlayerMenuNavItem.ClosedCaption)
+                remove(VideoPlayerMenuNavItem.Others)
+            }
         }
     }
 

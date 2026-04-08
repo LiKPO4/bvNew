@@ -46,3 +46,15 @@ data class VideoListPgcEpisode(
     override val partTitle: String = "",
     override val index: Int,
 ) : VideoListItemData(aid, cid, epid, seasonId, title, partTitle, index)
+
+data class VideoListOtherVideo(
+    override val aid: Long,
+    override val cid: Long? = null,
+    override val epid: Int? = null,
+    override val seasonId: Int? = null,
+    override val title: String,
+    override val partTitle: String = "",
+    override val index: Int,
+    val cover: String = "",
+    val upName: String = ""
+) : VideoListItemData(aid, cid, epid, seasonId, title, partTitle, index)

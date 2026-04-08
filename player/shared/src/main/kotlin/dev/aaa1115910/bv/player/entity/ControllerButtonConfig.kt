@@ -17,7 +17,7 @@ data class ControllerButtonConfig(
  */
 val ALL_CONTROLLER_BUTTON_IDS = listOf(
     "nextVideo", "refresh", "speed", "resolution", "upSpace", "rotation",
-    "subtitle", "comment", "danmaku", "loop", "playlist", "related", "settings"
+    "subtitle", "comment", "danmaku", "playMode", "playlist", "related", "settings"
 )
 
 /**
@@ -40,7 +40,9 @@ fun parseControllerButtonsOrder(orderString: String): List<ControllerButtonConfi
             val isDefaultFocus = trimmed.startsWith("*")
             val afterStar = if (isDefaultFocus) trimmed.substring(1) else trimmed
             val isHidden = afterStar.startsWith("-")
-            val id = if (isHidden) afterStar.substring(1) else afterStar
+            val rawId = if (isHidden) afterStar.substring(1) else afterStar
+            // 向后兼容：旧配置中的 "loop" 映射为 "playMode"
+            val id = if (rawId == "loop") "playMode" else rawId
             if (id.isEmpty() || !ALL_CONTROLLER_BUTTON_IDS.contains(id)) return@mapNotNull null
             ControllerButtonConfig(id, isHidden, isDefaultFocus)
         }
@@ -91,7 +93,7 @@ fun getControllerButtonDisplayName(id: String): String {
         "subtitle" -> "字幕"
         "comment" -> "评论"
         "danmaku" -> "弹幕"
-        "loop" -> "循环播放"
+        "playMode" -> "播放模式"
         "playlist" -> "播放列表"
         "related" -> "相关推荐"
         "settings" -> "设置"

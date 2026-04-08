@@ -75,6 +75,7 @@ import dev.aaa1115910.biliapi.http.plugins.BiliUserAgent
 import dev.aaa1115910.biliapi.http.util.BiliAppConf
 import dev.aaa1115910.biliapi.http.util.BiliDns
 import dev.aaa1115910.biliapi.http.util.encApiSign
+import dev.aaa1115910.biliapi.http.util.skipAddBuvid3Cookie
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
@@ -228,28 +229,32 @@ object BiliHttpApi {
         platform: String = "oc",
         sessData: String? = null,
         dedeUserID: Long? = null
-    ): BiliResponse<PlayUrlData> = client.get("/x/player/playurl") {
-        require(av != null || bv != null) { "av and bv cannot be null at the same time" }
-        parameter("avid", av)
-        parameter("bvid", bv)
-        parameter("cid", cid)
-        parameter("qn", qn)
-        parameter("fnval", fnval)
-        parameter("fnver", fnver)
-        parameter("fourk", fourk)
-        parameter("session", session)
-        parameter("otype", otype)
-        parameter("type", type)
-        parameter("platform", platform)
-        if (sessData.isNullOrEmpty()) {
-            // parameter("voice_balance", 1)
-            parameter("web_location", "1315873")
-            parameter("gaia_source", "pre-load")
-            parameter("isGaiaAvoided", "true")
-            parameter("try_look", "1")
+    ): BiliResponse<PlayUrlData> {
+        val response = client.get("/x/player/playurl") {
+            require(av != null || bv != null) { "av and bv cannot be null at the same time" }
+            parameter("avid", av)
+            parameter("bvid", bv)
+            parameter("cid", cid)
+            parameter("qn", qn)
+            parameter("fnval", fnval)
+            parameter("fnver", fnver)
+            parameter("fourk", fourk)
+            parameter("session", session)
+            parameter("otype", otype)
+            parameter("type", type)
+            parameter("platform", platform)
+            if (sessData.isNullOrEmpty()) {
+                // parameter("voice_balance", 1)
+                parameter("web_location", "1315873")
+                parameter("gaia_source", "pre-load")
+                parameter("isGaiaAvoided", "true")
+                parameter("try_look", "1")
+            }
+            sessData?.let { header("Cookie", "SESSDATA=$sessData;DedeUserID=$dedeUserID") }
         }
-        sessData?.let { header("Cookie", "SESSDATA=$sessData;DedeUserID=$dedeUserID") }
-    }.body()
+        // println(response.bodyAsText())
+        return response.body()
+    }
 
     /**
      * 获取剧集视频流
@@ -1554,6 +1559,7 @@ object BiliHttpApi {
     ): BiliResponse<PgcFeedV3Data> = client.get("/pgc/page/web/v3/feed") {
         parameter("name", name)
         parameter("coursor", cursor)
+        skipAddBuvid3Cookie()
     }.body()
 
     /**
@@ -1562,11 +1568,15 @@ object BiliHttpApi {
     suspend fun getPgcFeed(
         name: String = "movie",
         cursor: Int = 0
-    ): BiliResponse<PgcFeedData> = client.get("/pgc/page/web/feed") {
-        parameter("name", name)
-        parameter("coursor", cursor)
-        parameter("new_cursor_status", true)
-    }.body()
+    ): BiliResponse<PgcFeedData> {
+        val response = client.get("/pgc/page/web/feed") {
+            parameter("name", name)
+            parameter("coursor", cursor)
+            parameter("new_cursor_status", true)
+            skipAddBuvid3Cookie()
+        }
+        return response.body()
+    }
 
 
     /**

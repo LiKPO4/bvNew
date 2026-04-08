@@ -15,8 +15,15 @@ import io.ktor.http.URLBuilder
 import io.ktor.http.clone
 import io.ktor.http.encodedPath
 import io.ktor.http.plus
+import io.ktor.util.AttributeKey
 import java.net.URLEncoder
 import java.security.MessageDigest
+
+private val SkipAddBuvid3CookieKey = AttributeKey<Boolean>("SkipAddBuvid3Cookie")
+
+fun HttpRequestBuilder.skipAddBuvid3Cookie() {
+    attributes.put(SkipAddBuvid3CookieKey, true)
+}
 
 private const val APP_KEY = "dfca71928277209b"
 private const val APP_SEC = "b5475a8825547a4fc26c7d518eaaa02e"
@@ -113,10 +120,8 @@ fun HttpClient.encApiSign() = plugin(HttpSend)
         // 为 Web 请求自动添加 buvid3 cookie
         val isAppRequest =
             request.url.parameters.contains("access_key") || request.url.host == "app.bilibili.com"
-        // playurl 接口不需要添加 buvid3
-        val isPlayUrlRequest = request.url.encodedPath.contains("/x/player/playurl") ||
-                request.url.encodedPath.contains("/x/player/wbi/playurl")
-        if (!isAppRequest && !isPlayUrlRequest) {
+        val isSkipBuvid3Cookie = request.attributes.getOrNull(SkipAddBuvid3CookieKey) == true
+        if (!isAppRequest && !isSkipBuvid3Cookie) {
             val buvid3 = BiliHttpApi.buvid3Provider()
             val existingCookie = request.headers["Cookie"] ?: ""
             if (!buvid3.isNullOrBlank() && !existingCookie.contains("buvid3=")) {

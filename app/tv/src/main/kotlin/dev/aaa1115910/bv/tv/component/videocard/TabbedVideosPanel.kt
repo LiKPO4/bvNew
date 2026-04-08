@@ -1,0 +1,184 @@
+package dev.aaa1115910.bv.tv.component.videocard
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Tab
+import androidx.tv.material3.TabDefaults
+import androidx.tv.material3.TabRow
+import androidx.tv.material3.Text
+import dev.aaa1115910.bv.entity.carddata.VideoCardData
+import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
+import dev.aaa1115910.bv.tv.util.stableItemKey
+
+@Composable
+fun TabbedVideosPanel(
+    modifier: Modifier = Modifier,
+    relatedVideos: List<VideoCardData>,
+    preloadedVideos: List<VideoCardData>,
+    currentAid: Long,
+    focusRequester: FocusRequester,
+    onOpenSeasonInfo: (VideoCardData) -> Unit = {},
+    onOpenVideoInfo: (VideoCardData) -> Unit = {},
+) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    var hasFocus by remember { mutableStateOf(false) }
+    val titleFontSize by animateFloatAsState(
+        targetValue = 24f,
+        label = "title font size",
+        animationSpec = tween(durationMillis = 120)
+    )
+    var rowHeight by remember { mutableStateOf(0.dp) }
+
+    // Build tabs: always show "推荐视频", show "视频列表" only when preloaded is not empty
+    val tabs = remember(relatedVideos.size, preloadedVideos.size) {
+        buildList {
+            add("推荐视频" to relatedVideos)
+            if (preloadedVideos.isNotEmpty()) {
+                add("视频列表" to preloadedVideos)
+            }
+        }
+    }
+
+    // Clamp selectedTabIndex
+    LaunchedEffect(tabs.size) {
+        if (selectedTabIndex >= tabs.size) selectedTabIndex = 0
+    }
+
+    val currentVideos = tabs.getOrNull(selectedTabIndex)?.second ?: emptyList()
+
+    // Find index of current video in the preloaded list tab
+    val currentVideoIndexInPreloaded = remember(preloadedVideos, currentAid) {
+        preloadedVideos.indexOfFirst { it.avid == currentAid }
+    }
+
+    val relatedListState = rememberLazyListState()
+    val preloadedListState = rememberLazyListState()
+
+    // When switching to "视频列表" tab and current video is in the list, scroll to it
+    val isPreloadedTab = tabs.size > 1 && selectedTabIndex == 1
+    val lazyListState = if (isPreloadedTab) preloadedListState else relatedListState
+    LaunchedEffect(selectedTabIndex) {
+        if (isPreloadedTab && currentVideoIndexInPreloaded >= 0) {
+            preloadedListState.scrollToItem(currentVideoIndexInPreloaded)
+        }
+    }
+
+    val listFocusRestorer = rememberTvLazyListFocusRestorer(focusRequester)
+
+    val onLongClickVideo: (VideoCardData) -> Unit = { videoCard ->
+        if (videoCard.upId > 0)
+            UpInfoActivity.actionStart(
+                context,
+                mid = videoCard.upId,
+                name = videoCard.upName,
+                face = videoCard.upFace
+            )
+    }
+
+    Column(
+        modifier = modifier
+            .onFocusChanged { hasFocus = it.hasFocus }
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        Color.Black.copy(alpha = 0.7f)
+                    )
+                )
+            )
+    ) {
+        // Tab row - only show if more than one tab
+        if (tabs.size > 1) {
+            TabRow(
+                modifier = Modifier.padding(start = 36.dp, top = 3.dp, bottom = 3.dp),
+                selectedTabIndex = selectedTabIndex,
+                separator = { Text("  ") }
+            ) {
+                tabs.forEachIndexed { index, (title, _) ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onFocus = { selectedTabIndex = index },
+                        onClick = { selectedTabIndex = index },
+                        colors = TabDefaults.pillIndicatorTabColors(),
+                    ) {
+                        Text(
+                            text = title,
+                            fontSize = titleFontSize.sp,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+        } else {
+            Text(
+                modifier = Modifier.padding(start = 36.dp, top = 3.dp, bottom = 3.dp),
+                text = tabs.firstOrNull()?.first ?: "",
+                fontSize = titleFontSize.sp
+            )
+        }
+        LazyRow(
+            modifier = listFocusRestorer.containerModifier(
+                Modifier
+                    .padding(vertical = 15.dp)
+                    .onGloballyPositioned {
+                        rowHeight = with(density) { it.size.height.toDp() }
+                    }
+            ),
+            state = lazyListState,
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            contentPadding = PaddingValues(horizontal = 36.dp)
+        ) {
+            itemsIndexed(
+                items = currentVideos,
+                key = { index, videoData -> "${selectedTabIndex}-${index}-${videoData.stableItemKey()}" }
+            ) { index, videoData ->
+                val isCurrentVideo = isPreloadedTab && index == currentVideoIndexInPreloaded
+                SmallVideoCard(
+                    modifier = listFocusRestorer.firstItemModifier(index, Modifier.width(200.dp)),
+                    data = videoData,
+                    unfocusedBorderColor = if (isCurrentVideo) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else null,
+                    onClick = {
+                        if (videoData.jumpToSeason) {
+                            onOpenSeasonInfo(videoData)
+                        } else {
+                            onOpenVideoInfo(videoData)
+                        }
+                    },
+                    onLongClick = { onLongClickVideo(videoData) }
+                )
+            }
+        }
+    }
+}

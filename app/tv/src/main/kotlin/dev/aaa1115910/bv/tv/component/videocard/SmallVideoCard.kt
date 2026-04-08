@@ -55,7 +55,8 @@ fun SmallVideoCard(
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {},
     onFocus: () -> Unit = {},
-    initialFocus: Boolean = false
+    initialFocus: Boolean = false,
+    unfocusedBorderColor: Color? = null
 ) {
     var hasFocus by remember { mutableStateOf(initialFocus) }
 
@@ -73,6 +74,17 @@ fun SmallVideoCard(
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                     shape = MaterialTheme.shapes.medium
                 )
+            )
+            .then(
+                if (!hasFocus && unfocusedBorderColor != null) {
+                    Modifier.border(
+                        width = 2.dp,
+                        color = unfocusedBorderColor,
+                        shape = MaterialTheme.shapes.medium
+                    )
+                } else {
+                    Modifier
+                }
             ),
         onClick = onClick,
         onLongClick = onLongClick,

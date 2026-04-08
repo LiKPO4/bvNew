@@ -287,12 +287,12 @@ private fun MenuList(
                 )
             }
 
-//            VideoPlayerMenuNavItem.Others -> {
-//                OthersMenuList(
-//                    onPlayModeChange = onPlayModeChange,
-//                    onFocusStateChange = onFocusStateChange
-//                )
-//            }
+            VideoPlayerMenuNavItem.Others -> {
+                OthersMenuList(
+                    onPlayModeChange = onPlayModeChange,
+                    onFocusStateChange = onFocusStateChange
+                )
+            }
         }
     }
 }
@@ -323,7 +323,7 @@ fun MenuControllerPreview() {
     var currentSubtitleBackgroundOpacity by remember { mutableFloatStateOf(0.4f) }
     var currentSubtitleBottomPadding by remember { mutableStateOf(8.dp) }
 
-    var currentPlayMode by remember { mutableStateOf(PlayMode.Sequential) }
+    var currentPlayMode by remember { mutableStateOf(PlayMode.Default) }
 
     LaunchedEffect(Unit) {
         currentSubtitleList.apply {

@@ -50,6 +50,7 @@ import dev.aaa1115910.bv.tv.component.LoadingTip
 import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
 import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
+import dev.aaa1115910.bv.repository.VideoInfoRepository
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.toast
 import dev.aaa1115910.bv.viewmodel.ugc.UgcViewModel
@@ -58,6 +59,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.koin.compose.koinInject
 
 @Composable
 fun UgcRegionScaffold(
@@ -67,6 +69,7 @@ fun UgcRegionScaffold(
     childRegionButtons: (@Composable () -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val videoInfoRepository: VideoInfoRepository = koinInject()
     val carouselFocusRestorer = rememberTvLazyListFocusRestorer()
     val cardFocusRestorer = rememberTvLazyListFocusRestorer()
     var currentFocusedIndex by remember { mutableIntStateOf(0) }
@@ -128,7 +131,8 @@ fun UgcRegionScaffold(
                     UgcCarousel(
                         modifier = carouselFocusRestorer.firstItemModifier(0, Modifier.fillMaxWidth()),
                         data = ugcViewModel.carouselItems,
-                        onClick = { item ->
+                        onClick = { item -> 
+                            videoInfoRepository.preloadedVideoList.clear()
                             VideoInfoActivity.actionStart(
                                 context = context,
                                 aid = item.avid!!
@@ -163,7 +167,24 @@ fun UgcRegionScaffold(
                             pubTime = item.pubTime
                         )
                     },
-                    onClick = { VideoInfoActivity.actionStart(context, item.aid) },
+                    onClick = {
+                        videoInfoRepository.preloadedVideoList.clear()
+                        videoInfoRepository.preloadedVideoList.addAll(
+                            ugcViewModel.ugcItems.map { ugcItem ->
+                                VideoCardData(
+                                    avid = ugcItem.aid,
+                                    title = ugcItem.title,
+                                    cover = ugcItem.cover,
+                                    upName = ugcItem.author,
+                                    play = ugcItem.play,
+                                    danmaku = ugcItem.danmaku,
+                                    time = ugcItem.duration * 1000L,
+                                    pubTime = ugcItem.pubTime
+                                )
+                            }
+                        )
+                        VideoInfoActivity.actionStart(context, item.aid)
+                    },
                     onLongClick = {onLongClickVideo(item) },
                     onFocus = { currentFocusedIndex = index }
                 )

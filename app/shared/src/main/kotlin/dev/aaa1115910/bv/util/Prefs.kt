@@ -514,6 +514,10 @@ object Prefs {
     var defaultLiveDanmakuFilterLevel: Int
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefDefaultLiveDanmakuFilterLevelRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefDefaultLiveDanmakuFilterLevelKey, value) }
+
+    var playerNextVideoStrategyOrder: String
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPlayerNextVideoStrategyOrderRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerNextVideoStrategyOrderKey, value) }
 }
 
 object PrefKeys {
@@ -594,6 +598,7 @@ object PrefKeys {
     val prefUgcVideoPlayerHistoryCountKey = intPreferencesKey("ugc_video_player_history_count")
     val prefDefaultDanmakuFilterLevelKey = intPreferencesKey("default_danmaku_filter_level")
     val prefDefaultLiveDanmakuFilterLevelKey = intPreferencesKey("default_live_danmaku_filter_level")
+    val prefPlayerNextVideoStrategyOrderKey = stringPreferencesKey("player_next_video_strategy_order")
 
 
     val prefIsLoginRequest = PreferenceRequest(prefIsLoginKey, false)
@@ -658,7 +663,7 @@ object PrefKeys {
     val prefBlacklistUserRequest = PreferenceRequest(prefBlacklistUserKey, false)
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
     val prefInterfaceModeRequest = PreferenceRequest(prefInterfaceModeKey, InterfaceMode.Auto.ordinal)
-    val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Sequential.ordinal)
+    val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Default.ordinal)
     val prefDefaultHomeTabRequest = PreferenceRequest(prefDefaultHomeTabKey, 0)
     val prefPortraitVideoFixModeRequest = PreferenceRequest(prefPortraitVideoFixModeKey, 0)
     val prefPlayerShowDebugInfoRequest = PreferenceRequest(prefPlayerShowDebugInfoKey, true)
@@ -689,4 +694,8 @@ object PrefKeys {
     val prefUgcVideoPlayerHistoryCountRequest = PreferenceRequest(prefUgcVideoPlayerHistoryCountKey, 1)
     val prefDefaultDanmakuFilterLevelRequest = PreferenceRequest(prefDefaultDanmakuFilterLevelKey, 0)
     val prefDefaultLiveDanmakuFilterLevelRequest = PreferenceRequest(prefDefaultLiveDanmakuFilterLevelKey, 0)
+    val prefPlayerNextVideoStrategyOrderRequest = PreferenceRequest(
+        key = prefPlayerNextVideoStrategyOrderKey,
+        defaultValue = "0,1,2"
+    )
 }

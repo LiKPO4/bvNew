@@ -125,7 +125,6 @@ fun BvPlayer(
     onToggleRelatedVideos: (Boolean) -> Unit = {},
     onOpenUpSpace: () -> Unit = {},
     onShowDanmakuChange: (Boolean) -> Unit = {},
-    onLoopPlayModeChange: (Boolean) -> Unit = {},
     onRefreshVideo: () -> Unit = {},
     onLiveRetry: () -> Unit = {},
     onShowComment: () -> Unit = {},
@@ -156,7 +155,6 @@ fun BvPlayer(
     val videoPlayerVideoInfoData = LocalVideoPlayerVideoInfoData.current
 
     val focusRequester = remember { FocusRequester() }
-//    println("isLoop: ${videoPlayerConfigData.isLoop}, showDanmaku: ${videoPlayerConfigData.showDanmaku}")
 
     // 直接调用 danmakuPlayer 会始终为 null
     var mDanmakuPlayer: DanmakuPlayer? by remember { mutableStateOf(null) }
@@ -448,7 +446,7 @@ fun BvPlayer(
                 return
             }
 
-            if (videoPlayerConfigData.isLoop) {
+            if (videoPlayerConfigData.currentPlayMode == PlayMode.SingleLoop) {
                 logger.info { "onEnd: replay" }
                 scope.launch(Dispatchers.Main) {
                     videoPlayer.seekTo(0)
@@ -861,10 +859,6 @@ fun BvPlayer(
                 danmakuConfig.updateVisibility()
                 logger.info { "Update danmaku config: $danmakuConfig" }
                 mDanmakuPlayer?.updateConfig(danmakuConfig)
-            },
-            onLoopPlayModeChange = {
-                videoPlayerConfigData.isLoop = it
-                onLoopPlayModeChange(it)
             },
             userActionContent = userActionContent,
             onLoadNextVideo = onLoadNextVideo,

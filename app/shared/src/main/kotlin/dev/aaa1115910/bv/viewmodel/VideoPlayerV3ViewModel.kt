@@ -146,6 +146,7 @@ class VideoPlayerV3ViewModel(
     var availableSubtitle = mutableStateListOf<Subtitle>()
     var availableAudio = mutableStateListOf<Audio>()
     val availableVideoList get() = videoInfoRepository.videoList
+    val preloadedVideoList get() = videoInfoRepository.preloadedVideoList
     val relatedVideos get() =  videoInfoRepository.relatedVideos
 
     var currentVideoHeight by mutableIntStateOf(0)
@@ -270,7 +271,6 @@ class VideoPlayerV3ViewModel(
     var upFace by mutableStateOf("")
     var pubTime by mutableStateOf("")
     var upId by mutableLongStateOf(0L)
-    var isLoop by mutableStateOf(Prefs.isLoop)
     var showDanmaku by mutableStateOf(Prefs.showDanmaku)
     var showRelatedVideos by mutableStateOf(false)
     var isFollowingUp by mutableStateOf(false)
@@ -366,7 +366,7 @@ class VideoPlayerV3ViewModel(
             addLogs("加载第 $segmentIndex 块弹幕失败：${it.localizedMessage}")
             logger.fWarn { "Load danmaku segment failed: cid=$cid, segment=$segmentIndex, error=${it.stackTraceToString()}" }
         }.onSuccess {
-            addLogs("已加载 $currentLoadedDanmakuTotal 条弹幕（本次新增第 $segmentIndex 块 $loadedCount 条）", clear = segmentIndex > 1)
+            addLogs("累计加载 $currentLoadedDanmakuTotal 条弹幕（追加第 $segmentIndex 块 $loadedCount 条）", clear = segmentIndex > 1)
             logger.fInfo { "Load danmaku segment success, cid=$cid, segment=$segmentIndex, size=$loadedCount, total=$currentLoadedDanmakuTotal" }
         }
     }
@@ -404,6 +404,17 @@ class VideoPlayerV3ViewModel(
         currentEpid = epid ?: 0
         epid?.let { this.epid = it }
         seasonId?.let { this.seasonId = it }
+        if (fromSeason && currentPlayMode in listOf(PlayMode.ListOrder, PlayMode.RelatedVideo)) {
+            currentPlayMode = PlayMode.Default
+        }
+        if (!fromSeason) {
+            if (currentPlayMode == PlayMode.ListOrder && preloadedVideoList.isEmpty()) {
+                currentPlayMode = PlayMode.Default
+            }
+            if (currentPlayMode == PlayMode.RelatedVideo && relatedVideos.isEmpty()) {
+                currentPlayMode = PlayMode.Default
+            }
+        }
         cancelPlayUrlAutoRefresh("new_media")
         viewModelScope.launch(Dispatchers.Default) {
             addLogs("加载视频中")
@@ -1174,11 +1185,7 @@ class VideoPlayerV3ViewModel(
     fun playNextVideo() {
         logger.fInfo { "Video finished" }
         when (currentPlayMode) {
-            PlayMode.Single -> {
-                logger.info { "Play mode: $currentPlayMode, do nothing" }
-            }
-
-            PlayMode.Sequential -> {
+            PlayMode.Default -> {
                 logger.info { "Play mode: $currentPlayMode, play next video in list" }
                 playNextVideoInList()
             }
@@ -1190,9 +1197,18 @@ class VideoPlayerV3ViewModel(
                 videoPlayer?.seekTo(0L)
             }
 
-            PlayMode.ListLoop -> {
-                logger.info { "Play mode: $currentPlayMode, play next video in list or loop to first" }
-                playNextVideoInList(loop = true)
+            PlayMode.ListOrder -> {
+                logger.info { "Play mode: $currentPlayMode, play next video in list" }
+                playNextVideoInList()
+            }
+
+            PlayMode.PartAndEpisode -> {
+                logger.info { "Play mode: $currentPlayMode, play next video in list" }
+                playNextVideoInList()
+            }
+
+            PlayMode.RelatedVideo -> {
+                logger.info { "Play mode: $currentPlayMode, do nothing (handled by screen)" }
             }
         }
     }

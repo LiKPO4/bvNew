@@ -49,9 +49,11 @@ import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
 import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.tv.util.stableItemKey
+import dev.aaa1115910.bv.repository.VideoInfoRepository
 import dev.aaa1115910.bv.viewmodel.user.ToViewViewModel
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun ToViewScreen(
@@ -61,6 +63,7 @@ fun ToViewScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val videoInfoRepository: VideoInfoRepository = koinInject()
     val listFocusRestorer = rememberTvLazyListFocusRestorer()
     val lazyGridState = rememberLazyGridState()
     var currentIndex by remember { mutableIntStateOf(0) }
@@ -187,6 +190,8 @@ fun ToViewScreen(
                                     selectedIndex = index
                                     showDeleteConfirmDialog = true
                                 } else {
+                                    videoInfoRepository.preloadedVideoList.clear()
+                                    videoInfoRepository.preloadedVideoList.addAll(toViewViewModel.histories)
                                     VideoInfoActivity.actionStart(
                                         context = context,
                                         aid = item.avid,

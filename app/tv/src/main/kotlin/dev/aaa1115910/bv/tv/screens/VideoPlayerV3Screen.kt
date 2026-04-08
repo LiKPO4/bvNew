@@ -57,6 +57,7 @@ import dev.aaa1115910.bv.player.entity.LocalVideoPlayerVideoInfoData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerVideoShotData
 import dev.aaa1115910.bv.player.entity.PortraitVideoFixMode
 import dev.aaa1115910.bv.player.entity.PlayerLoadNextAction
+import dev.aaa1115910.bv.player.entity.PlayMode
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoListItemData
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
@@ -301,10 +302,12 @@ fun VideoPlayerV3Screen(
             currentSubtitleBottomPadding = playerViewModel.currentSubtitleBottomPadding,
             currentPlayMode = playerViewModel.currentPlayMode,
             incognitoMode = Prefs.incognitoMode,
-            isLoop = playerViewModel.isLoop,
+            hasPreloadedVideoList = playerViewModel.preloadedVideoList.isNotEmpty(),
+            hasRelatedVideos = playerViewModel.relatedVideos.isNotEmpty(),
+            fromSeason = playerViewModel.fromSeason,
             showDanmaku = playerViewModel.showDanmaku,
             showRelatedVideos = playerViewModel.showRelatedVideos,
-            showNextVideoBtn = Prefs.playerLoadNextAction != PlayerLoadNextAction.DoNothing,
+            showNextVideoBtn = Prefs.playerNextVideoStrategyOrder.split(",").any { !it.startsWith("-") },
             defaultStartPosition = Prefs.playerDefaultStartPosition.toPlayerType(),
             clipInfoList = playerViewModel.clipInfoList,
             skipPgcIntroOutro = Prefs.skipPgcIntroOutro,
@@ -352,7 +355,7 @@ fun VideoPlayerV3Screen(
                 },
                 viewerCountText = viewerCountText,
                 onToggleRelatedVideos = { state ->
-                    playerViewModel.showRelatedVideos = if (playerViewModel.relatedVideos.isNotEmpty()) state else false
+                    playerViewModel.showRelatedVideos = if (playerViewModel.relatedVideos.isNotEmpty() || playerViewModel.preloadedVideoList.isNotEmpty()) state else false
                 },
                 onSendHeartbeat = playerViewModel::uploadHistory,
                 onClearBackToHistoryData = { playerViewModel.lastPlayed = 0 },
@@ -380,33 +383,50 @@ fun VideoPlayerV3Screen(
                     PlayedAidsCache.markPlayed(playerViewModel.currentAid)
 
                     // 找出下一个推荐视频（非充电、非播放过的aid）
-                    // 需求：推荐视频需满足：1. 非充电稿件 2. 未在全局已播放缓存中出现
-                    // 使用 Application 级单例 PlayedAidsCache，退出播放的时候清空缓存，避免重复播放
                     val candidates = playerViewModel.relatedVideos
                         .filter { related -> !related.isChargingArc && !PlayedAidsCache.hasPlayed(related.avid) }
                         .take(10)
                     val nextRelatedVideo = if (candidates.isNotEmpty()) candidates.random() else null
 
-                    // nextVideo 可以是分P/剧集(VideoListItemData) 或 推荐卡片(VideoCardData)
+                    // 找出预加载列表的下一个
+                    val preloaded = playerViewModel.preloadedVideoList
+                    val preloadIndex = preloaded.indexOfFirst { it.avid == playerViewModel.currentAid }
+                    val nextPreloaded = if (preloadIndex >= 0 && preloadIndex + 1 < preloaded.size) {
+                        preloaded[preloadIndex + 1]
+                    } else null
+
+                    // nextVideo 可以是分P/剧集(VideoListItemData) 或推荐卡片(VideoCardData)
                     var nextVideo: Any? = null
 
-                    // 根据配置执行不同逻辑
-                    when (Prefs.playerLoadNextAction) {
-                        PlayerLoadNextAction.PlayRecommend -> {
-                            // 显示推荐视频列表（如果已经有数据）
-                            nextVideo = nextRelatedVideo
+                    when (playerViewModel.currentPlayMode) {
+                        PlayMode.Default -> {
+                            // 使用设置中的策略顺序
+                            val strategies = Prefs.playerNextVideoStrategyOrder.split(",").filter { !it.startsWith("-") }.map { dev.aaa1115910.bv.player.entity.NextVideoStrategy.fromOrdinal(it.toInt()) }
+                            for (strategy in strategies) {
+                                if (strategy == dev.aaa1115910.bv.player.entity.NextVideoStrategy.PartAndEpisode) {
+                                    if (nextEp != null) { nextVideo = nextEp; break }
+                                } else if (strategy == dev.aaa1115910.bv.player.entity.NextVideoStrategy.PreloadedVideoList) {
+                                    if (nextPreloaded != null) { nextVideo = nextPreloaded; break }
+                                } else if (strategy == dev.aaa1115910.bv.player.entity.NextVideoStrategy.RelatedVideo) {
+                                    if (nextRelatedVideo != null) { nextVideo = nextRelatedVideo; break }
+                                }
+                            }
                         }
-
-                        PlayerLoadNextAction.PlayNextPart -> {
+                        PlayMode.SingleLoop -> {
+                            // BvPlayer.onEnd 已处理循环，这里不应到达
+                            logger.info { "PlayMode.SingleLoop: should not reach onLoadNextVideo" }
+                        }
+                        PlayMode.ListOrder -> {
+                            nextVideo = nextPreloaded
+                        }
+                        PlayMode.PartAndEpisode -> {
                             nextVideo = nextEp
                         }
-
-                        PlayerLoadNextAction.PlayNextPartOrRecommend -> {
-                            nextVideo = nextEp ?: nextRelatedVideo
+                        PlayMode.RelatedVideo -> {
+                            nextVideo = nextRelatedVideo
                         }
-
-                        PlayerLoadNextAction.DoNothing -> {}
                     }
+
                     if (nextVideo != null) {
                         autoActionCountdownJob = scope.launch {
                             try {
@@ -654,10 +674,6 @@ fun VideoPlayerV3Screen(
                     Prefs.showDanmaku = it
                     playerViewModel.showDanmaku = it
                 },
-                onLoopPlayModeChange = {
-                    Prefs.isLoop = it
-                    playerViewModel.isLoop = it
-                },
                 userActionContent = { 
                     modifier,
                     focusMap, 
@@ -820,20 +836,20 @@ fun VideoPlayerV3Screen(
                     align = Alignment.BottomEnd
                 )
             }
-            // 推荐视频
+            // 推荐视频 / 视频列表
             AnimatedVisibility(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth(),
-                visible = playerViewModel.showRelatedVideos && !playerViewModel.isLive,
+                visible = playerViewModel.showRelatedVideos && !playerViewModel.isLive && !playerViewModel.fromSeason,
                 enter = expandVertically(),
                 exit = shrinkVertically(),
                 label = "RelatedVideosForPlayer"
             ) {
-                VideosRow(
-                    header = stringResource(R.string.video_info_related_video_title),
-                    videos = playerViewModel.relatedVideos,
-                    showMore = {},
+                dev.aaa1115910.bv.tv.component.videocard.TabbedVideosPanel(
+                    relatedVideos = playerViewModel.relatedVideos,
+                    preloadedVideos = playerViewModel.preloadedVideoList,
+                    currentAid = playerViewModel.currentAid,
                     focusRequester = relatedVideosFocusRequester,
                     onOpenSeasonInfo = { videoData ->
                         SeasonInfoActivity.actionStart(

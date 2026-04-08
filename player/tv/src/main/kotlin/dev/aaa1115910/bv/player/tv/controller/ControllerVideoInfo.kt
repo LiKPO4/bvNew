@@ -61,7 +61,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Article
+import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.outlined.Comment
+import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.ArrowDropUp
 import androidx.compose.material.icons.twotone.ScreenRotation
@@ -79,6 +82,7 @@ import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.video.Subtitle
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerClockState
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
+import dev.aaa1115910.bv.player.entity.PlayMode
 import dev.aaa1115910.bv.player.entity.parseControllerButtonsOrder
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekState
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekThumbData
@@ -124,7 +128,7 @@ fun ControllerVideoInfo(
     onOpenPlayList: () -> Unit,
     onOpenRelatedVideo: () -> Unit,
     onOpenSetting: () -> Unit,
-    onLoopPlayModeChange: (Boolean) -> Unit,
+    onPlayModeChange: (PlayMode) -> Unit,
     onRotationChange: (VideoRotation) -> Unit,
     userActionContent: @Composable (
         modifier: Modifier,
@@ -212,7 +216,9 @@ fun ControllerVideoInfo(
                 upName = videoPlayerVideoInfoData.upName,
                 pubTime = videoPlayerVideoInfoData.pubTime,
                 isPlaying = videoPlayerStateData.isPlaying || videoPlayerStateData.isBuffering,
-                isLoop = videoPlayerConfigData.isLoop,
+                currentPlayMode = videoPlayerConfigData.currentPlayMode,
+                hasPreloadedVideoList = videoPlayerConfigData.hasPreloadedVideoList,
+                hasRelatedVideos = videoPlayerConfigData.hasRelatedVideos,
                 showDanmaku = videoPlayerConfigData.showDanmaku,
                 onPlay = onPlay,
                 onPause = onPause,
@@ -224,7 +230,7 @@ fun ControllerVideoInfo(
                 onOpenPlayList = onOpenPlayList,
                 onOpenRelatedVideo = onOpenRelatedVideo,
                 onOpenSetting = onOpenSetting,
-                onLoopPlayModeChange = onLoopPlayModeChange,
+                onPlayModeChange = onPlayModeChange,
                 onRotationChange = onRotationChange,
                 fromSeason = videoPlayerVideoInfoData.fromSeason,
                 isLive = videoPlayerConfigData.isLive,
@@ -303,7 +309,9 @@ fun ControllerVideoInfoBottom(
     upName: String,
     pubTime: String,
     isPlaying: Boolean,
-    isLoop: Boolean,
+    currentPlayMode: PlayMode,
+    hasPreloadedVideoList: Boolean = false,
+    hasRelatedVideos: Boolean = false,
     showDanmaku: Boolean,
     onPlay: () -> Unit,
     onPause: () -> Unit,
@@ -315,7 +323,7 @@ fun ControllerVideoInfoBottom(
     onOpenPlayList: () -> Unit,
     onOpenRelatedVideo: () -> Unit,
     onOpenSetting: () -> Unit,
-    onLoopPlayModeChange: (Boolean) -> Unit,
+    onPlayModeChange: (PlayMode) -> Unit,
     onRotationChange: (VideoRotation) -> Unit,
     fromSeason: Boolean = false,
     isLive: Boolean = false,
@@ -352,6 +360,7 @@ fun ControllerVideoInfoBottom(
     var showRotationDialog by remember { mutableStateOf(false) }
     var showSubtitleDialog by remember { mutableStateOf(false) }
     var showQualityDialog by remember { mutableStateOf(false) }
+    var showPlayModeDialog by remember { mutableStateOf(false) }
     var speed by remember { mutableFloatStateOf(playSpeed) }
     val danmakuIconId = if (showDanmaku) R.drawable.ic_danmaku_on else R.drawable.ic_danmaku_hide
     val subtitleIconId = if (currentSubtitleId > -1) R.drawable.ic_subtitle_on else R.drawable.ic_subtitle_off
@@ -362,7 +371,15 @@ fun ControllerVideoInfoBottom(
 
     val currentQualityText = if (isLive) currentLiveQualityDescription.ifEmpty { "画质" } else currentResolution.getShortDisplayName(context).ifEmpty { "画质" }
 
-    val buttons = remember(isLive, fromSeason, showDanmaku, isLoop, speed, rotation, currentSubtitleId, isFollowingUp, showNextVideoBtn, currentLiveQualityDescription, currentResolution, availableResolutions, buttonConfigs) {
+    val playModeIcon = when (currentPlayMode) {
+        PlayMode.Default -> Icons.Rounded.Repeat
+        PlayMode.SingleLoop -> Icons.Rounded.RepeatOne
+        PlayMode.ListOrder -> Icons.AutoMirrored.Outlined.ViewList
+        PlayMode.PartAndEpisode -> Icons.AutoMirrored.Outlined.Article
+        PlayMode.RelatedVideo -> Icons.Outlined.Shuffle
+    }
+
+    val buttons = remember(isLive, fromSeason, showDanmaku, currentPlayMode, speed, rotation, currentSubtitleId, isFollowingUp, showNextVideoBtn, currentLiveQualityDescription, currentResolution, availableResolutions, buttonConfigs) {
         val rawButtons = listOf(
             ControlButton(
                 id = "nextVideo",
@@ -424,9 +441,9 @@ fun ControllerVideoInfoBottom(
                 onClick = { if (showDanmaku) onHideDanmaku() else onOpenDanmaku() }
             ),
             ControlButton(
-                id = "loop",
-                icon = if (isLoop) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-                onClick = { onLoopPlayModeChange(!isLoop) },
+                id = "playMode",
+                icon = playModeIcon,
+                onClick = { showPlayModeDialog = true },
                 visible = !isLive
             ),
             ControlButton(
@@ -535,7 +552,7 @@ fun ControllerVideoInfoBottom(
 
     fun scheduleHideJob() {
         cancelHideJob()
-        if (show && !showSpeedDialog && !showRotationDialog && !showSubtitleDialog && !showQualityDialog && !pauseAutoHide) {
+        if (show && !showSpeedDialog && !showRotationDialog && !showSubtitleDialog && !showQualityDialog && !showPlayModeDialog && !pauseAutoHide) {
             hideVideoInfoJob = scope.launch {
                 delay(5000)
                 withContext(Dispatchers.Main) { onHideInfo() }
@@ -543,7 +560,7 @@ fun ControllerVideoInfoBottom(
         }
     }
 
-    LaunchedEffect(show, showSpeedDialog, showRotationDialog, showSubtitleDialog, showQualityDialog, pauseAutoHide) {
+    LaunchedEffect(show, showSpeedDialog, showRotationDialog, showSubtitleDialog, showQualityDialog, showPlayModeDialog, pauseAutoHide) {
         scheduleHideJob()
     }
 
@@ -788,6 +805,103 @@ fun ControllerVideoInfoBottom(
                 currentResolution = currentResolution,
                 onResolutionChange = onResolutionChange
             )
+        }
+    }
+
+    if (showPlayModeDialog) {
+        PlayModeDialog(
+            onHideDialog = { showPlayModeDialog = false },
+            currentPlayMode = currentPlayMode,
+            hasPreloadedVideoList = hasPreloadedVideoList,
+            hasRelatedVideos = hasRelatedVideos,
+            fromSeason = fromSeason,
+            onPlayModeChange = onPlayModeChange
+        )
+    }
+}
+
+@Composable
+private fun PlayModeDialog(
+    modifier: Modifier = Modifier,
+    currentPlayMode: PlayMode,
+    hasPreloadedVideoList: Boolean,
+    hasRelatedVideos: Boolean,
+    fromSeason: Boolean = false,
+    onHideDialog: () -> Unit,
+    onPlayModeChange: (PlayMode) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val availableModes = remember(hasPreloadedVideoList, hasRelatedVideos, fromSeason) {
+        PlayMode.entries.filter { mode ->
+            when (mode) {
+                PlayMode.ListOrder -> hasPreloadedVideoList && !fromSeason
+                PlayMode.RelatedVideo -> hasRelatedVideos && !fromSeason
+                else -> true
+            }
+        }
+    }
+    val effectivePlayMode = if (currentPlayMode in availableModes) currentPlayMode else PlayMode.Default
+    val focusRequesters = remember(availableModes) { availableModes.associateWith { FocusRequester() } }
+    var lastInteractionTime by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    fun touch() { lastInteractionTime = System.currentTimeMillis() }
+
+    LaunchedEffect(effectivePlayMode) {
+        focusRequesters[effectivePlayMode]?.requestFocus(scope)
+    }
+
+    LaunchedEffect(lastInteractionTime) {
+        val base = lastInteractionTime
+        delay(15000)
+        if (base == lastInteractionTime) onHideDialog()
+    }
+
+    Dialog(onDismissRequest = { onHideDialog() }) {
+        Surface(
+            modifier = modifier
+                .width(240.dp),
+            color = Color.Black.copy(alpha = 0.5f),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(
+                    text = stringResource(R.string.video_player_menu_others_play_mode),
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 18.sp
+                )
+
+                Column {
+                    availableModes.forEach { mode ->
+                        val selected = mode == effectivePlayMode
+                        Button(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp, start = 8.dp, end = 8.dp)
+                                .focusRequester(focusRequesters[mode]!!),
+                            shape = ButtonDefaults.shape(MaterialTheme.shapes.medium),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                            colors = ButtonDefaults.colors(
+                                containerColor = if (selected) MaterialTheme.colorScheme.inverseSurface.copy(
+                                    alpha = 0.4f
+                                ) else Color.Transparent,
+                                contentColor = Color.White,
+                                focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
+                                focusedContentColor = Color.Black
+                            ),
+                            onClick = { touch(); onPlayModeChange(mode); }
+                        ) {
+                            Text(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = mode.getDisplayName(context),
+                                textAlign = TextAlign.Center,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1264,7 +1378,7 @@ private fun ControllerVideoInfoPreview() {
                 onOpenPlayList = {},
                 onOpenRelatedVideo = {},
                 onOpenSetting = {},
-                onLoopPlayModeChange = {},
+                onPlayModeChange = {},
                 onRotationChange = {},
                 userActionContent = { _, _, _, _ ->
                     // User action buttons go here

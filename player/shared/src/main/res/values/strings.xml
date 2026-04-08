@@ -6,10 +6,11 @@
     <string name="audio_dolby_atoms">Dolby Atoms</string>
     <string name="audio_hi_res">Hi-Res</string>
 
-    <string name="play_mode_sequential">顺序播放</string>
-    <string name="play_mode_sequential_loop">列表循环</string>
-    <string name="play_mode_single">单集播放</string>
-    <string name="play_mode_single_loop">单集循环</string>
+    <string name="play_mode_default">默认</string>
+    <string name="play_mode_list_order">视频列表（UGC）</string>
+    <string name="play_mode_part_episode">合集/分P</string>
+    <string name="play_mode_related_video">推荐视频（UGC）</string>
+    <string name="play_mode_single_loop">单视频循环</string>
 
     <string name="resolution_1080p">1080P 高清</string>
     <string name="resolution_1080p_60">1080P60 高帧率</string>
