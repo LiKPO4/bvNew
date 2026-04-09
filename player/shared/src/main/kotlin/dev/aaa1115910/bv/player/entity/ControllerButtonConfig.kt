@@ -17,7 +17,8 @@ data class ControllerButtonConfig(
  */
 val ALL_CONTROLLER_BUTTON_IDS = listOf(
     "nextVideo", "refresh", "speed", "resolution", "upSpace", "rotation",
-    "subtitle", "comment", "danmaku", "playMode", "playlist", "related", "settings"
+    "subtitle", "comment", "danmaku", "playMode", "playlist", "related", "description",
+    "settings"
 )
 
 /**
@@ -33,7 +34,7 @@ val ALL_CONTROLLER_BUTTON_IDS = listOf(
  */
 fun parseControllerButtonsOrder(orderString: String): List<ControllerButtonConfig> {
     if (orderString.isBlank()) return emptyList()
-    return orderString.split(",")
+    val configs = orderString.split(",")
         .mapNotNull { token ->
             val trimmed = token.trim()
             if (trimmed.isEmpty()) return@mapNotNull null
@@ -46,6 +47,32 @@ fun parseControllerButtonsOrder(orderString: String): List<ControllerButtonConfi
             if (id.isEmpty() || !ALL_CONTROLLER_BUTTON_IDS.contains(id)) return@mapNotNull null
             ControllerButtonConfig(id, isHidden, isDefaultFocus)
         }
+    return insertMissingButtons(configs)
+}
+
+/**
+ * 将缺失的新按钮按默认顺序插入到对应位置
+ */
+private fun insertMissingButtons(configs: List<ControllerButtonConfig>): List<ControllerButtonConfig> {
+    val existingIds = configs.map { it.id }.toSet()
+    val missingIds = ALL_CONTROLLER_BUTTON_IDS.filter { it !in existingIds }
+    if (missingIds.isEmpty()) return configs
+
+    val result = configs.toMutableList()
+    for (missingId in missingIds) {
+        val defaultIndex = ALL_CONTROLLER_BUTTON_IDS.indexOf(missingId)
+        var insertIndex = result.size
+        for (i in result.indices.reversed()) {
+            val idxInDefault = ALL_CONTROLLER_BUTTON_IDS.indexOf(result[i].id)
+            if (idxInDefault < defaultIndex) {
+                insertIndex = i + 1
+                break
+            }
+            if (i == 0) insertIndex = 0
+        }
+        result.add(insertIndex, ControllerButtonConfig(missingId))
+    }
+    return result
 }
 
 /**
@@ -66,17 +93,14 @@ fun serializeControllerButtonsOrder(configs: List<ControllerButtonConfig>): Stri
 /**
  * 获取用于编辑的完整按钮配置列表
  * 如果存储的配置为空，返回所有按钮的默认配置；
- * 如果有值，解析后补充缺失的按钮（新增按钮）。
+ * 如果有值，复用 parseControllerButtonsOrder（已自动补充缺失按钮）。
  */
 fun getControllerButtonConfigsForEditing(orderString: String): List<ControllerButtonConfig> {
     val configs = parseControllerButtonsOrder(orderString)
     if (configs.isEmpty()) {
         return ALL_CONTROLLER_BUTTON_IDS.map { ControllerButtonConfig(it) }
     }
-    val existingIds = configs.map { it.id }.toSet()
-    val missing = ALL_CONTROLLER_BUTTON_IDS.filter { it !in existingIds }
-        .map { ControllerButtonConfig(it) }
-    return configs + missing
+    return configs
 }
 
 /**
@@ -96,6 +120,7 @@ fun getControllerButtonDisplayName(id: String): String {
         "playMode" -> "播放模式"
         "playlist" -> "播放列表"
         "related" -> "相关推荐"
+        "description" -> "简介"
         "settings" -> "设置"
         else -> id
     }

@@ -129,6 +129,7 @@ fun BvPlayer(
     onRefreshVideo: () -> Unit = {},
     onLiveRetry: () -> Unit = {},
     onShowComment: () -> Unit = {},
+    onShowDescription: () -> Unit = {},
     userActionContent: @Composable (
         modifier: Modifier,
         focusMap: Map<String, FocusRequester>,
@@ -868,7 +869,8 @@ fun BvPlayer(
             },
             userActionContent = userActionContent,
             onLoadNextVideo = onLoadNextVideo,
-            onShowComment = onShowComment
+            onShowComment = onShowComment,
+            onShowDescription = onShowDescription
         ) {
             LaunchedEffect(Unit) {
                 videoPlayer.setOptions()

@@ -25,6 +25,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.aaa1115910.bv.R
+import dev.aaa1115910.bv.entity.NavSwitchMode
 import dev.aaa1115910.bv.tv.component.UserPanel
 import dev.aaa1115910.bv.tv.activities.settings.SettingsActivity
 import dev.aaa1115910.bv.tv.activities.user.FavoriteActivity
@@ -82,6 +84,7 @@ fun MainScreen(
     var lastPressBack: Long by remember { mutableLongStateOf(0L) }
     var selectedDrawerItem by remember { mutableStateOf(DrawerItem.Home) }
     var focusedDrawerItem by remember { mutableStateOf(DrawerItem.Home) }
+    val navSwitchMode by Prefs.navSwitchModeFlow.collectAsState(Prefs.navSwitchMode)
 
     val mainFocusRequester = remember { FocusRequester() }
     val ugcFocusRequester = remember { FocusRequester() }
@@ -117,24 +120,15 @@ fun MainScreen(
     }
 
     val onFocusToContent: () -> Unit = {
-        when (focusedDrawerItem) {
+        when (selectedDrawerItem) {
             DrawerItem.Home -> mainFocusRequester.requestFocus()
             DrawerItem.UGC -> ugcFocusRequester.requestFocus()
             DrawerItem.PGC -> pgcFocusRequester.requestFocus()
             DrawerItem.Live -> liveFocusRequester.requestFocus()
             DrawerItem.Search -> searchFocusRequester.requestFocus()
             else -> {
-                // 搜索+右侧是搜索->用户+用户内容不是放右侧的，右侧还是搜索。
-                // 让内容对应的菜单获得焦点
+                // 用户+设置等非内容页，回到当前选中内容的菜单项再进入内容
                 drawerItemFocusRequesters[selectedDrawerItem]?.requestFocus()
-                when (selectedDrawerItem) {
-                    DrawerItem.Home -> mainFocusRequester.requestFocus()
-                    DrawerItem.UGC -> ugcFocusRequester.requestFocus()
-                    DrawerItem.PGC -> pgcFocusRequester.requestFocus()
-                    DrawerItem.Live -> liveFocusRequester.requestFocus()
-                    DrawerItem.Search -> searchFocusRequester.requestFocus()
-                    else -> {}
-                }
             }
         }
     }
@@ -182,6 +176,7 @@ fun MainScreen(
                     isLogin = userViewModel.isLogin,
                     avatar = userViewModel.face,
                     username = userViewModel.username,
+                    navSwitchMode = navSwitchMode,
                     //avatar = "https://i2.hdslb.com/bfs/face/ef0457addb24141e15dfac6fbf45293ccf1e32ab.jpg",
                     //username = "碧诗",
                     onDrawerItemChanged = { selectedDrawerItem = it },

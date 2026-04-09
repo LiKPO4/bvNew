@@ -79,8 +79,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dev.aaa1115910.bv.repository.VideoInfoRepository
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.getKoin
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -90,6 +92,7 @@ fun UpSpaceScreen(
     userRepository: UserRepository = getKoin().get(),
 ) {
     val context = LocalContext.current
+    val videoInfoRepository: VideoInfoRepository = koinInject()
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger { }
     var currentIndex by remember { mutableIntStateOf(0) }
@@ -403,6 +406,8 @@ fun UpSpaceScreen(
                         data = video,
                         onClick = {
                             if (!isLongPress) {
+                                videoInfoRepository.preloadedVideoList.clear()
+                                videoInfoRepository.preloadedVideoList.addAll(userSpaceViewModel.tvSpaceVideos)
                                 VideoInfoActivity.actionStart(
                                     context = context,
                                     aid = video.avid,

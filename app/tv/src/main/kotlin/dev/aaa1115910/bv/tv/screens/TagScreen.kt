@@ -37,7 +37,9 @@ import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
 import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.tv.util.stableItemKey
 import dev.aaa1115910.bv.viewmodel.TagViewModel
+import dev.aaa1115910.bv.repository.VideoInfoRepository
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun TagScreen(
@@ -45,6 +47,7 @@ fun TagScreen(
     tagViewModel: TagViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
+    val videoInfoRepository: VideoInfoRepository = koinInject()
     val listFocusRestorer = rememberTvLazyListFocusRestorer()
     var currentIndex by remember { mutableIntStateOf(0) }
     val showLargeTitle by remember { derivedStateOf { currentIndex < 4 } }
@@ -128,7 +131,11 @@ fun TagScreen(
                         SmallVideoCard(
                             modifier = listFocusRestorer.firstItemModifier(index),
                             data = video,
-                            onClick = { VideoInfoActivity.actionStart(context, video.avid) },
+                            onClick = {
+                                videoInfoRepository.preloadedVideoList.clear()
+                                videoInfoRepository.preloadedVideoList.addAll(tagViewModel.topVideos)
+                                VideoInfoActivity.actionStart(context, video.avid)
+                            },
                             onLongClick = { UpInfoActivity.actionStart( context, mid = video.upId, name = video.upName, face = video.upFace ) },
                             onFocus = {
                                 currentIndex = index

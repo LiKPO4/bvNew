@@ -5,14 +5,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.rounded.ThumbUp
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,7 +35,9 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
+import dev.aaa1115910.biliapi.entity.Picture
 import dev.aaa1115910.biliapi.entity.reply.Comment
 import dev.aaa1115910.biliapi.entity.reply.EmoteSize
 import dev.aaa1115910.bv.ui.theme.BVTheme
@@ -127,6 +133,14 @@ private fun CommentMainContent(
                 emotes = comment.emotes,
                 modifier = Modifier.padding(top = 4.dp)
             )
+
+            // 评论图片
+            if (comment.pictures.isNotEmpty()) {
+                CommentPictures(
+                    pictures = comment.pictures,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
 
             // 底部信息：时间和点赞数
             Row(
@@ -225,6 +239,165 @@ private fun formatLikeCount(count: Long): String {
     return when {
         count >= 10000 -> "${count / 10000}万"
         else -> count.toString()
+    }
+}
+
+/**
+ * 生成 B 站图片缩略图 URL
+ *
+ * 参数格式：@{w}w_{h}h_{flags}.webp
+ * dpr 固定为 2，格式固定 webp
+ */
+private fun buildThumbnailUrl(
+    url: String,
+    w: Int = 0,
+    h: Int = 0,
+    crop: Boolean = false,
+    progressive: Boolean = true,
+    dpr: Int = 2
+): String {
+    val baseUrl = url.split("@")[0].replace("//pre-", "//")
+    val parts = mutableListOf<String>()
+    if (w > 0) parts.add("${w * dpr}w")
+    if (h > 0) parts.add("${h * dpr}h")
+    if (crop) parts.add("1c")
+    if (progressive) parts.add("1s")
+    return if (parts.isNotEmpty()) "$baseUrl@${parts.joinToString("_")}.webp" else baseUrl
+}
+
+private data class CommentPictureItem(
+    val width: Int,
+    val height: Int,
+    val thumbnailUrl: String,
+    val original: Picture
+)
+
+/**
+ * 计算评论图片的展示尺寸和缩略图 URL
+ *
+ * 与 bilibili PC 评论区 bili-comment-pictures-renderer 逻辑一致：
+ * - 单图：横图框 240×135，竖图框 135×180，超长图裁剪
+ * - 多图：统一 88×88 裁剪
+ */
+private fun calculatePictureItems(pictures: List<Picture>): List<CommentPictureItem> {
+    val isSingle = pictures.size == 1
+    val multipleSize = 88
+
+    return pictures.map { pic ->
+        val imgW = pic.width
+        val imgH = pic.height
+        val isHorizontal = imgW > imgH
+        val ratio = if (isHorizontal) imgW.toFloat() / imgH else imgH.toFloat() / imgW
+        val isLong = kotlin.math.floor(ratio.toDouble()).toInt() >= 3
+
+        if (isSingle) {
+            val singleHorizontal = 240 to 135
+            val singleVertical = 135 to 180
+            val targetRatio = imgW.toFloat() / imgH
+            var w: Int
+            var h: Int
+
+            if (isLong) {
+                val frame = if (isHorizontal) singleHorizontal else singleVertical
+                w = frame.first
+                h = frame.second
+            } else if (!isHorizontal && imgW > singleVertical.first && imgH > singleVertical.second) {
+                w = singleVertical.first
+                h = singleVertical.second
+            } else if (isHorizontal) {
+                val frameRatio = singleHorizontal.first.toFloat() / singleHorizontal.second
+                if (targetRatio > frameRatio) {
+                    w = singleHorizontal.first
+                    h = (w / targetRatio).toInt()
+                } else {
+                    h = singleHorizontal.second
+                    w = (h * targetRatio).toInt()
+                }
+                if (w > imgW) { w = imgW; h = imgH }
+            } else {
+                val frameRatio = singleVertical.first.toFloat() / singleVertical.second
+                if (targetRatio > frameRatio) {
+                    w = singleVertical.first
+                    h = (w / targetRatio).toInt()
+                } else {
+                    h = singleVertical.second
+                    w = (h * targetRatio).toInt()
+                }
+                if (w > imgW) { w = imgW; h = imgH }
+            }
+
+            val thumbUrl = buildThumbnailUrl(
+                pic.url, w = w, h = h,
+                crop = isLong, progressive = true
+            )
+            CommentPictureItem(width = w, height = h, thumbnailUrl = thumbUrl, original = pic)
+        } else {
+            val thumbUrl = buildThumbnailUrl(
+                pic.url, w = multipleSize, h = multipleSize,
+                crop = true, progressive = true
+            )
+            CommentPictureItem(
+                width = multipleSize, height = multipleSize,
+                thumbnailUrl = thumbUrl, original = pic
+            )
+        }
+    }
+}
+
+/**
+ * 评论图片组件
+ *
+ * - 单图：保持比例，宽度不超过内容区
+ * - 多图：一行最多 2 张，正方形裁剪
+ */
+@Composable
+fun CommentPictures(
+    pictures: List<Picture>,
+    modifier: Modifier = Modifier
+) {
+    val validPictures = remember(pictures) {
+        pictures.filter { it.url.isNotBlank() && it.width > 0 && it.height > 0 }
+    }
+    if (validPictures.isEmpty()) return
+
+    val items = remember(validPictures) { calculatePictureItems(validPictures) }
+    val isSingle = validPictures.size == 1
+
+    if (isSingle) {
+        val item = items.first()
+        val ratio = if (item.height > 0) item.width.toFloat() / item.height else 1f
+        AsyncImage(
+            model = item.thumbnailUrl,
+            contentDescription = null,
+            modifier = modifier
+                .widthIn(max = item.width.dp)
+                .aspectRatio(ratio)
+                .clip(RoundedCornerShape(6.dp)),
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        val rows = items.chunked(2)
+        Column(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            rows.forEach { rowItems ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    rowItems.forEach { item ->
+                        AsyncImage(
+                            model = item.thumbnailUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(item.width.dp)
+                                .clip(RoundedCornerShape(6.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

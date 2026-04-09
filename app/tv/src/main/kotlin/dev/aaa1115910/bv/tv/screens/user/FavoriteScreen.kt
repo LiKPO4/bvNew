@@ -1,16 +1,14 @@
 package dev.aaa1115910.bv.tv.screens.user
 
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -19,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,21 +35,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.LocalContentColor
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Tab
-import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.FavoriteFolderMetadata
 import dev.aaa1115910.bv.R
+import dev.aaa1115910.bv.entity.NavSwitchMode
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.tv.component.TopNav
+import dev.aaa1115910.bv.tv.component.TopNavItem
 import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
 import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.tv.util.stableItemKey
-import dev.aaa1115910.bv.util.ifElse
+import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.onDelayFocusChanged
 import dev.aaa1115910.bv.viewmodel.user.FavoriteViewModel
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +64,7 @@ fun FavoriteScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val navSwitchMode by Prefs.navSwitchModeFlow.collectAsState(Prefs.navSwitchMode)
     var currentIndex by remember { mutableIntStateOf(0) }
     val showLargeTitle by remember { derivedStateOf { currentIndex < 4 } }
     val titleFontSize by animateFloatAsState(
@@ -78,14 +77,7 @@ fun FavoriteScreen(
     var focusOnTabs by remember { mutableStateOf(true) }
     var focusOnGrid by remember { mutableStateOf(false) }
     val lazyGridState = rememberLazyGridState()
-
-    val currentTabIndex by remember {
-        derivedStateOf {
-            if (favoriteViewModel.favoriteFolderMetadataList.indexOf(favoriteViewModel.currentFavoriteFolderMetadata) >= 0) favoriteViewModel.favoriteFolderMetadataList.indexOf(
-                favoriteViewModel.currentFavoriteFolderMetadata
-            ) else 0
-        }
-    }
+    val favoriteTopNavItems = favoriteViewModel.favoriteFolderMetadataList.map(::FavoriteFolderTopNavItem)
 
     val updateCurrentFavoriteFolder: (folderMetadata: FavoriteFolderMetadata) -> Unit =
         { folderMetadata ->
@@ -174,7 +166,7 @@ fun FavoriteScreen(
                 item(
                     span = { GridItemSpan(4) }
                 ) {
-                    TabRow(
+                    TopNav(
                         modifier = Modifier
                             .focusRequester(defaultFocusRequester)
                             .onFocusChanged { focusOnTabs = it.hasFocus }
@@ -183,40 +175,21 @@ fun FavoriteScreen(
                                     focusRequester.requestFocus()
                                 }
                             },
-                        selectedTabIndex = currentTabIndex,
-                        separator = { Spacer(modifier = Modifier.width(12.dp)) },
-                    ) {
-                        favoriteViewModel.favoriteFolderMetadataList.forEachIndexed { index, folderMetadata ->
-                            Tab(
-                                modifier = Modifier
-                                    .onDelayFocusChanged {
-                                        if (it.isFocused && favoriteViewModel.currentFavoriteFolderMetadata != folderMetadata) {
-                                            updateCurrentFavoriteFolder(folderMetadata)
-                                        }
-                                    }
-                                    .ifElse(
-                                        index == currentTabIndex,
-                                        Modifier.focusRequester(focusRequester)
-                                    ),
-                                selected = currentTabIndex == index,
-                                onFocus = {},
-                                onClick = { updateCurrentFavoriteFolder(folderMetadata) }
-                            ) {
-                                Box(
-                                    modifier = Modifier.height(32.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        modifier = Modifier
-                                            .padding(horizontal = 16.dp, vertical = 6.dp),
-                                        text = folderMetadata.title,
-                                        color = LocalContentColor.current,
-                                        style = MaterialTheme.typography.labelLarge
-                                    )
-                                }
+                        paddingTop = 0.dp,
+                        items = favoriteTopNavItems,
+                        isLargePadding = false,
+                        initialSelectedItem = favoriteTopNavItems.firstOrNull {
+                            it.folderMetadata == favoriteViewModel.currentFavoriteFolderMetadata
+                        },
+                        navSwitchMode = navSwitchMode,
+                        tabFocusRequester = focusRequester,
+                        onSelectedChanged = { selectedItem ->
+                            val folderMetadata = (selectedItem as FavoriteFolderTopNavItem).folderMetadata
+                            if (favoriteViewModel.currentFavoriteFolderMetadata != folderMetadata) {
+                                updateCurrentFavoriteFolder(folderMetadata)
                             }
                         }
-                    }
+                    )
                 }
                 itemsIndexed(
                     items = favoriteViewModel.favorites,
@@ -246,5 +219,13 @@ fun FavoriteScreen(
                 }
             }
         }
+    }
+}
+
+private data class FavoriteFolderTopNavItem(
+    val folderMetadata: FavoriteFolderMetadata
+) : TopNavItem {
+    override fun getDisplayName(context: Context): String {
+        return folderMetadata.title
     }
 }

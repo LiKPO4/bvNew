@@ -65,6 +65,7 @@ fun RecommendScreen(
                     title = item.title,
                     cover = item.cover,
                     upName = item.author,
+                    upId = item.authorId,
                     play = if (item.play == -1L) null else item.play,
                     danmaku = if (item.danmaku == -1) null else item.danmaku,
                     time = item.duration * 1000L,

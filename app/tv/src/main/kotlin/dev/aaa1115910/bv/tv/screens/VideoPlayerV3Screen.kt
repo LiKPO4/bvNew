@@ -74,9 +74,11 @@ import dev.aaa1115910.bv.player.tv.BvPlayer
 import dev.aaa1115910.bv.player.tv.controller.LiveViewerCountTip
 import dev.aaa1115910.bv.player.tv.controller.OnlineViewerCountTip
 import dev.aaa1115910.bv.player.tv.controller.SkipTip
+import dev.aaa1115910.bv.tv.activities.video.TagActivity
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.component.buttons.CoinButton
 import dev.aaa1115910.bv.tv.component.CommentPanel
+import dev.aaa1115910.bv.tv.component.DescriptionPanel
 import dev.aaa1115910.bv.tv.component.buttons.FavoriteButton
 import dev.aaa1115910.bv.tv.component.buttons.LikeButton
 import dev.aaa1115910.bv.tv.manager.FollowStateManager
@@ -129,6 +131,7 @@ fun VideoPlayerV3Screen(
     var autoActionCountdownJob by remember { mutableStateOf<Job?>(null) }
     var autoActionTipVisible by remember { mutableStateOf(false) }
     var autoActionTipText by remember { mutableStateOf("") }
+    var skipNextKeyUpCancel by remember { mutableStateOf(false) }
 
     // 在线观看人数状态
     var onlineViewerCount by remember { mutableStateOf("") }
@@ -139,6 +142,9 @@ fun VideoPlayerV3Screen(
 
     // 评论面板状态
     var showCommentPanel by remember { mutableStateOf(false) }
+
+    // 简介面板状态
+    var showDescriptionPanel by remember { mutableStateOf(false) }
 
     // 焦点管理
     val relatedVideosFocusRequester = remember { FocusRequester() }
@@ -330,9 +336,19 @@ fun VideoPlayerV3Screen(
         Box(
             modifier = Modifier
                 .onPreviewKeyEvent { keyEvent ->
+                    // 检测长按下键，标记跳过对应的 KeyUp 取消
+                    if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionDown
+                        && keyEvent.nativeKeyEvent.isLongPress) {
+                        skipNextKeyUpCancel = true
+                    }
                     if (keyEvent.type == KeyEventType.KeyUp && autoActionCountdownJob != null) {
+                        // 跳过长按下键触发的那次 KeyUp（长按下键释放）
+                        if (skipNextKeyUpCancel) {
+                            skipNextKeyUpCancel = false
+                            return@onPreviewKeyEvent false
+                        }
                         // 任何按键都可以取消倒计时
-                        logger.debug { "按下按键: ${keyEvent.key}, 取消播放下一集（或自动退出）" }
+                        logger.debug { "按下按键: ${keyEvent.key}, 取消播放下一个（或自动退出）" }
                         autoActionCountdownJob?.cancel()
                         autoActionCountdownJob = null
                         autoActionTipVisible = false
@@ -433,7 +449,7 @@ fun VideoPlayerV3Screen(
                         autoActionCountdownJob = scope.launch {
                             try {
                                 if (!immediate) {
-                                    autoActionTipText = "播放结束，即将播放下一集"
+                                    autoActionTipText = "即将播放下一个"
                                     autoActionTipVisible = true
                                     delay(1300)
                                 }
@@ -571,6 +587,7 @@ fun VideoPlayerV3Screen(
                     playerViewModel.retryLiveStream()
                 },
                 onShowComment = { showCommentPanel = true },
+                onShowDescription = { showDescriptionPanel = true },
                 onResolutionChange = { resolutionCode, afterChange ->
                     scope.launch(Dispatchers.Default) {
                         playerViewModel.playQuality(resolutionCode)
@@ -884,6 +901,21 @@ fun VideoPlayerV3Screen(
                     onHide = { showCommentPanel = false }
                 )
             }
+
+            // 简介面板
+            DescriptionPanel(
+                show = showDescriptionPanel,
+                description = playerViewModel.videoDescription,
+                tags = playerViewModel.videoTags,
+                onHide = { showDescriptionPanel = false },
+                onClickTag = { tag ->
+                    TagActivity.actionStart(
+                        context = context,
+                        tagId = tag.id,
+                        tagName = tag.name
+                    )
+                }
+            )
 
             // 直播人气 Tip（左下角常驻）
             LiveViewerCountTip(

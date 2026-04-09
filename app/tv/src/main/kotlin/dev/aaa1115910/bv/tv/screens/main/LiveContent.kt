@@ -75,6 +75,7 @@ fun LiveContent(
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger("LiveContent")
     val context = LocalContext.current
+    val navSwitchMode by Prefs.navSwitchModeFlow.collectAsState(Prefs.navSwitchMode)
 
     val gridState = rememberLazyGridState()
     // 使用 MainScreen 传入的 FocusRequester 作为默认入口焦点（从侧边栏按右进入内容区）
@@ -193,6 +194,7 @@ fun LiveContent(
                         items = parentNavItems,
                         isLargePadding = false,
                         initialSelectedItem = initialSelectedParent,
+                        navSwitchMode = navSwitchMode,
                         onSelectedChanged = { nav ->
                             liveViewModel.lastFocusedRoomIndex = 0
                             scope.launch { gridState.scrollToItem(0) }
@@ -238,6 +240,7 @@ fun LiveContent(
                         items = subNavItems,
                         isLargePadding = !focusOnContent && currentListOnTop,
                         initialSelectedItem = subNavItems.firstOrNull { it.area.id == liveViewModel.currentSubArea?.id },
+                        navSwitchMode = navSwitchMode,
                         onSelectedChanged = { nav ->
                             (nav as? SubAreaNavItem)?.let {
                                 liveViewModel.lastFocusedRoomIndex = 0

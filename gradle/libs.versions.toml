@@ -4,7 +4,6 @@ brotli = "0.1.2"
 #akdanmaku = "1.0.0"
 androidsvg = "1.4"
 coil = "2.7.0"
-firebase-bom = "34.6.0"
 geetest-sensebot = "4.4.4"
 grpc = "1.78.0"
 grpc-kotlin = "1.5.0"
@@ -28,6 +27,7 @@ slf4j-android-mvysny = "2.0.13"
 slf4j-simple = "2.0.17"
 #vlc = "3.6.5"
 zxing = "3.5.4"
+uiUtil = "1.10.6"
 
 [libraries]
 # https://google.github.io/accompanist/
@@ -46,11 +46,6 @@ brotli = { module = "org.brotli:dec", version.ref = "brotli" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 coil-gif = { module = "io.coil-kt:coil-gif", version.ref = "coil" }
 coil-svg = { module = "io.coil-kt:coil-svg", version.ref = "coil" }
-
-# https://firebase.google.com/docs/android/setup
-firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
-firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
-firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
 
 # https://docs.geetest.com/sensebot/deploy/client/android
 geetest-sensebot = { module = "com.geetest.sensebot:sensebot", version.ref = "geetest-sensebot" }
@@ -129,3 +124,4 @@ slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j-simple"
 
 # https://github.com/zxing/zxing
 zxing = { module = "com.google.zxing:core", version.ref = "zxing" }
+ui-util = { group = "androidx.compose.ui", name = "ui-util", version.ref = "uiUtil" }

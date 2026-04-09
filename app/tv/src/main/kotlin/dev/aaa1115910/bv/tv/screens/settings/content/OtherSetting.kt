@@ -26,7 +26,6 @@ import dev.aaa1115910.bv.tv.component.settings.SettingListItem
 import dev.aaa1115910.bv.tv.component.settings.SettingSwitchListItem
 import dev.aaa1115910.bv.tv.activities.settings.LogsActivity
 import dev.aaa1115910.bv.tv.screens.settings.SettingsMenuNavItem
-import dev.aaa1115910.bv.util.FirebaseUtil
 import dev.aaa1115910.bv.util.Prefs
 
 @Composable
@@ -55,17 +54,6 @@ fun OtherSetting(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item {
-                SettingSwitchListItem(
-                    title = stringResource(R.string.settings_other_firebase_title),
-                    supportText = stringResource(R.string.settings_other_firebase_text),
-                    checked = Prefs.enableFirebaseCollection,
-                    onCheckedChange = {
-                        Prefs.enableFirebaseCollection = it
-                        FirebaseUtil.setCrashlyticsCollectionEnabled(it)
-                    }
-                )
-            }
             item {
                 SettingSwitchListItem(
                     title = stringResource(R.string.settings_other_fps_title),

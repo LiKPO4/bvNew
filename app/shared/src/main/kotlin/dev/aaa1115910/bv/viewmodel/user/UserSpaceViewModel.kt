@@ -69,6 +69,7 @@ class UserSpaceViewModel(
                         play = spaceVideoItem.play,
                         danmaku = spaceVideoItem.danmaku,
                         upName = spaceVideoItem.author,
+                        upId = spaceVideoItem.authorId,
                         time = spaceVideoItem.duration * 1000L,
                         pubTime = spaceVideoItem.publishDate.getTime().toSmartDate(),
                         isChargingArc = spaceVideoItem.isChargingArc,

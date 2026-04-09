@@ -45,10 +45,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
-import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import dev.aaa1115910.bv.entity.NavSwitchMode
 import dev.aaa1115910.bv.ui.theme.BVTheme
 import dev.aaa1115910.bv.util.ifElse
 import dev.aaa1115910.bv.util.isDpadRight
@@ -73,6 +72,7 @@ fun DrawerContent(
     isLogin: Boolean = false,
     avatar: String = "",
     username: String = "",
+    navSwitchMode: NavSwitchMode = NavSwitchMode.Auto,
     onDrawerItemChanged: (DrawerItem) -> Unit = {},
     onDrawerItemfocused: (DrawerItem) -> Unit = {},
     onOpenSettings: () -> Unit = {},
@@ -107,7 +107,10 @@ fun DrawerContent(
             .onPreviewKeyEvent { keyEvent ->
                 if (keyEvent.isDpadRight()) {
                     if (keyEvent.isKeyDown()) {
-                        if (tabMoved) onFocusToContent()
+                        if (tabMoved) {
+                            focusedItem = selectedItem
+                            onFocusToContent()
+                        }
                         return@onPreviewKeyEvent true
                     }
                 }
@@ -210,34 +213,42 @@ fun DrawerContent(
         ) {
             items(menuItems.size) { index ->
                 val item = menuItems[index]
+                val isSelected = selectedItem == item
+                val isFocused = focusedItem == item && !focusOnContent
                 NavigationRailItem(
                         modifier = Modifier
                             .focusRequester(drawerItemFocusRequesters[item]!!)
-                            // 立即更新focusedItem以反映视觉状态
                             .onFocusChanged {
                                 if (it.hasFocus && !focusOnContent) {
                                     focusedItem = item
-                                }
-                            }
-                            .onFocusChanged {
-                                if (it.hasFocus) {
-                                    selectedItem = item
+                                    if (navSwitchMode == NavSwitchMode.Auto) {
+                                        selectedItem = item
+                                    }
                                 }
                             },
                         onClick = {
                             selectedItem = item
                             focusedItem = item
                         },
-                        // 使用focusedItem来决定视觉状态
-                        selected = focusedItem == item,
+                        selected = isSelected || isFocused,
                         colors = NavigationRailItemDefaults.colors(
-                            indicatorColor = if (focusOnContent) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.inverseSurface
+                            indicatorColor = when {
+                                focusOnContent -> MaterialTheme.colorScheme.surfaceVariant
+                                isFocused && isSelected -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f)
+                                isFocused && !isSelected -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.3f)
+                                isSelected -> MaterialTheme.colorScheme.inverseSurface
+                                else -> MaterialTheme.colorScheme.surfaceVariant
+                            }
                         ),
                         icon = {
                             Icon(
                                 imageVector = item.displayIcon,
                                 contentDescription = null,
-                                tint = if (!focusOnContent && focusedItem == item) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.inverseSurface
+                                tint = when {
+                                    isFocused && !isSelected -> MaterialTheme.colorScheme.inverseSurface
+                                    !focusOnContent && isSelected -> MaterialTheme.colorScheme.surface
+                                    else -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.85f)
+                                }
                             )
                         },
                         label = {
@@ -260,15 +271,35 @@ fun DrawerContent(
                 onOpenSettings()
                 focusedItem = DrawerItem.Settings
             },
-            selected = focusedItem == DrawerItem.Settings,
-            colors = NavigationRailItemDefaults.colors(
-                indicatorColor = if (focusOnContent) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.inverseSurface
-            ),
+            selected = run {
+                val s = selectedItem == DrawerItem.Settings
+                val f = focusedItem == DrawerItem.Settings && !focusOnContent
+                s || f
+            },
+            colors = run {
+                val s = selectedItem == DrawerItem.Settings
+                val f = focusedItem == DrawerItem.Settings && !focusOnContent
+                NavigationRailItemDefaults.colors(
+                    indicatorColor = when {
+                        focusOnContent -> MaterialTheme.colorScheme.surfaceVariant
+                        f && s -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f)
+                        f && !s -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.3f)
+                        s -> MaterialTheme.colorScheme.inverseSurface
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    }
+                )
+            },
             icon = {
+                val s = selectedItem == DrawerItem.Settings
+                val f = focusedItem == DrawerItem.Settings && !focusOnContent
                 Icon(
                     imageVector = DrawerItem.Settings.displayIcon,
                     contentDescription = null,
-                    tint = if (!focusOnContent && focusedItem == DrawerItem.Settings) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.inverseSurface
+                    tint = when {
+                        f && !s -> MaterialTheme.colorScheme.inverseSurface
+                        !focusOnContent && s -> MaterialTheme.colorScheme.surface
+                        else -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.85f)
+                    }
                 )
             },
             label = {

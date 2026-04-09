@@ -72,6 +72,7 @@ fun HomeContent(
 ) {
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger("HomeContent")
+    val navSwitchMode by Prefs.navSwitchModeFlow.collectAsState(Prefs.navSwitchMode)
 
     val recommendState = rememberLazyGridState()
     val popularState = rememberLazyGridState()
@@ -221,6 +222,7 @@ fun HomeContent(
                 items = effectiveNavItems,
                 isLargePadding = !focusOnContent && currentListOnTop,
                 initialSelectedItem = selectedTab,
+                navSwitchMode = navSwitchMode,
                 onSelectedChanged = { nav ->
                     loadJob?.cancel()
                     selectedTab = nav as HomeTopNavItem

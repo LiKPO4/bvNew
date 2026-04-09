@@ -25,7 +25,6 @@ import dev.aaa1115910.bv.entity.db.UserDB
 import dev.aaa1115910.bv.network.HttpServer
 import dev.aaa1115910.bv.util.BlacklistUtil
 import dev.aaa1115910.bv.util.CoilConfig
-import dev.aaa1115910.bv.util.FirebaseUtil
 import dev.aaa1115910.bv.util.LogCatcherUtil
 import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.toast
@@ -69,7 +68,6 @@ class BVApp : Application() {
             modules(AppModule().module)
         }
         initCoil()
-        initFirebase()
         LogCatcherUtil.installLogCatcher()
         initApiConfig()
         initDns()
@@ -87,14 +85,6 @@ class BVApp : Application() {
      */
     private fun initCoil() {
         Coil.setImageLoader(CoilConfig.createImageLoader(this))
-    }
-
-    private fun initFirebase() {
-        FirebaseUtil.init(applicationContext)
-        when (BuildConfig.BUILD_TYPE) {
-            "debug" -> {}
-            else -> FirebaseUtil.setCrashlyticsCollectionEnabled(Prefs.enableFirebaseCollection)
-        }
     }
 
     private fun initApiConfig() {

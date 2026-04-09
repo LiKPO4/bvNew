@@ -17,6 +17,7 @@ import dev.aaa1115910.biliapi.http.util.generateBuvid
 import dev.aaa1115910.bv.BVApp
 import dev.aaa1115910.bv.BuildConfig
 import dev.aaa1115910.bv.entity.InterfaceMode
+import dev.aaa1115910.bv.entity.NavSwitchMode
 import dev.aaa1115910.bv.entity.PlayerType
 import dev.aaa1115910.bv.entity.ThemeType
 import dev.aaa1115910.bv.player.entity.Audio
@@ -171,14 +172,6 @@ object Prefs {
         )
         set(value) = runBlocking {
             dsm.editPreference(PrefKeys.prefDefaultVideoCodecKey, value.ordinal)
-        }
-
-    var enableFirebaseCollection: Boolean
-        get() = runBlocking {
-            dsm.getPreferenceFlow(PrefKeys.prefEnabledFirebaseCollectionRequest).first()
-        }
-        set(value) = runBlocking {
-            dsm.editPreference(PrefKeys.prefEnabledFirebaseCollectionKey, value)
         }
 
     var incognitoMode: Boolean
@@ -352,6 +345,16 @@ object Prefs {
             InterfaceMode.entries[dsm.getPreferenceFlow(PrefKeys.prefInterfaceModeRequest).first()]
         }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefInterfaceModeKey, value.ordinal) }
+
+    var navSwitchMode: NavSwitchMode
+        get() = runBlocking {
+            NavSwitchMode.entries[dsm.getPreferenceFlow(PrefKeys.prefNavSwitchModeRequest).first()]
+        }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefNavSwitchModeKey, value.ordinal) }
+
+    val navSwitchModeFlow: Flow<NavSwitchMode>
+        get() = dsm.getPreferenceFlow(PrefKeys.prefNavSwitchModeRequest)
+            .transform { ordinal -> emit(NavSwitchMode.entries[ordinal]) }
 
     var defaultPlayMode: PlayMode
         get() = runBlocking {
@@ -541,7 +544,6 @@ object PrefKeys {
     val prefDefaultDanmakuAreaKey = floatPreferencesKey("dda")
     val prefDefaultDanmakuRollingDurationFactorKey = floatPreferencesKey("ddrdf")
     val prefDefaultVideoCodecKey = intPreferencesKey("dvc")
-    val prefEnabledFirebaseCollectionKey = booleanPreferencesKey("efc")
     val prefIncognitoModeKey = booleanPreferencesKey("im")
     val prefDefaultSubtitleKey = intPreferencesKey("default_subtitle")
     val prefDefaultSubtitleFontSizeKey = intPreferencesKey("dsfs")
@@ -568,6 +570,7 @@ object PrefKeys {
     val prefBlacklistUserKey = booleanPreferencesKey("blacklist_user")
     val prefThemeTypeKey = intPreferencesKey("theme_type")
     val prefInterfaceModeKey = intPreferencesKey("interface_mode")
+    val prefNavSwitchModeKey = intPreferencesKey("nav_switch_mode")
     val prefPlayModeKey = intPreferencesKey("play_mode")
     val prefDefaultHomeTabKey = intPreferencesKey("default_home_tab")
     val prefPortraitVideoFixModeKey = intPreferencesKey("portrait_video_fix_mode")
@@ -625,8 +628,6 @@ object PrefKeys {
         PreferenceRequest(prefDefaultDanmakuRollingDurationFactorKey, 1f)
     val prefDefaultVideoCodecRequest =
         PreferenceRequest(prefDefaultVideoCodecKey, VideoCodec.HEVC.ordinal)
-    val prefEnabledFirebaseCollectionRequest =
-        PreferenceRequest(prefEnabledFirebaseCollectionKey, false)
     val prefIncognitoModeRequest = PreferenceRequest(prefIncognitoModeKey, false)
     val prefDefaultSubtitleRequest = PreferenceRequest(prefDefaultSubtitleKey, DefaultSubtitle.Off.value)
     val prefDefaultSubtitleFontSizeRequest = PreferenceRequest(prefDefaultSubtitleFontSizeKey, 24)
@@ -663,6 +664,7 @@ object PrefKeys {
     val prefBlacklistUserRequest = PreferenceRequest(prefBlacklistUserKey, false)
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
     val prefInterfaceModeRequest = PreferenceRequest(prefInterfaceModeKey, InterfaceMode.Auto.ordinal)
+    val prefNavSwitchModeRequest = PreferenceRequest(prefNavSwitchModeKey, NavSwitchMode.Auto.ordinal)
     val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Default.ordinal)
     val prefDefaultHomeTabRequest = PreferenceRequest(prefDefaultHomeTabKey, 0)
     val prefPortraitVideoFixModeRequest = PreferenceRequest(prefPortraitVideoFixModeKey, 0)

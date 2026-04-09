@@ -104,6 +104,7 @@ fun UgcContent(
 ) {
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger("UgcContent")
+    val navSwitchMode by Prefs.navSwitchModeFlow.collectAsState(Prefs.navSwitchMode)
 
     // 为当前选中的tab创建LazyGridState
     val currentLazyGridState = rememberLazyGridState()
@@ -211,6 +212,7 @@ fun UgcContent(
                 items = effectiveNavItems,
                 isLargePadding = !focusOnContent,
                 initialSelectedItem = selectedTab,
+                navSwitchMode = navSwitchMode,
                 onSelectedChanged = { nav ->
                     selectedTab = nav as UgcTopNavItem
                     // 取消非selectedTab的所有延迟加载

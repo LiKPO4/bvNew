@@ -452,13 +452,15 @@ fun VideoInfoScreen(
                     if (Prefs.isLogin) fetchFavoriteData(aid)
 
                     videoInfoRepository.relatedVideos.clear()
+                    videoInfoRepository.description = videoDetailViewModel.videoDetail?.description ?: ""
+                    videoInfoRepository.tags = videoDetailViewModel.videoDetail?.tags ?: emptyList()
                     if (!fromSeason) {
                         if (Prefs.isLogin) updateFollowingState()
 
                         videoInfoRepository.relatedVideos.addAll(
                             videoDetailViewModel.relatedVideos.subList(
                                 0,
-                                videoDetailViewModel.relatedVideos.size.takeIf { it < 16 } ?: 16))
+                                videoDetailViewModel.relatedVideos.size))
                     }
                     // 从播放器推荐视频打开时 fromPlayer=true 并显示loading。300m后 fromPlayer改成false，此后从播放器返回详情页，正常显示详情内容
                     //如果是从剧集跳转过来的或设置不显示视频详情，就直接播放 P1

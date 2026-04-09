@@ -5,7 +5,6 @@ plugins {
     alias(gradleLibs.plugins.compose.compiler)
     alias(gradleLibs.plugins.google.ksp)
     alias(gradleLibs.plugins.google.protobuf)
-    alias(gradleLibs.plugins.google.services) apply false
     alias(gradleLibs.plugins.kotlin.android)
     alias(gradleLibs.plugins.kotlin.serialization)
 }
@@ -96,7 +95,6 @@ dependencies {
     annotationProcessor(androidx.room.compiler)
     ksp(androidx.room.compiler)
     ksp(libs.koin.ksp.compiler)
-    api(platform("${libs.firebase.bom.get()}"))
     api(androidx.activity.compose)
     api(androidx.core.ktx)
     api(androidx.core.splashscreen)
@@ -131,8 +129,6 @@ dependencies {
     api(libs.coil.compose)
     api(libs.coil.gif)
     api(libs.coil.svg)
-    api(libs.firebase.analytics)
-    api(libs.firebase.crashlytics)
     api(libs.geetest.sensebot)
     api(libs.koin.android)
     api(libs.koin.annotations)

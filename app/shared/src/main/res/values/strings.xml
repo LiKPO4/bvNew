@@ -236,8 +236,6 @@
     <string name="settings_other_alpha_title">Alpha 版更新</string>
     <string name="settings_other_ffmpeg_audio_renderer_text">尝试使用 FFmpeg 播放硬解不兼容的音频</string>
     <string name="settings_other_ffmpeg_audio_renderer_title">启用音频软解</string>
-    <string name="settings_other_firebase_text">这将帮助开发者更快地发现与解决大部分问题</string>
-    <string name="settings_other_firebase_title">发送错误日志</string>
     <string name="settings_other_fps_text">在屏幕左上角显示 FPS，这需要重启 App</string>
     <string name="settings_other_fps_title">FPS 显示</string>
     <string name="settings_storage_calculating">计算中</string>
@@ -293,6 +291,10 @@
     <string name="interface_mode_auto">自动</string>
     <string name="interface_mode_tv">TV</string>
     <string name="interface_mode_mobile">Mobile</string>
+    <string name="nav_switch_mode_auto">自动切换</string>
+    <string name="nav_switch_mode_confirm">按确认键切换</string>
+    <string name="settings_ui_nav_switch_mode_title">导航切换模式</string>
+    <string name="settings_ui_nav_switch_mode_text">设置左侧菜单和顶部标签的切换方式</string>
 
     <string name="title_activity_anime_timeline">番剧放送时间表</string>
     <string name="title_activity_favorite">个人收藏</string>

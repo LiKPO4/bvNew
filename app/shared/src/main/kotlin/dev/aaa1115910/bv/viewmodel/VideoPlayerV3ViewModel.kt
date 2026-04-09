@@ -151,6 +151,8 @@ class VideoPlayerV3ViewModel(
     val availableVideoList get() = videoInfoRepository.videoList
     val preloadedVideoList get() = videoInfoRepository.preloadedVideoList
     val relatedVideos get() =  videoInfoRepository.relatedVideos
+    val videoDescription get() = videoInfoRepository.description
+    val videoTags get() = videoInfoRepository.tags
 
     var currentVideoHeight by mutableIntStateOf(0)
     var currentVideoWidth by mutableIntStateOf(0)

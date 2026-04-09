@@ -123,6 +123,7 @@ fun VideoPlayerController(
 
     onRequestFocus: () -> Unit,
     onShowComment: () -> Unit = {},
+    onShowDescription: () -> Unit = {},
     content: @Composable BoxScope.() -> Unit
 ) {
     val context = LocalContext.current
@@ -142,6 +143,7 @@ fun VideoPlayerController(
 
     var lastPressBack by remember { mutableLongStateOf(0L) }
     var lastPressDown by remember { mutableLongStateOf(0L) }
+    var longPressDownTriggered by remember { mutableStateOf(false) }
     var hasFocus by remember { mutableStateOf(false) }
 
     var goTime by remember { mutableLongStateOf(0L) }
@@ -323,7 +325,22 @@ fun VideoPlayerController(
                     }
 
                     Key.DirectionDown -> {
-                        if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                        if (it.type == KeyEventType.KeyDown) {
+                            if (it.nativeKeyEvent.isLongPress) {
+                                logger.info { "[${it.key} long press]" }
+                                longPressDownTriggered = true
+                                doublePressDownJob?.cancel()
+                                lastPressDown = 0L
+                                onLoadNextVideo(false)
+                            }
+                            return@onPreviewKeyEvent true
+                        }
+                        // KeyUp 阶段
+                        // 如果之前触发过长按事件，则不执行后续逻辑
+                        if (longPressDownTriggered) {
+                            longPressDownTriggered = false
+                            return@onPreviewKeyEvent true
+                        }
                         logger.info { "[${it.key} press]" }
                         if (videoPlayerConfigData.isLive) {
                             showInfo = true
@@ -528,6 +545,7 @@ fun VideoPlayerController(
             onSubtitleChange = onSubtitleChange,
             onLoadNextVideo = onLoadNextVideo,
             onShowComment = onShowComment,
+            onShowDescription = onShowDescription,
             onResolutionChange = onResolutionChange,
             onLiveQualityChange = onLiveQualityChange,
             viewerCountText = viewerCountText

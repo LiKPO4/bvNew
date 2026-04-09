@@ -64,6 +64,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.outlined.Comment
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.ArrowDropUp
@@ -141,6 +142,7 @@ fun ControllerVideoInfo(
     onSubtitleChange: (Subtitle) -> Unit,
     onLoadNextVideo: (Boolean) -> Unit,
     onShowComment: () -> Unit = {},
+    onShowDescription: () -> Unit = {},
     onResolutionChange: (Resolution) -> Unit = {},
     onLiveQualityChange: (Int) -> Unit = {},
     viewerCountText: String = "",
@@ -247,6 +249,7 @@ fun ControllerVideoInfo(
                 showNextVideoBtn = videoPlayerConfigData.showNextVideoBtn,
                 onLoadNextVideo = onLoadNextVideo,
                 onShowComment = onShowComment,
+                onShowDescription = onShowDescription,
                 availableResolutions = videoPlayerConfigData.availableResolutions,
                 currentResolution = videoPlayerConfigData.currentResolution,
                 onResolutionChange = onResolutionChange,
@@ -342,6 +345,7 @@ fun ControllerVideoInfoBottom(
     showNextVideoBtn: Boolean = false,
     onLoadNextVideo: (Boolean) -> Unit,
     onShowComment: () -> Unit = {},
+    onShowDescription: () -> Unit = {},
     availableResolutions: List<Resolution> = emptyList(),
     currentResolution: Resolution = Resolution.R240P,
     onResolutionChange: (Resolution) -> Unit = {},
@@ -433,6 +437,13 @@ fun ControllerVideoInfoBottom(
                 scale = 0.95f,
                 onClick = onShowComment,
                 fontWeight = FontWeight.Bold,
+                visible = !isLive
+            ),
+            ControlButton(
+                id = "description",
+                icon = Icons.Outlined.Info,
+                scale = 0.95f,
+                onClick = { onHideInfo(); onShowDescription() },
                 visible = !isLive
             ),
             ControlButton(

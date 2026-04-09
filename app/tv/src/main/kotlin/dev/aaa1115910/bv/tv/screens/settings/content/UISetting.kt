@@ -55,6 +55,7 @@ import androidx.tv.material3.Text
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.activities.LauncherActivity
 import dev.aaa1115910.bv.entity.InterfaceMode
+import dev.aaa1115910.bv.entity.NavSwitchMode
 import dev.aaa1115910.bv.entity.ThemeType
 import dev.aaa1115910.bv.tv.component.PgcTopNavItem
 import dev.aaa1115910.bv.tv.component.TvAlertDialog
@@ -85,6 +86,7 @@ fun UISetting(
     var showDensityDialog by remember { mutableStateOf(false) }
     var showThemeTypeDialog by remember { mutableStateOf(false) }
     var showInterfaceModeDialog by remember { mutableStateOf(false) }
+    var showNavSwitchModeDialog by remember { mutableStateOf(false) }
     var showDefaultHomeTabDialog by remember { mutableStateOf(false) }
     var showHomeNavItemsDialog by remember { mutableStateOf(false) }
     var showUgcNavItemsDialog by remember { mutableStateOf(false) }
@@ -93,6 +95,7 @@ fun UISetting(
     val density by Prefs.densityFlow.collectAsState(context.resources.displayMetrics.widthPixels / 960f)
     val themeType by Prefs.themeTypeFlow.collectAsState(Prefs.themeType)
     val interfaceMode = Prefs.interfaceMode
+    val navSwitchMode by Prefs.navSwitchModeFlow.collectAsState(Prefs.navSwitchMode)
     var defaultHomeTab by remember { mutableStateOf(HomeTopNavItem.entries.getOrElse(Prefs.defaultHomeTab) { HomeTopNavItem.Recommend }) }
     var showUGCVideoInfo by remember { mutableStateOf(Prefs.showUGCVideoInfo) }
     var videoInfoHistoryIncludeFromPlayer by remember { mutableStateOf(Prefs.videoInfoHistoryIncludeFromPlayer) }
@@ -121,6 +124,14 @@ fun UISetting(
                         supportText = stringResource(R.string.settings_ui_interface_mode_text),
                         valueText = interfaceMode.getDisplayName(context),
                         onClick = { showInterfaceModeDialog = true }
+                    )
+                }
+                item {
+                    SettingListItem(
+                        title = stringResource(R.string.settings_ui_nav_switch_mode_title),
+                        supportText = stringResource(R.string.settings_ui_nav_switch_mode_text),
+                        valueText = navSwitchMode.getDisplayName(context),
+                        onClick = { showNavSwitchModeDialog = true }
                     )
                 }
                 item {
@@ -259,6 +270,13 @@ fun UISetting(
                 LauncherActivity.actionRestart(context)
             }
         }
+    )
+
+    NavSwitchModeDialog(
+        show = showNavSwitchModeDialog,
+        onHideDialog = { showNavSwitchModeDialog = false },
+        navSwitchMode = navSwitchMode,
+        onNavSwitchModeChange = { Prefs.navSwitchMode = it }
     )
 
     DefaultHomeTabDialog(
@@ -424,6 +442,43 @@ fun InterfaceModeDialog(
                             trailingContent = {
                                 RadioButton(
                                     selected = interfaceMode == it,
+                                    onClick = null
+                                )
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+}
+
+@Composable
+fun NavSwitchModeDialog(
+    modifier: Modifier = Modifier,
+    show: Boolean,
+    onHideDialog: () -> Unit,
+    navSwitchMode: NavSwitchMode,
+    onNavSwitchModeChange: (NavSwitchMode) -> Unit
+) {
+    if (show) {
+        TvAlertDialog(
+            modifier = modifier,
+            onDismissRequest = { onHideDialog() },
+            title = { Text(text = stringResource(R.string.settings_ui_nav_switch_mode_title)) },
+            text = {
+                Column {
+                    NavSwitchMode.entries.forEach {
+                        ListItem(
+                            selected = navSwitchMode == it,
+                            onClick = { onNavSwitchModeChange(it) },
+                            headlineContent = {
+                                Text(text = it.getDisplayName(LocalContext.current))
+                            },
+                            trailingContent = {
+                                RadioButton(
+                                    selected = navSwitchMode == it,
                                     onClick = null
                                 )
                             }

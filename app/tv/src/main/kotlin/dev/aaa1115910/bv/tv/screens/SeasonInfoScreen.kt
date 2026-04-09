@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -170,6 +171,8 @@ fun SeasonInfoScreen(
         { avid, cid, epid, episodeTitle, startTime ->
             logger.debug { "onClickVideo: [avid=$avid, cid=$cid, epid=$epid, episodeTitle=$episodeTitle, startTime=$startTime]" }
             if (cid != 0L) {
+                videoInfoRepository.description = seasonViewModel.seasonData?.description ?: ""
+                videoInfoRepository.tags = emptyList()
                 launchPlayerActivity(
                     context = context,
                     avid = avid,
@@ -901,6 +904,52 @@ fun SeasonEpisodesDialog(
 }
 
 @Composable
+private fun SeasonEpisodeRowButton(
+    modifier: Modifier = Modifier,
+    hasFocus: Boolean = true,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (hasFocus) 1f else 0.4f,
+        label = "button scale",
+        animationSpec = tween(
+            durationMillis = 120
+        )
+    )
+
+    Surface(
+        modifier = modifier,
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
+            pressedContainerColor = MaterialTheme.colorScheme.inverseSurface
+        ),
+        shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.small),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, Color(0xFFE39B17)),
+                shape = MaterialTheme.shapes.small
+            )
+        ),
+        onClick = onClick
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = (40 * scale).dp, height = (42 * scale).dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                modifier = Modifier
+                    .size(32.dp)
+                    .rotate(90f),
+                imageVector = Icons.Rounded.ViewModule,
+                contentDescription = null
+            )
+        }
+    }
+}
+
+@Composable
 fun SeasonEpisodeRow(
     modifier: Modifier = Modifier,
     title: String,
@@ -935,12 +984,21 @@ fun SeasonEpisodeRow(
             .onFocusChanged { hasFocus = it.hasFocus },
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
+        Row(
             modifier = Modifier.padding(start = 50.dp),
-            text = title,
-            fontSize = titleFontSize.sp,
-            color = titleColor
-        )
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = title,
+                fontSize = titleFontSize.sp,
+                color = titleColor
+            )
+            SeasonEpisodeRowButton(
+                hasFocus = hasFocus,
+                onClick = { showEpisodesDialog = true }
+            )
+        }
 
         LazyRow(
             modifier = Modifier
@@ -950,31 +1008,6 @@ fun SeasonEpisodeRow(
             contentPadding = PaddingValues(horizontal = 32.dp),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            item {
-                Surface(
-                    modifier = modifier.size(60.dp, 80.dp),
-                    colors = ClickableSurfaceDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
-                        pressedContainerColor = MaterialTheme.colorScheme.inverseSurface
-                    ),
-                    shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
-                    onClick = { showEpisodesDialog = true }
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .rotate(90f),
-                            imageVector = Icons.Rounded.ViewModule,
-                            contentDescription = null
-                        )
-                    }
-                }
-            }
             itemsIndexed(
                 items = episodes,
                 key = { index, episode -> "$index-episode-${episode.id}" }

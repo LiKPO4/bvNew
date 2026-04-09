@@ -176,6 +176,7 @@ fun UgcRegionScaffold(
                                     title = ugcItem.title,
                                     cover = ugcItem.cover,
                                     upName = ugcItem.author,
+                                    upId = ugcItem.authorId,
                                     play = ugcItem.play,
                                     danmaku = ugcItem.danmaku,
                                     time = ugcItem.duration * 1000L,

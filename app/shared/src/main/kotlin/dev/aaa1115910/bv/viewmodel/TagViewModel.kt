@@ -63,6 +63,7 @@ class TagViewModel : ViewModel() {
                         title = tagVideoItem.title,
                         cover = tagVideoItem.pic,
                         upName = tagVideoItem.owner.name,
+                        upId = tagVideoItem.owner.mid,
                         play = tagVideoItem.stat.view,
                         danmaku = tagVideoItem.stat.danmaku,
                         time = tagVideoItem.duration * 1000L,

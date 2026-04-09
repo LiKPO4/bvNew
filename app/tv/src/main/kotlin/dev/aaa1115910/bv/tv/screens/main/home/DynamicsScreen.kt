@@ -81,6 +81,7 @@ fun DynamicsScreen(
                     title = item.title,
                     cover = item.cover,
                     upName = item.author,
+                    upId = item.authorId,
                     play = item.play,
                     danmaku = item.danmaku,
                     time = item.duration * 1000L,

@@ -8,11 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -20,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -42,9 +41,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.LocalContentColor
-import androidx.tv.material3.Tab
-import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.biliapi.entity.live.LiveRoomItem
@@ -52,6 +48,7 @@ import dev.aaa1115910.biliapi.entity.ugc.toSmartDate
 import dev.aaa1115910.biliapi.repositories.SearchType
 import dev.aaa1115910.biliapi.repositories.SearchTypeResult
 import dev.aaa1115910.bv.R
+import dev.aaa1115910.bv.entity.NavSwitchMode
 import dev.aaa1115910.bv.tv.component.videocard.SeasonCard
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
@@ -61,6 +58,8 @@ import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoPlayerV3Activity
+import dev.aaa1115910.bv.tv.component.TopNav
+import dev.aaa1115910.bv.tv.component.TopNavItem
 import dev.aaa1115910.bv.tv.component.live.LiveRoomCard
 import dev.aaa1115910.bv.tv.screens.user.UpCard
 import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
@@ -84,8 +83,10 @@ fun SearchResultScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger { }
+    val navSwitchMode by Prefs.navSwitchModeFlow.collectAsState(Prefs.navSwitchMode)
     val tabRowFocusRequester = remember { FocusRequester() }
     val listFocusRestorer = rememberTvLazyListFocusRestorer()
+    val searchTopNavItems = remember { SearchType.entries.map(::SearchTopNavItem) }
 
     var rowSize by remember { mutableIntStateOf(4) }
     var currentIndex by remember { mutableIntStateOf(0) }
@@ -244,41 +245,25 @@ fun SearchResultScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                TabRow(
-                    selectedTabIndex = searchResultViewModel.searchType.ordinal,
-                    separator = { Spacer(modifier = Modifier.width(12.dp)) },
-                ) {
-                    SearchType.entries.forEach { type ->
-                        val isSelected = type == searchResultViewModel.searchType
-                        val tabModifier =
-                            if (isSelected) Modifier.focusRequester(tabRowFocusRequester) else Modifier
-                        Tab(
-                            modifier = tabModifier,
-                            selected = isSelected,
-                            onFocus = {
-                                scope.launch {
-                                    searchResultViewModel.searchType = type
-                                    searchResultViewModel.init(type)
-                                }
-                            },
-                        ) {
-                            Text(
-                                text = type.getDisplayName(context),
-                                fontSize = 12.sp,
-                                color = LocalContentColor.current,
-                                modifier = Modifier.padding(
-                                    horizontal = 16.dp,
-                                    vertical = 6.dp
-                                )
-                            )
+            TopNav(
+                paddingTop = 0.dp,
+                items = searchTopNavItems,
+                isLargePadding = false,
+                initialSelectedItem = searchTopNavItems.firstOrNull {
+                    it.searchType == searchResultViewModel.searchType
+                },
+                navSwitchMode = navSwitchMode,
+                tabFocusRequester = tabRowFocusRequester,
+                onSelectedChanged = { selectedItem ->
+                    val selectedSearchType = (selectedItem as SearchTopNavItem).searchType
+                    if (searchResultViewModel.searchType != selectedSearchType) {
+                        scope.launch {
+                            searchResultViewModel.searchType = selectedSearchType
+                            searchResultViewModel.init(selectedSearchType)
                         }
                     }
                 }
-            }
+            )
             ProvideListBringIntoViewSpec(padding = 26.dp) {
                 LazyVerticalGrid(
                     modifier = listFocusRestorer.containerModifier(
@@ -338,6 +323,14 @@ fun SearchResultScreen(
         onSelectedPartitionChange = { searchResultViewModel.selectedPartition = it },
         onSelectedChildPartitionChange = { searchResultViewModel.selectedChildPartition = it }
     )
+}
+
+private data class SearchTopNavItem(
+    val searchType: SearchType
+) : TopNavItem {
+    override fun getDisplayName(context: Context): String {
+        return searchType.getDisplayName(context)
+    }
 }
 
 private fun searchResultItemKey(item: SearchTypeResult.SearchTypeResultItem): Any {

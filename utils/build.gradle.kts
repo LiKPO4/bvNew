@@ -52,12 +52,9 @@ java {
 }
 
 dependencies {
-    implementation(platform("${libs.firebase.bom.get()}"))
     implementation(androidx.compose.tv.foundation)
     implementation(androidx.compose.ui)
     implementation(androidx.core.ktx)
-    implementation(libs.firebase.analytics)
-    implementation(libs.firebase.crashlytics)
     implementation(libs.logging)
     implementation(libs.material)
 }
