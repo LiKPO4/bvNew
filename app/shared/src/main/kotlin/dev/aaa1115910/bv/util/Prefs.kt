@@ -521,6 +521,15 @@ object Prefs {
     var playerNextVideoStrategyOrder: String
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPlayerNextVideoStrategyOrderRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerNextVideoStrategyOrderKey, value) }
+
+    // 0 = 打开菜单, 1 = 加速播放
+    var playerLongPressAction: Int
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPlayerLongPressActionRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerLongPressActionKey, value) }
+
+    var playerLongPressSpeed: Float
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPlayerLongPressSpeedRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerLongPressSpeedKey, value) }
 }
 
 object PrefKeys {
@@ -602,6 +611,8 @@ object PrefKeys {
     val prefDefaultDanmakuFilterLevelKey = intPreferencesKey("default_danmaku_filter_level")
     val prefDefaultLiveDanmakuFilterLevelKey = intPreferencesKey("default_live_danmaku_filter_level")
     val prefPlayerNextVideoStrategyOrderKey = stringPreferencesKey("player_next_video_strategy_order")
+    val prefPlayerLongPressActionKey = intPreferencesKey("player_long_press_action")
+    val prefPlayerLongPressSpeedKey = floatPreferencesKey("player_long_press_speed")
 
 
     val prefIsLoginRequest = PreferenceRequest(prefIsLoginKey, false)
@@ -668,7 +679,7 @@ object PrefKeys {
     val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Default.ordinal)
     val prefDefaultHomeTabRequest = PreferenceRequest(prefDefaultHomeTabKey, 0)
     val prefPortraitVideoFixModeRequest = PreferenceRequest(prefPortraitVideoFixModeKey, 0)
-    val prefPlayerShowDebugInfoRequest = PreferenceRequest(prefPlayerShowDebugInfoKey, true)
+    val prefPlayerShowDebugInfoRequest = PreferenceRequest(prefPlayerShowDebugInfoKey, false)
     val prefPlayerExitWhenAllIsPlayedRequest = PreferenceRequest(prefPlayerExitWhenAllIsPlayedKey, true)
     val prefPlayerSeekForwardStepRequest = PreferenceRequest(prefPlayerSeekForwardStepKey, 10)
     val prefPlayerSeekBackwardStepRequest = PreferenceRequest(prefPlayerSeekBackwardStepKey, 5)
@@ -700,4 +711,6 @@ object PrefKeys {
         key = prefPlayerNextVideoStrategyOrderKey,
         defaultValue = "0,1,2"
     )
+    val prefPlayerLongPressActionRequest = PreferenceRequest(prefPlayerLongPressActionKey, 1)
+    val prefPlayerLongPressSpeedRequest = PreferenceRequest(prefPlayerLongPressSpeedKey, 2f)
 }

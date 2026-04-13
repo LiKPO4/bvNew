@@ -50,11 +50,13 @@ import kotlinx.coroutines.launch
  *
  * @param comment 评论数据
  * @param modifier 修饰符
+ * @param onLongClick 长按回调
  */
 @Composable
 fun SubCommentItem(
     comment: Comment,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLongClick: () -> Unit = {}
 ) {
     // 子评论有焦点边框，但不响应点击
     Surface(
@@ -62,6 +64,7 @@ fun SubCommentItem(
             .fillMaxWidth()
             .focusedBorder(MaterialTheme.shapes.small),
         onClick = { /* 空回调，不执行任何操作 */ },
+        onLongClick = onLongClick,
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
             focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
@@ -137,10 +140,12 @@ fun SubCommentItem(
  * 子评论根评论显示组件（只读，右键展开/收起，展开后下键滚动）
  *
  * @param comment 评论数据
+ * @param onLongClick 长按回调
  */
 @Composable
 fun SubCommentRootItem(
-    comment: Comment
+    comment: Comment,
+    onLongClick: () -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
     var contentExceedsLimit by remember { mutableStateOf(false) }
@@ -151,6 +156,7 @@ fun SubCommentRootItem(
 
     Surface(
         onClick = { /* 右键展开/收起 */ },
+        onLongClick = onLongClick,
         modifier = Modifier
             .focusRequester(focusRequester)
             .onPreviewKeyEvent { event ->

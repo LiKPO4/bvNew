@@ -8,8 +8,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.lifecycle.lifecycleScope
-import com.kuaishou.akdanmaku.render.SimpleRenderer
-import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.biliapi.http.BiliHttpApi
 import dev.aaa1115910.bv.R
@@ -61,7 +59,6 @@ class VideoPlayerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         initVideoPlayer()
-        initDanmakuPlayer()
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
             BVMobileTheme {
@@ -92,12 +89,6 @@ class VideoPlayerActivity : ComponentActivity() {
         playerViewModel.videoPlayer = videoPlayer
         //TODO 还没处理旋转后的一些判断，就先放这了
         parseIntent()
-    }
-
-    private fun initDanmakuPlayer() {
-        if (playerViewModel.danmakuPlayer != null) return
-        logger.fInfo { "initDanmakuPlayer" }
-        playerViewModel.danmakuPlayer = DanmakuPlayer(SimpleRenderer())
     }
 
     private fun parseIntent() {
@@ -149,17 +140,14 @@ class VideoPlayerActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        playerViewModel.videoPlayer?.release()
         if (isFinishing) {
-            playerViewModel.videoPlayer = null
-            playerViewModel.danmakuPlayer = null
+            playerViewModel.releasePlayerResources("onDestroy")
         }
     }
 
     override fun onPause() {
         playerViewModel.videoPlayer?.isInBackground = true
         playerViewModel.videoPlayer?.pause()
-        playerViewModel.danmakuPlayer?.pause()
         super.onPause()
     }
 }

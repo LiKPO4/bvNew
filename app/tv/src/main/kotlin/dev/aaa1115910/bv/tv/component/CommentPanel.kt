@@ -124,6 +124,10 @@ fun CommentPanel(
     var selectedCommentIndex by remember { mutableStateOf(0) }
     var focusedCommentIndex by remember { mutableStateOf(0) }
 
+    // 全屏图片查看器状态
+    var showImageViewer by remember { mutableStateOf(false) }
+    var imageViewerPictures by remember { mutableStateOf<List<dev.aaa1115910.biliapi.entity.Picture>>(emptyList()) }
+
     // 选集相关状态
     var currentEpisode by remember { mutableStateOf<Episode?>(null) }
     var focusOnSidebar by remember { mutableStateOf(false) }
@@ -510,6 +514,12 @@ fun CommentPanel(
                                             selectedRootComment = comment
                                             showSubCommentPanel = true
                                         }
+                                    },
+                                    onLongClick = {
+                                        if (comment.pictures.isNotEmpty()) {
+                                            imageViewerPictures = comment.pictures
+                                            showImageViewer = true
+                                        }
                                     }
                                 )
                             }
@@ -562,6 +572,17 @@ fun CommentPanel(
             onHide = {
                 showSubCommentPanel = false
                 selectedRootComment = null
+            }
+        )
+    }
+
+    // 全屏图片查看器
+    if (showImageViewer && imageViewerPictures.isNotEmpty()) {
+        FullscreenImageViewer(
+            pictures = imageViewerPictures,
+            onDismiss = {
+                showImageViewer = false
+                imageViewerPictures = emptyList()
             }
         )
     }

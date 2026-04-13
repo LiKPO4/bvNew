@@ -238,7 +238,7 @@ class ExoMediaPlayer(
     override val debugInfo: String
         get() {
             if (!options.showDebugInfo) return ""
-            return """
+            val base = """
                 player: ${androidx.media3.common.MediaLibraryInfo.VERSION_SLASHY}
                 time: ${currentPosition.formatHourMinSec()} / ${duration.formatHourMinSec()}
                 buffered: $bufferedPercentage%
@@ -248,6 +248,7 @@ class ExoMediaPlayer(
                 video codec: ${mPlayer?.videoFormat?.sampleMimeType ?: "null"}
                 audio codec: ${mPlayer?.audioFormat?.sampleMimeType ?: "null"} (${getAudioRendererName()})
             """.trimIndent()
+            return if (extraDebugInfo.isNotEmpty()) "$base\n$extraDebugInfo" else base
         }
 
     private fun getAudioRendererName(): String {

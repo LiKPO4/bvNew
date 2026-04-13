@@ -104,7 +104,7 @@ fun SkipTip(
                 }
             ) {
                 Text(
-                    modifier = Modifier.padding(8.dp),
+                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
                     text = text,
                     style = MaterialTheme.typography.titleLarge
                 )

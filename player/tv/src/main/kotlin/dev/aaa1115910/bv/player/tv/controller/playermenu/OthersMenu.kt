@@ -39,6 +39,7 @@ import dev.aaa1115910.bv.util.ifElse
 fun OthersMenuList(
     modifier: Modifier = Modifier,
     onPlayModeChange: (PlayMode) -> Unit,
+    onDebugInfoChange: (Boolean) -> Unit = {},
     onFocusStateChange: (MenuFocusState) -> Unit
 ) {
     val context = LocalContext.current
@@ -72,6 +73,19 @@ fun OthersMenuList(
                         items = availableModes.map { it.getDisplayName(context) },
                         selected = availableModes.indexOf(effectivePlayMode),
                         onSelectedChanged = { onPlayModeChange(availableModes[it]) },
+                        onFocusBackToParent = {
+                            onFocusStateChange(MenuFocusState.Menu)
+                            parentMenuFocusRequester.requestFocus()
+                        }
+                    )
+                }
+
+                VideoPlayerOthersMenuItem.DebugInfo -> {
+                    RadioMenuList(
+                        modifier = menuItemsModifier,
+                        items = listOf("关闭", "开启"),
+                        selected = if (videoPlayerConfigData.showDebugInfo) 1 else 0,
+                        onSelectedChanged = { onDebugInfoChange(it == 1) },
                         onFocusBackToParent = {
                             onFocusStateChange(MenuFocusState.Menu)
                             parentMenuFocusRequester.requestFocus()

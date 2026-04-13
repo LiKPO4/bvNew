@@ -1,7 +1,6 @@
 [versions]
 accompanist = "0.36.0"
 brotli = "0.1.2"
-#akdanmaku = "1.0.0"
 androidsvg = "1.4"
 coil = "2.7.0"
 geetest-sensebot = "4.4.4"
@@ -32,9 +31,6 @@ uiUtil = "1.10.6"
 [libraries]
 # https://google.github.io/accompanist/
 accompanist-systemuicontroller = { module = "com.google.accompanist:accompanist-systemuicontroller", version.ref = "accompanist" }
-
-# https://github.com/shenbengit/AkDanmaku
-#akdanmaku = { module = "com.github.shenbengit:AkDanmaku", version.ref = "akdanmaku" }
 
 # https://github.com/BigBadaboom/androidsvg
 androidSvg = { module = "com.caverock:androidsvg-aar", version.ref = "androidsvg" }

@@ -84,7 +84,8 @@ fun MenuController(
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
-    onPlayModeChange: (PlayMode) -> Unit
+    onPlayModeChange: (PlayMode) -> Unit,
+    onDebugInfoChange: (Boolean) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val defaultFocusRequester = remember { FocusRequester() }
@@ -123,7 +124,8 @@ fun MenuController(
                 onSubtitleSizeChange = onSubtitleSizeChange,
                 onSubtitleBackgroundOpacityChange = onSubtitleBackgroundOpacityChange,
                 onSubtitleBottomPadding = onSubtitleBottomPadding,
-                onPlayModeChange = onPlayModeChange
+                onPlayModeChange = onPlayModeChange,
+                onDebugInfoChange = onDebugInfoChange
             )
         }
     }
@@ -152,7 +154,8 @@ fun MenuController(
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
-    onPlayModeChange: (PlayMode) -> Unit
+    onPlayModeChange: (PlayMode) -> Unit,
+    onDebugInfoChange: (Boolean) -> Unit = {}
 ) {
     var selectedNavItem by remember { mutableStateOf(VideoPlayerMenuNavItem.Picture) }
     var focusState by remember { mutableStateOf(MenuFocusState.MenuNav) }
@@ -195,7 +198,8 @@ fun MenuController(
                     onSubtitleSizeChange = onSubtitleSizeChange,
                     onSubtitleBackgroundOpacityChange = onSubtitleBackgroundOpacityChange,
                     onSubtitleBottomPadding = onSubtitleBottomPadding,
-                    onPlayModeChange = onPlayModeChange
+                    onPlayModeChange = onPlayModeChange,
+                    onDebugInfoChange = onDebugInfoChange
                 )
                 MenuNavList(
                     modifier = Modifier
@@ -243,6 +247,7 @@ private fun MenuList(
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
     onPlayModeChange: (PlayMode) -> Unit,
+    onDebugInfoChange: (Boolean) -> Unit = {},
     onFocusStateChange: (MenuFocusState) -> Unit
 ) {
     Box(
@@ -290,6 +295,7 @@ private fun MenuList(
             VideoPlayerMenuNavItem.Others -> {
                 OthersMenuList(
                     onPlayModeChange = onPlayModeChange,
+                    onDebugInfoChange = onDebugInfoChange,
                     onFocusStateChange = onFocusStateChange
                 )
             }

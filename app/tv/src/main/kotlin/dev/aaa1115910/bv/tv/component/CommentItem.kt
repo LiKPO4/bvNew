@@ -49,18 +49,21 @@ import dev.aaa1115910.bv.util.focusedBorder
  * @param comment 评论数据
  * @param modifier 修饰符
  * @param onClick 点击回调
+ * @param onLongClick 长按回调
  */
 @Composable
 fun CommentItem(
     comment: Comment,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {}
 ) {
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .focusedBorder(MaterialTheme.shapes.small),
         onClick = onClick,
+        onLongClick = onLongClick,
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
             focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),

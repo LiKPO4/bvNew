@@ -81,6 +81,9 @@ abstract class AbstractVideoPlayer {
     /** 调试信息 */
     abstract val debugInfo: String
 
+    /** 额外调试信息（由外部拼接） */
+    var extraDebugInfo: String = ""
+
     /** 视频宽度 */
     abstract val videoWidth: Int
 

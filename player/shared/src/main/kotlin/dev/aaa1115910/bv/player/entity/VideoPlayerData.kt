@@ -149,6 +149,9 @@ data class VideoPlayerConfigData(
     val controllerButtonsOrder: String = "",
     val availableLiveCodecs: List<LiveCodec> = LiveCodec.entries,
     val currentLiveCodec: LiveCodec = LiveCodec.HLS,
+    val showDebugInfo: Boolean = false,
+    val longPressAction: Int = 0, // 0 = 打开菜单, 1 = 加速播放
+    val longPressSpeed: Float = 2f,
 )
 
 data class VideoPlayerDanmakuMasksData(

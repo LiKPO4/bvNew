@@ -221,7 +221,7 @@ fun DanmakuMenuList(
                             index == 0,
                             Modifier.focusRequester(parentMenuPositionFocusRequester)
                         ),
-                    text = item.getDisplayName(context),
+                    text = item.getDisplayName(context, isLive = videoPlayerConfigData.isLive),
                     selected = selectedDanmakuMenuItem == item,
                     onClick = {},
                     onFocus = { selectedDanmakuMenuItem = item },

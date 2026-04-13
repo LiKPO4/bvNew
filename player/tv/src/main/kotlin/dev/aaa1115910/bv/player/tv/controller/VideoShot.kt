@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import dev.aaa1115910.biliapi.entity.video.VideoShot
+import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.tv.VideoSeekBar
 import dev.aaa1115910.bv.player.util.getImage
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -96,12 +98,21 @@ fun VideoShotImage(
     bitmap: ImageBitmap
 ) {
     val view = LocalView.current
+    val rotation = LocalVideoPlayerConfigData.current.currentVideoRotation
 
     Image(
         modifier = modifier
             .height(100.dp)
             .shadow(4.dp, MaterialTheme.shapes.medium)
             .clip(MaterialTheme.shapes.medium)
+            .graphicsLayer {
+                rotationZ = rotation.degrees
+                if (rotation.shouldSwapDimensions && size.maxDimension > 0) {
+                    val s = size.minDimension / size.maxDimension
+                    scaleX = s
+                    scaleY = s
+                }
+            }
             .drawBehind {
                 if (view.isInEditMode) {
                     drawLine(Color.White, Offset(center.x, 0f), Offset(center.x, size.height), 2f)

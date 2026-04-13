@@ -124,7 +124,7 @@ dependencies {
     api(androidx.room.runtime)
     api(androidx.webkit)
     api(libs.accompanist.systemuicontroller)
-    api(project(":akdanmaku"))
+//    api(project(":akdanmaku"))
 //    api(libs.akdanmaku)
     api(libs.coil.compose)
     api(libs.coil.gif)

@@ -1,6 +1,7 @@
 package dev.aaa1115910.bv.player.tv
 
 import android.os.CountDownTimer
+import android.os.SystemClock
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
@@ -30,12 +31,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.tv.material3.Text
-import com.kuaishou.akdanmaku.DanmakuConfig
-import com.kuaishou.akdanmaku.data.DanmakuItemData
-import com.kuaishou.akdanmaku.ecs.component.filter.LevelFilter
-import com.kuaishou.akdanmaku.ecs.component.filter.TypeFilter
-import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
-import com.kuaishou.akdanmaku.ui.DanmakuPlayer
+import dev.aaa1115910.bv.player.danmaku.DanmakuConfig
+import dev.aaa1115910.bv.player.danmaku.DanmakuView
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMaskFrame
 import dev.aaa1115910.biliapi.http.entity.video.ClipType
 import dev.aaa1115910.biliapi.entity.video.Subtitle
@@ -77,8 +74,8 @@ import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.formatHourMinSec
 import dev.aaa1115910.bv.util.ifElse
 import dev.aaa1115910.bv.util.requestFocus
-import dev.aaa1115910.bv.util.timeTask
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -86,14 +83,14 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Calendar
-import java.util.Timer
 import kotlin.math.max
+
+private const val HEARTBEAT_MIN_INTERVAL_MS = 14_000L
 
 @Composable
 fun BvPlayer(
     modifier: Modifier = Modifier,
     videoPlayer: AbstractVideoPlayer,
-    danmakuPlayer: DanmakuPlayer?,
     playerSeekForwardStep: Int = 10,
     playerSeekBackwardStep: Int = 5,
     showBottomProgressBar: Boolean = false,
@@ -123,6 +120,7 @@ fun BvPlayer(
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
     onPlayModeChange: (PlayMode) -> Unit,
+    onDebugInfoChange: (Boolean) -> Unit = {},
     onToggleRelatedVideos: (Boolean) -> Unit = {},
     onOpenUpSpace: () -> Unit = {},
     onShowDanmakuChange: (Boolean) -> Unit = {},
@@ -138,6 +136,7 @@ fun BvPlayer(
     ) -> Unit = { _, _, _, _ -> },
     onViewerCountTipCanShowChanged: (Boolean) -> Unit = {},
     viewerCountText: String = "",
+    danmakuView: DanmakuView,
 ) {
 //    // 调试重组次数: AtomicInteger，不被 Compose 追踪，只记录真实由外部状态引起的重组次数。
 //    val recomposeCounter = remember { java.util.concurrent.atomic.AtomicInteger(0) }
@@ -150,6 +149,7 @@ fun BvPlayer(
     val logger = KotlinLogging.logger("BvPlayer")
     //val tvVideoPlayerData = LocalTvVideoPlayerData.current
     val videoPlayerConfigData = LocalVideoPlayerConfigData.current
+    val currentConfigData by rememberUpdatedState(videoPlayerConfigData)
     val videoPlayerDanmakuMaskData = LocalVideoPlayerDanmakuMasksData.current
     val videoPlayerHistoryData = LocalVideoPlayerHistoryData.current
     val videoPlayerLoadStateData = LocalVideoPlayerLoadStateData.current
@@ -159,9 +159,6 @@ fun BvPlayer(
 
     val focusRequester = remember { FocusRequester() }
 
-    // 直接调用 danmakuPlayer 会始终为 null
-    var mDanmakuPlayer: DanmakuPlayer? by remember { mutableStateOf(null) }
-
     var showLogs by remember { mutableStateOf(false) }
     var showBackToHistory by remember { mutableStateOf(false) }
     var isPlaying by rememberSaveable { mutableStateOf(false) }
@@ -170,8 +167,6 @@ fun BvPlayer(
     var exception by remember { mutableStateOf<Exception?>(null) }
     //var proxyArea by remember { mutableStateOf(ProxyArea.MainLand) }
 
-    val typeFilter by remember { mutableStateOf(TypeFilter()) }
-    val levelFilter by remember { mutableStateOf(LevelFilter()) }
     var danmakuConfig by remember { mutableStateOf(DanmakuConfig()) }
 
     val seekState = remember { VideoPlayerSeekState() }
@@ -182,6 +177,8 @@ fun BvPlayer(
     var lastPlayed by remember { mutableLongStateOf(0L) }
     var defaultAspectRatio by remember { mutableFloatStateOf(16 / 9f) }
     var showInfoProvider: () -> Boolean by remember { mutableStateOf({ false }) }
+    val lastHeartbeatReportAtMs = remember { java.util.concurrent.atomic.AtomicLong(0L) }
+    val lastHeartbeatTime = remember { java.util.concurrent.atomic.AtomicInteger(Int.MIN_VALUE) }
 
     val clockState = remember { VideoPlayerClockState() }
 
@@ -228,8 +225,7 @@ fun BvPlayer(
                                 // 显示提示后短暂延迟再跳转
                                 delay(1500)
                                 videoPlayer.seekTo(clipInfo.end * 1000L)
-                                mDanmakuPlayer?.seekTo(clipInfo.end * 1000L)
-                                mDanmakuPlayer?.pause()
+                                danmakuView.notifySeek(clipInfo.end * 1000L)
                                 videoPlayer.start()
                                 showSkipOpTip = false
                             }
@@ -245,8 +241,7 @@ fun BvPlayer(
                                 showSkipEdTip = true
                                 delay(1500)
                                 videoPlayer.seekTo(clipInfo.end * 1000L)
-                                mDanmakuPlayer?.seekTo(clipInfo.end * 1000L)
-                                mDanmakuPlayer?.pause()
+                                danmakuView.notifySeek(clipInfo.end * 1000L)
                                 videoPlayer.start()
                                 showSkipEdTip = false
                             }
@@ -260,60 +255,33 @@ fun BvPlayer(
     }
 
 
-    // 独立弹幕层句柄（Stable），父级重组频率降低
-    val danmakuLayerHandle = remember { DanmakuLayerHandle() }
-
     val syncDanmakuConfig: () -> Unit = {
         val danmakuTypes = videoPlayerConfigData.currentDanmakuEnabledList
-        typeFilter.clear()
-        if (!danmakuTypes.contains(DanmakuType.All)) {
-            val types = DanmakuType.entries.toMutableList()
-            types.remove(DanmakuType.All)
-            types.removeAll(danmakuTypes)
-            val filterTypes = types.mapNotNull {
-                when (it) {
-                    DanmakuType.Rolling -> DanmakuItemData.DANMAKU_MODE_ROLLING
-                    DanmakuType.Top -> DanmakuItemData.DANMAKU_MODE_CENTER_TOP
-                    DanmakuType.Bottom -> DanmakuItemData.DANMAKU_MODE_CENTER_BOTTOM
-                    else -> null
-                }
-            }
-            filterTypes.forEach { typeFilter.addFilterItem(it) }
-        }
-        levelFilter.minLevel = if (videoPlayerConfigData.isLive) videoPlayerConfigData.currentLiveDanmakuFilterLevel else videoPlayerConfigData.currentDanmakuFilterLevel
+        val allowAll = danmakuTypes.contains(DanmakuType.All)
+        val filterLevel = if (videoPlayerConfigData.isLive) videoPlayerConfigData.currentLiveDanmakuFilterLevel else videoPlayerConfigData.currentDanmakuFilterLevel
+        val factor = videoPlayerConfigData.currentDanmakuRollingDurationFactor
+        val durationMultiplier = 2f - factor
         danmakuConfig = danmakuConfig.copy(
-            retainerPolicy = RETAINER_BILIBILI,
-            textSizeScale = videoPlayerConfigData.currentDanmakuScale,
-            dataFilter = listOf(typeFilter, levelFilter),
-            visibility = videoPlayerConfigData.showDanmaku,
-            rollingDurationFactor = videoPlayerConfigData.currentDanmakuRollingDurationFactor
+            enabled = videoPlayerConfigData.showDanmaku,
+            textSizeScale = (videoPlayerConfigData.currentDanmakuScale * 100).toInt(),
+            allowScroll = allowAll || danmakuTypes.contains(DanmakuType.Rolling),
+            allowTop = allowAll || danmakuTypes.contains(DanmakuType.Top),
+            allowBottom = allowAll || danmakuTypes.contains(DanmakuType.Bottom),
+            minLevel = filterLevel,
+            durationMultiplier = durationMultiplier,
         )
-        danmakuConfig.updateVisibility()
-        danmakuConfig.updateFilter()
         logger.info { "Sync danmaku config: $danmakuConfig" }
-        mDanmakuPlayer?.updateConfig(danmakuConfig)
     }
 
     val updateDanmakuConfigTypeFilter: () -> Unit = {
         val danmakuTypes = videoPlayerConfigData.currentDanmakuEnabledList
-        typeFilter.clear()
-        if (!danmakuTypes.contains(DanmakuType.All)) {
-            val types = DanmakuType.entries.toMutableList()
-            types.remove(DanmakuType.All)
-            types.removeAll(danmakuTypes)
-            val filterTypes = types.mapNotNull {
-                when (it) {
-                    DanmakuType.Rolling -> DanmakuItemData.DANMAKU_MODE_ROLLING
-                    DanmakuType.Top -> DanmakuItemData.DANMAKU_MODE_CENTER_TOP
-                    DanmakuType.Bottom -> DanmakuItemData.DANMAKU_MODE_CENTER_BOTTOM
-                    else -> null
-                }
-            }
-            filterTypes.forEach { typeFilter.addFilterItem(it) }
-        }
-        logger.info { "Update danmaku type filters: ${typeFilter.filterSet}" }
-        danmakuConfig.updateFilter()
-        mDanmakuPlayer?.updateConfig(danmakuConfig)
+        val allowAll = danmakuTypes.contains(DanmakuType.All)
+        danmakuConfig = danmakuConfig.copy(
+            allowScroll = allowAll || danmakuTypes.contains(DanmakuType.Rolling),
+            allowTop = allowAll || danmakuTypes.contains(DanmakuType.Top),
+            allowBottom = allowAll || danmakuTypes.contains(DanmakuType.Bottom),
+        )
+        logger.info { "Update danmaku type filters" }
     }
 
     val updateVideoAspectRatio: () -> Unit = {
@@ -326,27 +294,47 @@ fun BvPlayer(
         logger.info { "Update video player aspectRatio: $aspectRatioValue" }
     }
 
-    val sendHeartbeat: () -> Unit = {
-        scope.launch(Dispatchers.IO) {
-            val time = withContext(Dispatchers.Main) {
-                val currentTime = (videoPlayer.currentPosition.coerceAtLeast(0L) / 1000).toInt()
-                val totalTime = (videoPlayer.duration.coerceAtLeast(0L) / 1000).toInt()
+    val sendHeartbeat: (CoroutineScope, Boolean) -> Unit = heartbeat@{ launchScope, fromPlaybackEnd ->
+        // 在主线程直接读取播放器状态，避免 IO→Main→IO 双重分发
+        val currentTime = (videoPlayer.currentPosition.coerceAtLeast(0L) / 1000).toInt()
+        val totalTime = (videoPlayer.duration.coerceAtLeast(0L) / 1000).toInt()
 
-                if (totalTime == 0) {
-                    -2 // 无法正常播放
-                } else if (currentTime >= totalTime - 1) {
-                    if (videoPlayerPaymentData.needPay) {
-                        currentTime // 试看结束不能按完整播放上报 -1
-                    } else {
-                        -1 // 播放完后上报的时间应为 -1
-                    }
-                } else {
-                    currentTime // 播放中上报当前时间
-                }
+        val time = if (totalTime == 0) {
+            -2 // 无法正常播放
+        } else if (currentTime >= totalTime - 1) {
+            if (videoPlayerPaymentData.needPay) {
+                currentTime // 试看结束不能按完整播放上报 -1
+            } else {
+                -1 // 播放完后上报的时间应为 -1
             }
-            if (time > -2) {
-                onSendHeartbeat(time)
+        } else {
+            currentTime // 播放中上报当前时间
+        }
+        if (time <= -2) return@heartbeat
+
+        val nowElapsedMs = SystemClock.elapsedRealtime()
+        val previousHeartbeatAtMs = lastHeartbeatReportAtMs.get()
+        val previousHeartbeatTime = lastHeartbeatTime.get()
+        val hasReachedMinInterval =
+            previousHeartbeatAtMs == 0L || nowElapsedMs - previousHeartbeatAtMs >= HEARTBEAT_MIN_INTERVAL_MS
+        val hasProgressChanged = previousHeartbeatTime != time
+        val canReport = if (fromPlaybackEnd) {
+            hasProgressChanged
+        } else {
+            hasReachedMinInterval && hasProgressChanged
+        }
+
+        if (!canReport) {
+            logger.debug {
+                "Skip heartbeat: time=$time, lastTime=$previousHeartbeatTime, elapsed=${nowElapsedMs - previousHeartbeatAtMs}ms, fromPlaybackEnd=$fromPlaybackEnd"
             }
+            return@heartbeat
+        }
+
+        lastHeartbeatReportAtMs.set(nowElapsedMs)
+        lastHeartbeatTime.set(time)
+        launchScope.launch(Dispatchers.IO) {
+            onSendHeartbeat(time)
         }
     }
 
@@ -411,26 +399,21 @@ fun BvPlayer(
                 onPlaySpeedChange(currentPlaySpeed)
                 logger.info { "Reset default play speed: $currentPlaySpeed" }
                 videoPlayer.speed = currentPlaySpeed
-                mDanmakuPlayer?.updatePlaySpeed(currentPlaySpeed)
             }
         }
 
         override fun onPlay() {
             logger.info { "onPlay" }
             scope.launch(Dispatchers.Main) {
-                // 同步弹幕到视频当前位置
-                val currentPosition = videoPlayer.currentPosition
-                mDanmakuPlayer?.seekTo(currentPosition)
-                mDanmakuPlayer?.start()
                 isPlaying = true
                 isBuffering = false
+                danmakuView.play()
                 updateBackToHistory()
             }
         }
 
         override fun onPause() {
             logger.info { "onPause" }
-            mDanmakuPlayer?.pause()
             scope.launch(Dispatchers.Main) {
                 isPlaying = false
             }
@@ -441,7 +424,6 @@ fun BvPlayer(
             scope.launch(Dispatchers.Main) {
                 isBuffering = true
             }
-            mDanmakuPlayer?.pause()
         }
 
         override fun onEnd() {
@@ -457,19 +439,16 @@ fun BvPlayer(
                 logger.info { "onEnd: replay" }
                 scope.launch(Dispatchers.Main) {
                     videoPlayer.seekTo(0)
-                    mDanmakuPlayer?.seekTo(0)
-                    mDanmakuPlayer?.pause()
+                    danmakuView.notifySeek(0)
                     videoPlayer.start()
                 }
                 return
             }
 
             logger.info { "onEnd" }
-            mDanmakuPlayer?.pause()
             scope.launch(Dispatchers.Main) {
                 isPlaying = false
-                if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat()
-                // 当控制信息面板显示时不自动播放下一集
+                if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat(scope, true)
                 if (!showInfoProvider()) {
                     onLoadNextVideo(false)
                 } else {
@@ -483,13 +462,11 @@ fun BvPlayer(
         }
 
         override fun onSeekBack(seekBackIncrementMs: Long) {
-            mDanmakuPlayer?.seekTo(seekState.position)
-            mDanmakuPlayer?.pause()
+            danmakuView.notifySeek(seekState.position)
         }
 
         override fun onSeekForward(seekForwardIncrementMs: Long) {
-            mDanmakuPlayer?.seekTo(seekState.position)
-            mDanmakuPlayer?.pause()
+            danmakuView.notifySeek(seekState.position)
         }
 
         override fun onVideoSizeChanged(width: Int, height: Int) {
@@ -554,15 +531,7 @@ fun BvPlayer(
         focusRequester.requestFocus(scope)
     }
 
-    LaunchedEffect(danmakuPlayer) {
-        logger.debug { "update mDanmakuPlayer" }
-        mDanmakuPlayer = danmakuPlayer
-        danmakuLayerHandle.updateDanmakuPlayer(danmakuPlayer)
-        if (danmakuPlayer != null) {
-            syncDanmakuConfig()
-            danmakuPlayer.updatePlaySpeed(currentPlaySpeed)
-        }
-    }
+
 
     LaunchedEffect(videoPlayerLoadStateData.loadState) {
         when (videoPlayerLoadStateData.loadState) {
@@ -577,34 +546,30 @@ fun BvPlayer(
         }
     }
 
-    DisposableEffect(Unit) {
-        var sendHeartbeatTimer: Timer? = null
-        if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) {
-            sendHeartbeatTimer = timeTask(
-                delay = 5000,
-                period = 15000,
-                tag = "sendHeartbeatTimer"
-            ) {
-                scope.launch(Dispatchers.Main) {
-                    if (videoPlayer.isPlaying) sendHeartbeat()
+    // 心跳定时器：使用 LaunchedEffect 替代 java.util.Timer，避免后台线程与主线程双重分发导致 ANR
+    if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) {
+        DisposableEffect(Unit) {
+            val job = scope.launch {
+                delay(5000)
+                while (isActive) {
+                    if (videoPlayer.isPlaying) sendHeartbeat(scope, false)
+                    delay(15000)
                 }
             }
-        }
-        onDispose {
-            if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) {
-                sendHeartbeat()
-                sendHeartbeatTimer?.cancel()
+            onDispose {
+                job.cancel()
+                println("心跳定时器 cancel")
             }
         }
     }
 
-    LaunchedEffect(videoPlayerLogsData.logs) {
-        showLogs = videoPlayerLogsData.logs.isNotEmpty()
-        if (showLogs) {
-            delay(3000)
-            showLogs = false
-        }
-    }
+    // LaunchedEffect(videoPlayerLogsData.logs) {
+    //     showLogs = videoPlayerLogsData.logs.isNotEmpty()
+    //     if (showLogs) {
+    //         delay(3000)
+    //         showLogs = false
+    //     }
+    // }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -678,18 +643,16 @@ fun BvPlayer(
             onPlay = { videoPlayer.start() },
             onPause = {
                 videoPlayer.pause()
-                if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat()
+                if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat(scope, false)
             },
             onExit = {
                 videoPlayer.pause()
-                if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat()
+                if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat(scope, true)
                 onExit()
             },
             onGoTime = {
                 videoPlayer.seekTo(it)
-                mDanmakuPlayer?.seekTo(it)
-                // akdanmaku 会在跳转后立即播放，如果需要缓冲则会导致弹幕不同步
-                mDanmakuPlayer?.pause()
+                danmakuView.notifySeek(it)
             },
             onBackToHistory = {
                 val time = if (videoPlayerConfigData.defaultStartPosition == DefaultStartPosition.History) {
@@ -699,9 +662,7 @@ fun BvPlayer(
                 }
                 logger.fInfo { "Back to history/beginning: ${time.formatHourMinSec()}" }
                 videoPlayer.seekTo(time)
-                mDanmakuPlayer?.seekTo(time)
-                // akdanmaku 会在跳转后立即播放，如果需要缓冲则会导致弹幕不同步
-                mDanmakuPlayer?.pause()
+                danmakuView.notifySeek(time)
                 //playerViewModel.lastPlayed = 0
                 onClearBackToHistoryData()
                 showBackToHistory = false
@@ -709,7 +670,7 @@ fun BvPlayer(
                 hideBackToHistoryTimer = null
             },
             onPlayNewVideo = {
-                if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat()
+                if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat(scope, false)
                 //playerViewModel.partTitle = it.title
                 //playerViewModel.loadPlayUrl(
                 //    avid = it.aid,
@@ -777,7 +738,6 @@ fun BvPlayer(
                 currentPlaySpeed = speed
                 onPlaySpeedChange(speed)
                 videoPlayer.speed = speed
-                mDanmakuPlayer?.updatePlaySpeed(speed)
             },
             onAudioChange = { audio ->
                 videoPlayer.pause()
@@ -799,9 +759,8 @@ fun BvPlayer(
             onDanmakuSizeChange = { scale ->
                 logger.info { "On danmaku scale change: $scale" }
                 onDanmakuSizeChange(scale)
-                danmakuConfig = danmakuConfig.copy(textSizeScale = scale)
+                danmakuConfig = danmakuConfig.copy(textSizeScale = (scale * 100).toInt())
                 logger.info { "Update danmaku config: $danmakuConfig" }
-                mDanmakuPlayer?.updateConfig(danmakuConfig)
             },
             onDanmakuOpacityChange = { opacity ->
                 logger.info { "On danmaku opacity change: $opacity" }
@@ -817,17 +776,15 @@ fun BvPlayer(
             },
             onDanmakuFilterLevelChange = { filterLevel ->
                 logger.info { "On danmaku filter level change: $filterLevel" }
-                levelFilter.minLevel = filterLevel
-                danmakuConfig.updateFilter()
-                mDanmakuPlayer?.updateConfig(danmakuConfig)
+                danmakuConfig = danmakuConfig.copy(minLevel = filterLevel)
                 onDanmakuFilterLevelChange(filterLevel)
             },
             onDanmakuRollingDurationFactorChange = { factor ->
                 logger.info { "On danmaku rolling duration factor change: $factor" }
                 onDanmakuRollingDurationFactorChange(factor)
-                danmakuConfig = danmakuConfig.copy(rollingDurationFactor = factor)
+                val durationMultiplier = 2f - factor
+                danmakuConfig = danmakuConfig.copy(durationMultiplier = durationMultiplier)
                 logger.info { "Update danmaku config: $danmakuConfig" }
-                mDanmakuPlayer?.updateConfig(danmakuConfig)
             },
             onSubtitleChange = { subtitle ->
                 onSubtitleChange(subtitle)
@@ -848,24 +805,24 @@ fun BvPlayer(
                 logger.info { "On play mode change: $playMode" }
                 onPlayModeChange(playMode)
             },
+            onDebugInfoChange = { enabled ->
+                logger.info { "On debug info change: $enabled" }
+                onDebugInfoChange(enabled)
+            },
             onRequestFocus = { focusRequester.requestFocus(scope) },
             onOpenUpSpace = onOpenUpSpace,
             onRefreshVideo = onRefreshVideo,
             onOpenDanmaku = {
                 onShowDanmakuChange(true)
                 videoPlayerConfigData.showDanmaku = true
-                danmakuConfig = danmakuConfig.copy(visibility = true)
-                danmakuConfig.updateVisibility()
+                danmakuConfig = danmakuConfig.copy(enabled = true)
                 logger.info { "Update danmaku config: $danmakuConfig" }
-                mDanmakuPlayer?.updateConfig(danmakuConfig)
             },
             onHideDanmaku = {
                 onShowDanmakuChange(false)
                 videoPlayerConfigData.showDanmaku = false
-                danmakuConfig = danmakuConfig.copy(visibility = false)
-                danmakuConfig.updateVisibility()
+                danmakuConfig = danmakuConfig.copy(enabled = false)
                 logger.info { "Update danmaku config: $danmakuConfig" }
-                mDanmakuPlayer?.updateConfig(danmakuConfig)
             },
             userActionContent = userActionContent,
             onLoadNextVideo = onLoadNextVideo,
@@ -882,16 +839,6 @@ fun BvPlayer(
                     .background(Color.Black)
             )
 
-            // 将弹幕层副作用独立到子树，保证父级其它状态变化不导致 handle 以外的重组
-            DanmakuLayerSideEffects(
-                danmakuLayerHandle = danmakuLayerHandle,
-                area = videoPlayerConfigData.currentDanmakuArea,
-                opacity = videoPlayerConfigData.currentDanmakuOpacity,
-                visible = videoPlayerConfigData.showDanmaku,
-                maskFrame = currentDanmakuMaskFrame.takeIf { videoPlayerConfigData.currentDanmakuMask },
-                videoAspectRatio = aspectRatioValue
-            )
-
             BvVideoPlayer(
                 modifier = Modifier
                     .aspectRatio(animatedAspectRatio)
@@ -899,13 +846,31 @@ fun BvPlayer(
                 videoPlayer = videoPlayer,
                 playerListener = videoPlayerListener,
                 rotationDegrees = currentVideoRotation.degrees,
-                danmakuPlayer = danmakuPlayer,
                 forceUseTextureView = useTextureViewFixPortraitVideo
             )
 
-            DanmakuLayer(
-                modifier = Modifier.align(Alignment.TopCenter),
-                handle = danmakuLayerHandle
+            // 新弹幕引擎：直接使用 AndroidView wrapping DanmakuView
+            androidx.compose.ui.viewinterop.AndroidView(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .align(Alignment.TopCenter),
+                factory = { _ ->
+                    danmakuView.apply {
+                        setPositionProvider { if(currentConfigData.isLive) SystemClock.elapsedRealtime() else videoPlayer.currentPosition.coerceAtLeast(0L) }
+                        setIsPlayingProvider { videoPlayer.isPlaying }
+                        setPlaybackSpeedProvider { currentPlaySpeed }
+                        setConfigProvider {
+                            danmakuConfig.copy(
+                                opacity = currentConfigData.currentDanmakuOpacity,
+                                area = currentConfigData.currentDanmakuArea,
+                            )
+                        }
+                    }
+                },
+                update = { view ->
+                    view.setMaskFrame(currentDanmakuMaskFrame.takeIf { videoPlayerConfigData.currentDanmakuMask })
+                    view.setVideoAspectRatio(aspectRatioValue)
+                }
             )
 
             // 跳过片头片尾提示
@@ -932,26 +897,5 @@ fun BvPlayer(
                 }
             }
         }
-    }
-}
-
-// 同步弹幕层 UI 相关的独立副作用（区域/透明度/蒙版/可见性）
-@Composable
-private fun DanmakuLayerSideEffects(
-    danmakuLayerHandle: DanmakuLayerHandle,
-    area: Float,
-    opacity: Float,
-    visible: Boolean,
-    maskFrame: DanmakuMaskFrame?,
-    videoAspectRatio: Float
-) {
-    LaunchedEffect(area, opacity, visible, maskFrame, videoAspectRatio) {
-        danmakuLayerHandle.update(
-            area = area,
-            opacity = opacity,
-            mask = maskFrame,
-            visible = visible,
-            videoAspectRatio = videoAspectRatio
-        )
     }
 }

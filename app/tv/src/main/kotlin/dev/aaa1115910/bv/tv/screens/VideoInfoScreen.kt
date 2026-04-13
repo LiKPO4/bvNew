@@ -88,6 +88,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -171,6 +172,7 @@ fun VideoInfoScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val screenScope = lifecycleOwner.lifecycleScope
     val intent = (context as Activity).intent
     val logger = KotlinLogging.logger { }
     val defaultFocusRequester = remember { FocusRequester() }
@@ -244,7 +246,7 @@ fun VideoInfoScreen(
     }
 
     val updateHistory = {
-        scope.launch(Dispatchers.IO) {
+        screenScope.launch(Dispatchers.IO) {
             runCatching {
                 videoDetailViewModel.loadDetailOnlyUpdateHistory(videoDetailViewModel.videoDetail!!.aid)
             }
@@ -256,7 +258,7 @@ fun VideoInfoScreen(
 
 
     val updateFollowingState: () -> Unit = {
-        scope.launch(Dispatchers.IO) {
+        screenScope.launch(Dispatchers.IO) {
             val userMid = videoDetailViewModel.videoDetail?.author?.mid ?: -1
 
             // 先检查缓存中是否有关注状态
@@ -288,7 +290,7 @@ fun VideoInfoScreen(
     }
 
     val addFollow: (afterModify: (success: Boolean) -> Unit) -> Unit = { afterModify ->
-        scope.launch(Dispatchers.IO) {
+        screenScope.launch(Dispatchers.IO) {
             val userMid = videoDetailViewModel.videoDetail?.author?.mid ?: -1
             logger.fInfo { "Add follow to user $userMid" }
             val success = userRepository.followUser(
@@ -305,7 +307,7 @@ fun VideoInfoScreen(
     }
 
     val delFollow: (afterModify: (success: Boolean) -> Unit) -> Unit = { afterModify ->
-        scope.launch(Dispatchers.IO) {
+        screenScope.launch(Dispatchers.IO) {
             val userMid = videoDetailViewModel.videoDetail?.author?.mid ?: -1
             logger.fInfo { "Del follow to user $userMid" }
             val success = userRepository.unfollowUser(
@@ -322,13 +324,11 @@ fun VideoInfoScreen(
     }
 
     val fetchFavoriteData: (Long) -> Unit = { avid ->
-        scope.launch {
-            VideoUserActionManager.fetchFavoriteData(avid, Prefs.uid)
-        }
+        VideoUserActionManager.fetchFavoriteDataAsync(avid, Prefs.uid)
     }
 
     val updateVideoFavoriteData: (List<Long>) -> Unit = { folderIds ->
-        scope.launch {
+        screenScope.launch {
             val success =
                 VideoUserActionManager.updateVideoFavoriteFolders(aid, folderIds, Prefs.uid)
             if (!success) {
@@ -338,7 +338,7 @@ fun VideoInfoScreen(
     }
 
     val addVideoToDefaultFavoriteFolder: () -> Unit = {
-        scope.launch {
+        screenScope.launch {
             val success = VideoUserActionManager.addToDefaultFavoriteFolder(aid, Prefs.uid)
             if (!success) {
                 "添加收藏失败！默认收藏夹不存在？".toast(context)
@@ -424,7 +424,7 @@ fun VideoInfoScreen(
             fromPlayer = intent.getBooleanExtra("fromPlayer", false)
             proxyArea = ProxyArea.entries[intent.getIntExtra("proxy_area", 0)]
             //获取视频信息
-            scope.launch(Dispatchers.IO) {
+            screenScope.launch(Dispatchers.IO) {
                 if (proxyArea != ProxyArea.MainLand) {
                     runCatching {
                         val seasonId = BiliPlusHttpApi.getSeasonIdByAvid(aid)
@@ -792,7 +792,7 @@ fun VideoInfoScreen(
                             },
                             onAddFollow = {
                                 addFollow { success ->
-                                    scope.launch(Dispatchers.Main) {
+                                    screenScope.launch(Dispatchers.Main) {
                                         if (success) {
                                             "关注成功".toast(context)
                                         } else {
@@ -803,7 +803,7 @@ fun VideoInfoScreen(
                             },
                             onDelFollow = {
                                 delFollow { success ->
-                                    scope.launch(Dispatchers.Main) {
+                                    screenScope.launch(Dispatchers.Main) {
                                         if (success) {
                                             "已取消关注".toast(context)
                                         } else {
@@ -836,7 +836,7 @@ fun VideoInfoScreen(
                             },
                             isLike = liked,
                             onAddLike = {
-                                scope.launch {
+                                screenScope.launch {
                                     if (!liked) {
                                         if (addVideoLike()) {
                                             liked = true
@@ -848,7 +848,7 @@ fun VideoInfoScreen(
                                 }
                             },
                             onDelLike = {
-                                scope.launch {
+                                screenScope.launch {
                                     if (liked) {
                                         if (delVideoLike()) {
                                             liked = false
@@ -861,7 +861,7 @@ fun VideoInfoScreen(
                             },
                             isCoin = isCoin,
                             onAddCoin = {
-                                scope.launch {
+                                screenScope.launch {
                                     if (!isCoin) {
                                         if (addVideoCoin()) {
                                             isCoin = true

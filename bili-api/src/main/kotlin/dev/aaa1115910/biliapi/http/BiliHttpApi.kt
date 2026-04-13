@@ -234,11 +234,17 @@ object BiliHttpApi {
         av: Long? = null,
         bv: String? = null,
         sessData: String? = null
-    ): BiliResponse<VideoDetail> = client.get("/x/web-interface/view/detail") {
-        parameter("aid", av)
-        parameter("bvid", bv)
-        sessData?.let { header("Cookie", "SESSDATA=$sessData;") }
-    }.body()
+    ): BiliResponse<VideoDetail> {
+        val response = client.get("/x/web-interface/wbi/view/detail") {
+            av?.let { parameter("aid", av) }
+            bv?.let { parameter("bvid", bv) }
+
+            sessData?.let { header("Cookie", "SESSDATA=$sessData;") }
+            skipAddBuvid3Cookie()
+        }
+        println("getVideoDetail:" + response.bodyAsText())
+        return response.body()
+    }
 
     /**
      * 获取视频流

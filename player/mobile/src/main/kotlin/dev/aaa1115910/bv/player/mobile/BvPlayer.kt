@@ -12,19 +12,16 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import com.kuaishou.akdanmaku.DanmakuConfig
-import com.kuaishou.akdanmaku.data.DanmakuItemData
-import com.kuaishou.akdanmaku.ecs.component.filter.TypeFilter
-import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
-import com.kuaishou.akdanmaku.ui.DanmakuPlayer
+import dev.aaa1115910.bv.player.danmaku.DanmakuConfig
+import dev.aaa1115910.bv.player.danmaku.DanmakuView
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMaskFrame
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
-import dev.aaa1115910.bv.player.AkDanmakuPlayer
 import dev.aaa1115910.bv.player.BvVideoPlayer
 import dev.aaa1115910.bv.player.VideoPlayerListener
 import dev.aaa1115910.bv.player.entity.Audio
@@ -77,13 +74,12 @@ fun BvPlayer(
     onLoadNextVideo: () -> Unit,
     onLoadNewVideo: (VideoListItem) -> Unit,
     videoPlayer: AbstractVideoPlayer,
-    danmakuPlayer: DanmakuPlayer?
+    danmakuView: DanmakuView,
 ) {
     val logger = KotlinLogging.logger("BvPlayer")
-    // 直接调用 danmakuPlayer 会始终为 null
-    var mDanmakuPlayer: DanmakuPlayer? by remember { mutableStateOf(null) }
 
     val videoPlayerConfigData = LocalVideoPlayerConfigData.current
+    val currentConfigData by rememberUpdatedState(videoPlayerConfigData)
     // val videoPlayerDanmakuMaskData = LocalVideoPlayerDanmakuMasksData.current
     val videoPlayerHistoryData = LocalVideoPlayerHistoryData.current
     // val videoPlayerLoadStateData = LocalVideoPlayerLoadStateData.current
@@ -97,7 +93,6 @@ fun BvPlayer(
     var isBuffering by remember { mutableStateOf(false) }
     var exception by remember { mutableStateOf<Exception?>(null) }
 
-    val typeFilter by remember { mutableStateOf(TypeFilter()) }
     var danmakuConfig by remember { mutableStateOf(DanmakuConfig()) }
 
     var duration by remember { mutableLongStateOf(0L) }
@@ -123,54 +118,41 @@ fun BvPlayer(
         bufferedPercentage = videoPlayer.bufferedPercentage
     }
 
-    val updateEnabledDanmakuTypeFilter: (List<DanmakuType>) -> Unit = { danmakuTypes ->
-        typeFilter.clear()
-        if (!danmakuTypes.contains(DanmakuType.All)) {
-            val types = DanmakuType.entries.toMutableList()
-            types.remove(DanmakuType.All)
-            types.removeAll(danmakuTypes)
-            val filterTypes = types.mapNotNull {
-                when (it) {
-                    DanmakuType.Rolling -> DanmakuItemData.DANMAKU_MODE_ROLLING
-                    DanmakuType.Top -> DanmakuItemData.DANMAKU_MODE_CENTER_TOP
-                    DanmakuType.Bottom -> DanmakuItemData.DANMAKU_MODE_CENTER_BOTTOM
-                    else -> null
-                }
-            }
-            filterTypes.forEach { typeFilter.addFilterItem(it) }
-        }
-    }
-
-
     val initDanmakuConfig: () -> Unit = {
-        updateEnabledDanmakuTypeFilter(videoPlayerConfigData.currentDanmakuEnabledList)
+        val danmakuTypes = videoPlayerConfigData.currentDanmakuEnabledList
+        val allowAll = danmakuTypes.contains(DanmakuType.All)
+        val filterLevel = videoPlayerConfigData.currentDanmakuFilterLevel
+        val factor = videoPlayerConfigData.currentDanmakuRollingDurationFactor
+        val durationMultiplier = 2f - factor
         danmakuConfig = danmakuConfig.copy(
-            retainerPolicy = RETAINER_BILIBILI,
-            textSizeScale = videoPlayerConfigData.currentDanmakuScale,
-            dataFilter = listOf(typeFilter)
+            enabled = videoPlayerConfigData.showDanmaku,
+            textSizeScale = (videoPlayerConfigData.currentDanmakuScale * 100).toInt(),
+            allowScroll = allowAll || danmakuTypes.contains(DanmakuType.Rolling),
+            allowTop = allowAll || danmakuTypes.contains(DanmakuType.Top),
+            allowBottom = allowAll || danmakuTypes.contains(DanmakuType.Bottom),
+            minLevel = filterLevel,
+            durationMultiplier = durationMultiplier,
         )
-        danmakuConfig.updateFilter()
-        mDanmakuPlayer?.updateConfig(danmakuConfig)
     }
 
     val updateDanmakuConfigTypeFilter: () -> Unit = {
-        updateEnabledDanmakuTypeFilter(videoPlayerConfigData.currentDanmakuEnabledList)
-        danmakuConfig.updateFilter()
-        mDanmakuPlayer?.updateConfig(danmakuConfig)
+        val danmakuTypes = videoPlayerConfigData.currentDanmakuEnabledList
+        val allowAll = danmakuTypes.contains(DanmakuType.All)
+        danmakuConfig = danmakuConfig.copy(
+            allowScroll = allowAll || danmakuTypes.contains(DanmakuType.Rolling),
+            allowTop = allowAll || danmakuTypes.contains(DanmakuType.Top),
+            allowBottom = allowAll || danmakuTypes.contains(DanmakuType.Bottom),
+        )
     }
 
     val toggleDanmakuEnabled: (Boolean) -> Unit = { enabled ->
-        updateEnabledDanmakuTypeFilter(if (enabled) videoPlayerConfigData.currentDanmakuEnabledList else listOf())
-        danmakuConfig.updateFilter()
-        mDanmakuPlayer?.updateConfig(danmakuConfig)
+        danmakuConfig = danmakuConfig.copy(enabled = enabled)
     }
 
     val updateDanmakuConfig: () -> Unit = {
         danmakuConfig = danmakuConfig.copy(
-            retainerPolicy = RETAINER_BILIBILI,
-            textSizeScale = videoPlayerConfigData.currentDanmakuScale,
+            textSizeScale = (videoPlayerConfigData.currentDanmakuScale * 100).toInt(),
         )
-        mDanmakuPlayer?.updateConfig(danmakuConfig)
     }
 
     val updateVideoAspectRatio: () -> Unit = {
@@ -212,52 +194,42 @@ fun BvPlayer(
             //reset default play speed
             logger.info { "Reset default play speed: ${videoPlayerConfigData.currentVideoSpeed}" }
             videoPlayer.speed = videoPlayerConfigData.currentVideoSpeed
-            mDanmakuPlayer?.updatePlaySpeed(videoPlayerConfigData.currentVideoSpeed)
         }
 
         override fun onPlay() {
             logger.info { "onPlay" }
-            // 同步弹幕到视频当前位置
-            val currentPosition = videoPlayer.currentPosition
-            mDanmakuPlayer?.seekTo(currentPosition)
-            mDanmakuPlayer?.start()
             isPlaying = true
             isBuffering = false
+            danmakuView.play()
             updateBackToHistory()
         }
 
         override fun onPause() {
             logger.info { "onPause" }
-            mDanmakuPlayer?.pause()
             isPlaying = false
         }
 
         override fun onBuffering() {
             logger.info { "onBuffering" }
             isBuffering = true
-            mDanmakuPlayer?.pause()
         }
 
         override fun onEnd() {
             logger.info { "onEnd" }
-            mDanmakuPlayer?.pause()
             isPlaying = false
-            //if (!Prefs.incognitoMode) sendHeartbeat()
-
             onLoadNextVideo()
         }
 
         override fun onIdle() {
             logger.info { "onIdle" }
-            mDanmakuPlayer?.pause()
         }
 
         override fun onSeekBack(seekBackIncrementMs: Long) {
-            mDanmakuPlayer?.seekTo(currentPosition)
+            danmakuView.notifySeek(currentPosition)
         }
 
         override fun onSeekForward(seekForwardIncrementMs: Long) {
-            mDanmakuPlayer?.seekTo(currentPosition)
+            danmakuView.notifySeek(currentPosition)
         }
 
     }
@@ -272,10 +244,6 @@ fun BvPlayer(
     // 同步 videoPlayerHistoryData.lastPlayed 到本地变量
     LaunchedEffect(videoPlayerHistoryData.lastPlayed) {
         lastPlayed = videoPlayerHistoryData.lastPlayed.toLong()
-    }
-
-    LaunchedEffect(danmakuPlayer) {
-        mDanmakuPlayer = danmakuPlayer
     }
 
     DisposableEffect(Unit) {
@@ -328,8 +296,7 @@ fun BvPlayer(
             onPlay = { videoPlayer.start() },
             onPause = { videoPlayer.pause() },
             onSeekToPosition = { position ->
-                mDanmakuPlayer?.seekTo(position)
-                mDanmakuPlayer?.pause()
+                danmakuView.notifySeek(position)
                 videoPlayer.seekTo(position)
             },
             onChangeResolution = {
@@ -362,7 +329,6 @@ fun BvPlayer(
             onChangeSpeed = { speed ->
                 onChangeSpeed(speed)
                 videoPlayer.speed = speed
-                mDanmakuPlayer?.updatePlaySpeed(speed)
             },
             onToggleDanmaku = { enabled ->
                 toggleDanmakuEnabled(enabled)
@@ -390,11 +356,22 @@ fun BvPlayer(
                     .align(Alignment.Center),
                 videoPlayer = videoPlayer, playerListener = videoPlayerListener
             )
-            AkDanmakuPlayer(
+            androidx.compose.ui.viewinterop.AndroidView(
                 modifier = Modifier
-                    .alpha(videoPlayerConfigData.currentDanmakuOpacity)
-                    .fillMaxHeight(videoPlayerConfigData.currentDanmakuArea),
-                danmakuPlayer = mDanmakuPlayer
+                    .fillMaxHeight(),
+                factory = { _ ->
+                    danmakuView.apply {
+                        setPositionProvider { videoPlayer.currentPosition.coerceAtLeast(0L) }
+                        setIsPlayingProvider { videoPlayer.isPlaying }
+                        setPlaybackSpeedProvider { currentConfigData.currentVideoSpeed }
+                        setConfigProvider {
+                            danmakuConfig.copy(
+                                opacity = currentConfigData.currentDanmakuOpacity,
+                                area = currentConfigData.currentDanmakuArea,
+                            )
+                        }
+                    }
+                },
             )
         }
     }

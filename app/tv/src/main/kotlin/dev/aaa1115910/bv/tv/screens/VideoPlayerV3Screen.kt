@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
@@ -47,6 +48,7 @@ import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
+import dev.aaa1115910.bv.player.danmaku.DanmakuView
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerDanmakuMasksData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerHistoryData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerLoadStateData
@@ -110,6 +112,15 @@ fun VideoPlayerV3Screen(
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger { }
 
+    // 外部创建 DanmakuView，与 videoPlayer 一致的模式
+    val danmakuView = remember { DanmakuView(context).also { playerViewModel.danmakuView = it } }
+
+    DisposableEffect(danmakuView) {
+        onDispose {
+            danmakuView?.release()
+        }
+    }
+
     // subscribe shared action state by aid
     val currentAid = playerViewModel.currentAid
     val sharedActionFlow = remember(currentAid) { getStateFlow(currentAid, Prefs.uid) }
@@ -132,6 +143,7 @@ fun VideoPlayerV3Screen(
     var autoActionTipVisible by remember { mutableStateOf(false) }
     var autoActionTipText by remember { mutableStateOf("") }
     var skipNextKeyUpCancel by remember { mutableStateOf(false) }
+    var showDebugInfo by remember { mutableStateOf(Prefs.playerShowDebugInfo) }
 
     // 在线观看人数状态
     var onlineViewerCount by remember { mutableStateOf("") }
@@ -324,7 +336,10 @@ fun VideoPlayerV3Screen(
             currentLiveQn = playerViewModel.currentLiveQn,
             currentLiveQualityDescription = playerViewModel.currentLiveQualityDescription,
             currentLiveCodec = playerViewModel.currentLiveCodec,
-            controllerButtonsOrder = Prefs.playerControllerButtonsOrder
+            controllerButtonsOrder = Prefs.playerControllerButtonsOrder,
+            showDebugInfo = showDebugInfo,
+            longPressAction = Prefs.playerLongPressAction,
+            longPressSpeed = Prefs.playerLongPressSpeed
         ),
         LocalVideoPlayerDanmakuMasksData provides VideoPlayerDanmakuMasksData(
             danmakuMasks = playerViewModel.danmakuMasks,
@@ -361,7 +376,6 @@ fun VideoPlayerV3Screen(
                 modifier = modifier
                     .fillMaxSize(),
                 videoPlayer = playerViewModel.videoPlayer!!,
-                danmakuPlayer = playerViewModel.danmakuPlayer,
                 playerSeekForwardStep = Prefs.playerSeekForwardStep,
                 playerSeekBackwardStep = Prefs.playerSeekBackwardStep,
                 showBottomProgressBar = Prefs.playerShowBottomProgressBar,
@@ -372,6 +386,7 @@ fun VideoPlayerV3Screen(
                     }
                 },
                 viewerCountText = viewerCountText,
+                danmakuView = danmakuView,
                 onToggleRelatedVideos = { state ->
                     playerViewModel.showRelatedVideos = if (playerViewModel.relatedVideos.isNotEmpty() || playerViewModel.preloadedVideoList.isNotEmpty()) state else false
                 },
@@ -380,6 +395,11 @@ fun VideoPlayerV3Screen(
                 onLoadNextVideo = { immediate ->
                     if (playerViewModel.showRelatedVideos) {
                         logger.info { "Related videos is shown, skip auto action" }
+                        return@BvPlayer
+                    }
+
+                    if (showCommentPanel) {
+                        logger.info { "Comment panel is shown, skip auto action" }
                         return@BvPlayer
                     }
 
@@ -570,16 +590,15 @@ fun VideoPlayerV3Screen(
                         val time = playerViewModel.videoPlayer?.currentPosition ?: 0
                         logger.info { "Reload video and back to time: ${time.formatHourMinSec()}" }
                         scope.launch {
-                            val toast = Toast.makeText(context, "刷新", Toast.LENGTH_SHORT)
-                            toast.show()
                             playerViewModel.playQuality()
-                            delay(300)
                             playerViewModel.videoPlayer?.seekTo(time)
-                            playerViewModel.danmakuPlayer?.seekTo(time)
-                            playerViewModel.danmakuPlayer?.pause()
+                            playerViewModel.danmakuView?.notifySeek(time)
                             playerViewModel.videoPlayer?.start()
-                            delay(300)
-                            toast.cancel()
+                            Toast.makeText(
+                                context,
+                                "已刷新\nVideo Host: ${playerViewModel.lastVideoHost}\nAudio Host: ${playerViewModel.lastAudioHost}",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                 },
@@ -680,6 +699,10 @@ fun VideoPlayerV3Screen(
                 onPlayModeChange = { playMode ->
                     Prefs.defaultPlayMode = playMode
                     playerViewModel.currentPlayMode = playMode
+                },
+                onDebugInfoChange = { enabled ->
+                    Prefs.playerShowDebugInfo = enabled
+                    showDebugInfo = enabled
                 },
                 onOpenUpSpace = {
                     UpInfoActivity.actionStart(
@@ -850,6 +873,7 @@ fun VideoPlayerV3Screen(
             // 显示跳过提示
             if (autoActionTipVisible) {
                 SkipTip(
+                    modifier = Modifier.padding(bottom = 28.dp),
                     show = true,
                     text = autoActionTipText,
                     align = Alignment.BottomEnd

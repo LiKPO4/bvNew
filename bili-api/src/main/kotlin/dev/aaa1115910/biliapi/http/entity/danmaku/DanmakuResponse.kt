@@ -20,7 +20,7 @@ data class DanmakuData(
     val pool: Int,
     val midHash: String,
     val dmid: Long,
-    val level: Int,
+    val level: Int = 0,
     val text: String
 ) {
     companion object {

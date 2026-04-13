@@ -189,10 +189,8 @@ class VideoPlayerV3Activity : ComponentActivity() {
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         // 显式释放播放器资源，避免依赖 ViewModel.onCleared() 的延迟回调
-        playerViewModel.videoPlayer?.release()
         if (isFinishing) {
-            playerViewModel.videoPlayer = null
-            playerViewModel.danmakuPlayer = null
+            playerViewModel.releasePlayerResources("onDestroy")
         }
 
         // 当活动被销毁时，从队列中移除该Activity的引用
@@ -216,7 +214,6 @@ class VideoPlayerV3Activity : ComponentActivity() {
     override fun onPause() {
         playerViewModel.videoPlayer?.isInBackground = true
         playerViewModel.videoPlayer?.pause()
-        playerViewModel.danmakuPlayer?.pause()
         
         // 暂停直播弹幕
         if (playerViewModel.isLive) {

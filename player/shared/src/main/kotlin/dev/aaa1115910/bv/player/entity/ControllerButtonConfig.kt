@@ -17,8 +17,8 @@ data class ControllerButtonConfig(
  */
 val ALL_CONTROLLER_BUTTON_IDS = listOf(
     "nextVideo", "refresh", "speed", "resolution", "upSpace", "rotation",
-    "subtitle", "comment", "danmaku", "playMode", "playlist", "related", "description",
-    "settings"
+    "subtitle", "comment", "danmaku", "playlist", "related", "description",
+    "playMode", "settings"
 )
 
 /**

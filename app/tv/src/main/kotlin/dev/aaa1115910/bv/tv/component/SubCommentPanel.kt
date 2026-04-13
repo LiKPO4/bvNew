@@ -91,6 +91,10 @@ fun SubCommentPanel(
     var hasNext by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    // 全屏图片查看器状态
+    var showImageViewer by remember { mutableStateOf(false) }
+    var imageViewerPictures by remember { mutableStateOf<List<dev.aaa1115910.biliapi.entity.Picture>>(emptyList()) }
+
     // 加载子评论
     val loadReplies: (Boolean) -> Unit = { reset ->
         scope.launch {
@@ -183,7 +187,15 @@ fun SubCommentPanel(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // 根评论（只读显示，右键展开/收起）
-                    SubCommentRootItem(comment = rootComment)
+                    SubCommentRootItem(
+                        comment = rootComment,
+                        onLongClick = {
+                            if (rootComment.pictures.isNotEmpty()) {
+                                imageViewerPictures = rootComment.pictures
+                                showImageViewer = true
+                            }
+                        }
+                    )
 
                     // 分隔线
                     Divider(
@@ -270,7 +282,13 @@ fun SubCommentPanel(
                                             if (focusState.hasFocus) {
                                                 focusedCommentIndex = index
                                             }
+                                        },
+                                    onLongClick = {
+                                        if (reply.pictures.isNotEmpty()) {
+                                            imageViewerPictures = reply.pictures
+                                            showImageViewer = true
                                         }
+                                    }
                                 )
                             }
 
@@ -303,5 +321,16 @@ fun SubCommentPanel(
                 }
             }
         }
+    }
+
+    // 全屏图片查看器
+    if (showImageViewer && imageViewerPictures.isNotEmpty()) {
+        FullscreenImageViewer(
+            pictures = imageViewerPictures,
+            onDismiss = {
+                showImageViewer = false
+                imageViewerPictures = emptyList()
+            }
+        )
     }
 }

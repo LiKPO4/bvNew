@@ -8,12 +8,10 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.kuaishou.akdanmaku.data.DanmakuItemData
-import com.kuaishou.akdanmaku.ui.DanmakuPlayer
+import dev.aaa1115910.bv.player.danmaku.DanmakuView
+import dev.aaa1115910.bv.player.danmaku.model.Danmaku
 import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.biliapi.entity.PlayData
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMaskSegment
@@ -37,8 +35,7 @@ import dev.aaa1115910.bilisubtitle.SubtitleParser
 import dev.aaa1115910.bilisubtitle.entity.SubtitleItem
 import dev.aaa1115910.bv.BVApp
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
-import dev.aaa1115910.bv.player.renderer.OptimizedTextRenderer
-import dev.aaa1115910.bv.player.renderer.SimpleRenderer
+
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.DanmakuType
@@ -94,12 +91,21 @@ class VideoPlayerV3ViewModel(
             value?.onSeek = ::onVideoSeeked
             videoPlayerState = value
         }
-    var danmakuPlayer: DanmakuPlayer? by mutableStateOf(null)
+    var danmakuView: DanmakuView? by mutableStateOf(null)
     var show by mutableStateOf(false)
 
     override fun onCleared() {
         super.onCleared()
         logger.fInfo { "VideoPlayerV3ViewModel onCleared" }
+        releasePlayerResources("onCleared")
+    }
+
+    /**
+     * 释放播放器和弹幕相关资源。幂等，可多次安全调用。
+     * 由 Activity.onDestroy（立即释放重资源）和 ViewModel.onCleared 共同调用。
+     */
+    fun releasePlayerResources(caller: String = "unknown") {
+        logger.fInfo { "releasePlayerResources called by $caller" }
 
         stopDanmakuSegmentLoading()
 
@@ -112,7 +118,7 @@ class VideoPlayerV3ViewModel(
         liveUrlRefreshJob = null
 
         // 清理点播CDN URL刷新任务
-        cancelPlayUrlAutoRefresh("onCleared")
+        cancelPlayUrlAutoRefresh(caller)
 
         // 清理直播弹幕资源
         stopLiveDanmaku()
@@ -125,8 +131,8 @@ class VideoPlayerV3ViewModel(
         }
 
         try {
-            danmakuPlayer?.release()
-            danmakuPlayer = null
+            danmakuView?.release()
+            danmakuView = null
             danmakuMasks.clear()
         } catch (e: Exception) {
             logger.fError { "Error releasing danmaku player: ${e.message}" }
@@ -262,7 +268,7 @@ class VideoPlayerV3ViewModel(
     private var liveWebSocketInner: Job? = null
     private var liveDanmakuConsumer: Job? = null
     private var liveDanmakuChannel: Channel<DanmakuEvent>? = null
-    private val liveDanmakuBuffer = mutableListOf<DanmakuItemData>()
+    private val liveDanmakuBuffer = mutableListOf<Danmaku>()
     private var liveDanmakuFlushJob: Job? = null
 
     // 点播弹幕管理
@@ -297,14 +303,17 @@ class VideoPlayerV3ViewModel(
     var playerIconIdle by mutableStateOf("")
     var playerIconMoving by mutableStateOf("")
 
+    var lastVideoHost by mutableStateOf("")
+    var lastAudioHost by mutableStateOf("")
+
     var currentAid = 0L
     var currentCid by mutableLongStateOf(0L)
     private var currentEpid = 0
 
-    private suspend fun ensureDanmakuPlayer() = withContext(Dispatchers.Main) {
-        danmakuPlayer?.release()
-        danmakuPlayer = DanmakuPlayer(SimpleRenderer())
-        logger.fInfo { "(Re)create DanmakuPlayer: $danmakuPlayer" }
+    private suspend fun ensureDanmakuView() {
+        // DanmakuView is created by the UI layer, nothing to do here.
+        // Kept for call-site compatibility.
+        logger.fInfo { "ensureDanmakuView: current=$danmakuView" }
     }
 
     private fun stopDanmakuSegmentLoading() {
@@ -338,37 +347,24 @@ class VideoPlayerV3ViewModel(
             )
 
             val convertedDanmaku = segmentData.map {
-                DanmakuItemData(
-                    danmakuId = it.dmid,
-                    position = (it.time * 1000).toLong(),
-                    content = it.text,
-                    mode = when (it.type) {
-                        4 -> DanmakuItemData.DANMAKU_MODE_CENTER_TOP
-                        5 -> DanmakuItemData.DANMAKU_MODE_CENTER_BOTTOM
-                        else -> DanmakuItemData.DANMAKU_MODE_ROLLING
-                    },
+                Danmaku(
+                    dmid = it.dmid,
+                    positionMs = (it.time * 1000).toInt(),
+                    text = it.text,
+                    mode = it.type,
                     textSize = it.size,
-                    textColor = Color(it.color).toArgb(),
+                    color = 0xFF000000.toInt() or (it.color and 0xFFFFFF),
                     level = it.level
                 )
-            }.sortedBy { it.position }
+            }.sortedWith(compareBy({ it.positionMs }, { it.level }))
             loadedCount = convertedDanmaku.size
 
             val shouldResume = withContext(Dispatchers.Main) {
                 videoPlayer?.isPlaying == true
             }
 
-            if (danmakuPlayer == null) {
-                ensureDanmakuPlayer()
-            }
             withContext(Dispatchers.Main) {
-                danmakuPlayer?.updateData(convertedDanmaku)
-                danmakuPlayer?.seekTo(safePosition)
-                if (shouldResume) {
-                    danmakuPlayer?.start()
-                } else {
-                    danmakuPlayer?.pause()
-                }
+                danmakuView?.appendDanmakus(convertedDanmaku, maxItems = 0, alreadySorted = true)
             }
 
             currentDanmakuSegmentIndex = segmentIndex
@@ -379,7 +375,8 @@ class VideoPlayerV3ViewModel(
             addLogs("加载第 $segmentIndex 块弹幕失败：${it.localizedMessage}")
             logger.fWarn { "Load danmaku segment failed: cid=$cid, segment=$segmentIndex, error=${it.stackTraceToString()}" }
         }.onSuccess {
-            addLogs("累计加载 $currentLoadedDanmakuTotal 条弹幕（追加第 $segmentIndex 块 $loadedCount 条）", clear = segmentIndex > 1)
+            // 已加载 x 块 x 条弹幕（新追加的第 y 块有 z 条）
+            addLogs("已加载 ${loadedDanmakuSegmentCounts.size} 块共 $currentLoadedDanmakuTotal 条弹幕（6分钟/块）", replaceIfContains = "已加载")
             logger.fInfo { "Load danmaku segment success, cid=$cid, segment=$segmentIndex, size=$loadedCount, total=$currentLoadedDanmakuTotal" }
         }
     }
@@ -430,13 +427,13 @@ class VideoPlayerV3ViewModel(
         }
         cancelPlayUrlAutoRefresh("new_media")
         viewModelScope.launch(Dispatchers.Default) {
-            addLogs("加载视频中")
-            ensureDanmakuPlayer()
-            addLogs("弹幕引擎已就绪")
+            // addLogs("加载视频中")
+            ensureDanmakuView()
+            // addLogs("弹幕引擎已就绪")
             if (epid != null || seasonId != null) {
-                addLogs("av$avid，cid:$cid, epid:$epid, seasonId:$seasonId")
+                addLogs("avid:$avid，cid:$cid，epid:$epid，seasonId:$seasonId")
             } else {
-                addLogs("av$avid，cid:$cid")
+                addLogs("avid:$avid，cid:$cid")
             }
 
             val lastPlayEnabledSubtitle = currentSubtitleId != -1L
@@ -604,7 +601,7 @@ class VideoPlayerV3ViewModel(
             loadState = RequestState.Failed
             logger.fException(it) { "Load video failed" }
         }.onSuccess {
-            addLogs("加载视频地址成功")
+            // addLogs("加载视频地址成功")
             loadState = RequestState.Success
             logger.fInfo { "Load play url success" }
         }
@@ -644,7 +641,7 @@ class VideoPlayerV3ViewModel(
         val token = pendingGaiaToken ?: return
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
-                addLogs("正在提交验证结果…")
+                // addLogs("正在提交验证结果…")
                 val validateResponse = BiliHttpApi.gaiaVgateValidate(
                     token = token,
                     geetestChallenge = challenge,
@@ -665,7 +662,7 @@ class VideoPlayerV3ViewModel(
                     showGeetestDialog = false
                     pendingGaiaToken = null
                 }
-                addLogs("验证通过，正在重试加载…")
+                addLogs("风控验证通过")
                 logger.fInfo { "Gaia vgate validate success, retrying play url" }
                 loadPlayUrl(currentAid, currentCid, currentEpid, preferApi = Prefs.apiType, proxyArea = proxyArea)
             }.onFailure {
@@ -803,17 +800,19 @@ class VideoPlayerV3ViewModel(
                     "视频编码：${codec.getDisplayName(BVApp.context)}, " +
                     "音频编码：${(Audio.fromCode(audioItem?.codecId ?: 0))?.getDisplayName(BVApp.context) ?: "未知"}"
         )
-        addLogs("video host: ${with(URI(videoUrl)) { "$scheme://$authority" }}")
-        addLogs(
-            audioUrl?.let { "audio host: ${with(URI(it)) { "$scheme://$authority" }}" }
-                ?: "audio host: 无音频流，使用纯视频播放"
-        )
+
+        var videoHost = with(URI(videoUrl)) { "$scheme://$authority" }
+        var audioHost = audioUrl?.let { with(URI(it)) { "$scheme://$authority" } } ?: "无音频流，使用纯视频播放"
+        addLogs("video host: $videoHost")
+        addLogs("audio host: $audioHost")
 
         logger.fInfo { "Select audio: $audioItem" }
 
         withContext(Dispatchers.Main) {
             currentVideoHeight = videoItem?.height ?: 0
             currentVideoWidth = videoItem?.width ?: 0
+            lastVideoHost = videoHost
+            lastAudioHost = audioHost
             logger.info { "Video url: $videoUrl" }
             logger.info { "Audio url: $audioUrl" }
             videoPlayer!!.playUrl(videoUrl, audioUrl)
@@ -1118,23 +1117,26 @@ class VideoPlayerV3ViewModel(
         }
     }
 
-    private suspend fun addLogs(text: String, clear: Boolean = false) {
+    private suspend fun addLogs(text: String, replaceIfContains: String? = null) {
         logger.fInfo { text }
         if (!Prefs.playerShowDebugInfo) {
             return
         }
-        val lines = if (clear) mutableListOf<String>() else logs.lines().toMutableList()
-        lines.add(text)
+        val lines = logs.lines().filter { it.isNotEmpty() }.toMutableList()
+        if (replaceIfContains != null) {
+            val idx = lines.indexOfLast { it.contains(replaceIfContains) }
+            if (idx >= 0) lines[idx] = text else lines.add(text)
+        } else {
+            lines.add(text)
+        }
         while (lines.size > 8) {
             lines.removeAt(0)
         }
-        var newTip = ""
-        lines.forEach {
-            newTip += if (newTip == "") it else "\n$it"
-        }
+        val newTip = lines.joinToString("\n")
         withContext(Dispatchers.Main) {
             logs = newTip
             lastChangedLog = System.currentTimeMillis()
+            videoPlayer?.extraDebugInfo = newTip
         }
     }
 
@@ -1305,8 +1307,7 @@ class VideoPlayerV3ViewModel(
 
             PlayMode.SingleLoop -> {
                 logger.info { "Play mode: $currentPlayMode, replay current video" }
-                danmakuPlayer?.seekTo(0L)
-                danmakuPlayer?.pause()
+                danmakuView?.notifySeek(0L)
                 videoPlayer?.seekTo(0L)
             }
 
@@ -1386,8 +1387,8 @@ class VideoPlayerV3ViewModel(
             withContext(Dispatchers.Main) { loadState = RequestState.Doing }
 
             // 仅在首次加载时初始化弹幕播放器，画质切换时不重复创建
-            if (danmakuPlayer == null) {
-                ensureDanmakuPlayer()
+            if (danmakuView == null) {
+                ensureDanmakuView()
             }
 
             val playInfo = LiveStreamUrlFetcher.fetchLiveStreamUrl(roomId, qn, currentLiveCodec)
@@ -1621,8 +1622,8 @@ class VideoPlayerV3ViewModel(
             withContext(Dispatchers.Main) { loadState = RequestState.Doing }
 
             // 初始化弹幕播放器
-            ensureDanmakuPlayer()
-            logger.fInfo { "Danmaku player initialized for live stream" }
+            ensureDanmakuView()
+            logger.fInfo { "Danmaku view ready for live stream" }
 
             runCatching {
                 withContext(Dispatchers.Main) {
@@ -1760,17 +1761,13 @@ class VideoPlayerV3ViewModel(
             return
         }
 
-        val danmakuItem = DanmakuItemData(
-            danmakuId = System.currentTimeMillis(),
-            position = 0L,
-            content = event.content,
-            mode = when (event.mode) {
-                4 -> DanmakuItemData.DANMAKU_MODE_CENTER_TOP
-                5 -> DanmakuItemData.DANMAKU_MODE_CENTER_BOTTOM
-                else -> DanmakuItemData.DANMAKU_MODE_ROLLING
-            },
+        val danmakuItem = Danmaku(
+            dmid = System.currentTimeMillis(),
+            positionMs = 0,
+            text = event.content,
+            mode = event.mode,
             textSize = event.fontSize,
-            textColor = Color(event.color).toArgb()
+            color = 0xFF000000.toInt() or (event.color and 0xFFFFFF)
         )
 
         // 添加到缓冲区
@@ -1805,23 +1802,17 @@ class VideoPlayerV3ViewModel(
 
         if (itemsToSend.isEmpty()) return
 
-        val player = danmakuPlayer ?: return
-        val sendPosition = player.getCurrentTimeMs() + 1000L
+        val view = danmakuView ?: return
 
-        // 更新每条弹幕的 position
+        // positionMs 必须与 positionProvider 使用同一时钟（SystemClock.elapsedRealtime），
+        // 否则 DanmakuEngine 的 skipOld/dropIfLagging 会丢弃"过时"弹幕
+        val nowMs = android.os.SystemClock.elapsedRealtime().toInt()
         val updatedItems = itemsToSend.map {
-            DanmakuItemData(
-                danmakuId = it.danmakuId,
-                position = sendPosition,
-                content = it.content,
-                mode = it.mode,
-                textSize = it.textSize,
-                textColor = it.textColor
-            )
+            it.copy(positionMs = nowMs)
         }
 
         withContext(Dispatchers.Main) {
-            danmakuPlayer?.updateData(updatedItems)
+            view.appendDanmakus(updatedItems, maxItems = 5000, alreadySorted = true)
         }
     }
 

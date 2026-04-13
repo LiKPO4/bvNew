@@ -54,7 +54,6 @@ import dev.aaa1115910.bv.player.entity.VideoCodec
 import dev.aaa1115910.bv.player.entity.VideoListItem
 import dev.aaa1115910.bv.player.entity.VideoRotation
 import dev.aaa1115910.bv.player.seekbar.SeekMoveState
-import dev.aaa1115910.bv.player.shared.BuildConfig
 import dev.aaa1115910.bv.player.shared.R
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.toast
@@ -120,6 +119,7 @@ fun VideoPlayerController(
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
     onLoadNextVideo: (Boolean) -> Unit,
+    onDebugInfoChange: (Boolean) -> Unit = {},
 
     onRequestFocus: () -> Unit,
     onShowComment: () -> Unit = {},
@@ -145,6 +145,9 @@ fun VideoPlayerController(
     var lastPressDown by remember { mutableLongStateOf(0L) }
     var longPressDownTriggered by remember { mutableStateOf(false) }
     var hasFocus by remember { mutableStateOf(false) }
+    // 长按加速播放状态
+    var isLongPressSpeedUp by remember { mutableStateOf(false) }
+    var savedSpeedBeforeLongPress by remember { mutableStateOf(1f) }
 
     var goTime by remember { mutableLongStateOf(0L) }
     var seekChangeCount by remember { mutableIntStateOf(0) }
@@ -287,14 +290,31 @@ fun VideoPlayerController(
 
                         if (it.nativeKeyEvent.isLongPress) {
                             logger.fInfo { "[${it.key}] long press" }
-                            scope.launch(Dispatchers.Main) {
-                                showMenuController = true
+                            if (videoPlayerConfigData.longPressAction == 1) {
+                                // 加速播放模式
+                                if (!isLongPressSpeedUp) {
+                                    savedSpeedBeforeLongPress = videoPlayer.speed
+                                    videoPlayer.speed = videoPlayerConfigData.longPressSpeed
+                                    isLongPressSpeedUp = true
+                                    logger.fInfo { "Long press speed up: ${videoPlayerConfigData.longPressSpeed}x" }
+                                }
+                            } else {
+                                scope.launch(Dispatchers.Main) {
+                                    showMenuController = true
+                                }
                             }
                             return@onPreviewKeyEvent true
                         }
 
                         logger.fInfo { "[${it.key}] short press" }
                         if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                        // 长按加速松手恢复
+                        if (isLongPressSpeedUp) {
+                            videoPlayer.speed = savedSpeedBeforeLongPress
+                            isLongPressSpeedUp = false
+                            logger.fInfo { "Long press speed restored: ${savedSpeedBeforeLongPress}x" }
+                            return@onPreviewKeyEvent true
+                        }
                         if (videoPlayer.isPlaying)
                             onPause()
                         else if (videoPlayer.currentPosition >= videoPlayer.duration) {
@@ -308,8 +328,21 @@ fun VideoPlayerController(
                     // KEYCODE_CENTER_LONG
                     // 一切设备上长按 DirectionCenter 键会是这个按键事件
                     Key(763) -> {
-                        scope.launch(Dispatchers.Main) {
-                            showMenuController = true
+                        if (videoPlayerConfigData.longPressAction == 1) {
+                            if (it.type == KeyEventType.KeyDown && !isLongPressSpeedUp) {
+                                savedSpeedBeforeLongPress = videoPlayer.speed
+                                videoPlayer.speed = videoPlayerConfigData.longPressSpeed
+                                isLongPressSpeedUp = true
+                                logger.fInfo { "KEYCODE_CENTER_LONG speed up: ${videoPlayerConfigData.longPressSpeed}x" }
+                            } else if (it.type == KeyEventType.KeyUp && isLongPressSpeedUp) {
+                                videoPlayer.speed = savedSpeedBeforeLongPress
+                                isLongPressSpeedUp = false
+                                logger.fInfo { "KEYCODE_CENTER_LONG speed restored: ${savedSpeedBeforeLongPress}x" }
+                            }
+                        } else {
+                            scope.launch(Dispatchers.Main) {
+                                showMenuController = true
+                            }
                         }
                         return@onPreviewKeyEvent true
                     }
@@ -463,25 +496,49 @@ fun VideoPlayerController(
             }
     ) {
         content()
-//        if (BuildConfig.DEBUG) {
-//            Box(
-//                modifier = Modifier
-//                    .align(Alignment.TopStart)
-//                    .padding(8.dp)
-//                    .clip(MaterialTheme.shapes.medium)
-//                    .background(Color.Black.copy(alpha = 0.3f))
-//            ) {
-//                Text(
-//                    modifier = Modifier.padding(8.dp),
-//                    text = videoPlayerDebugInfoData.debugInfo
-//                )
-//            }
-//        }
+        if (videoPlayerConfigData.showDebugInfo) {
+            val debugInfo by produceState(videoPlayerDebugInfoData.debugInfo) {
+                while (true) {
+                    value = videoPlayer.debugInfo
+                    delay(1000)
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(8.dp)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(Color.Black.copy(alpha = 0.3f))
+            ) {
+                Text(
+                    modifier = Modifier.padding(8.dp),
+                    text = debugInfo,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
         BottomSubtitle()
         SkipTips()
         PlayStateTips(
             canShowPause = !showInfo && !showSeekController
         )
+        // 长按加速播放提示
+        if (isLongPressSpeedUp) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 6.dp)
+                    .clip(MaterialTheme.shapes.extraLarge)
+                    .background(Color.Black.copy(alpha = 0.2f))
+            ) {
+                Text(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    text = "${videoPlayerConfigData.longPressSpeed}x 加速播放中",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.5f)
+                )
+            }
+        }
         ControllerVideoInfo(
             show = showInfo,
             playSpeed = videoPlayer.speed,
@@ -580,7 +637,8 @@ fun VideoPlayerController(
             onSubtitleSizeChange = onSubtitleSizeChange,
             onSubtitleBackgroundOpacityChange = onSubtitleBackgroundOpacityChange,
             onSubtitleBottomPadding = onSubtitleBottomPadding,
-            onPlayModeChange = onPlayModeChange
+            onPlayModeChange = onPlayModeChange,
+            onDebugInfoChange = onDebugInfoChange
         )
         // 缓存底部进度条显示条件，避免频繁计算
         val shouldShowBottomProgressBar by remember { 

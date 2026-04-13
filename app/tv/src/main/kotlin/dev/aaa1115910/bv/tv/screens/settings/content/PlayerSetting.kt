@@ -98,6 +98,9 @@ fun PlayerSetting(
     var defaultLiveCodec by remember { mutableStateOf(Prefs.defaultLiveCodec) }
     var defaultDanmakuFilterLevel by remember { mutableStateOf(Prefs.defaultDanmakuFilterLevel) }
     var defaultLiveDanmakuFilterLevel by remember { mutableStateOf(Prefs.defaultLiveDanmakuFilterLevel) }
+    var showLongPressActionDialog by remember { mutableStateOf(false) }
+    var playerLongPressAction by remember { mutableIntStateOf(Prefs.playerLongPressAction) }
+    var playerLongPressSpeed by remember { mutableDoubleStateOf(Prefs.playerLongPressSpeed.toDouble()) }
 
 
     Column(
@@ -400,6 +403,35 @@ fun PlayerSetting(
                     }
                 )
             }
+            item {
+                SettingListItem(
+                    title = "长按确认键行为",
+                    supportText = "设置播放器中长按确认键的行为",
+                    valueText = when (playerLongPressAction) {
+                        0 -> "打开菜单"
+                        1 -> "加速播放"
+                        else -> "打开菜单"
+                    },
+                    onClick = { showLongPressActionDialog = true }
+                )
+            }
+            if (playerLongPressAction == 1) {
+                item {
+                    SettingNumberListItem(
+                        title = "长按加速速度",
+                        supportText = "长按确认键时的播放速度",
+                        value = playerLongPressSpeed,
+                        minValue = 1.25,
+                        maxValue = 3.0,
+                        isInteger = false,
+                        step = 0.25,
+                        onValueChange = {
+                            playerLongPressSpeed = it
+                            Prefs.playerLongPressSpeed = it.toFloat()
+                        }
+                    )
+                }
+            }
         }
 
         OnlineViewerCountDialog(
@@ -425,6 +457,16 @@ fun PlayerSetting(
         NextVideoStrategyEditDialog(
             show = showNextVideoStrategyDialog,
             onHideDialog = { showNextVideoStrategyDialog = false }
+        )
+
+        LongPressActionDialog(
+            show = showLongPressActionDialog,
+            onHideDialog = { showLongPressActionDialog = false },
+            longPressAction = playerLongPressAction,
+            onLongPressActionChange = {
+                playerLongPressAction = it
+                Prefs.playerLongPressAction = it
+            }
         )
     }
 }
@@ -497,6 +539,45 @@ private fun LiveViewerCountTipDialog(
                             trailingContent = {
                                 RadioButton(
                                     selected = showLiveViewerCountTip == value,
+                                    onClick = null
+                                )
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+}
+
+@Composable
+private fun LongPressActionDialog(
+    modifier: Modifier = Modifier,
+    show: Boolean,
+    onHideDialog: () -> Unit,
+    longPressAction: Int,
+    onLongPressActionChange: (Int) -> Unit
+) {
+    if (show) {
+        TvAlertDialog(
+            modifier = modifier,
+            onDismissRequest = { onHideDialog() },
+            title = { Text(text = "长按确认键行为") },
+            text = {
+                Column {
+                    val options = listOf(
+                        "打开菜单" to 0,
+                        "加速播放" to 1
+                    )
+                    options.forEach { (text, value) ->
+                        ListItem(
+                            selected = longPressAction == value,
+                            onClick = { onLongPressActionChange(value) },
+                            headlineContent = { Text(text = text) },
+                            trailingContent = {
+                                RadioButton(
+                                    selected = longPressAction == value,
                                     onClick = null
                                 )
                             }

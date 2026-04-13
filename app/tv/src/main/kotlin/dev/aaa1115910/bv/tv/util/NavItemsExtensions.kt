@@ -241,9 +241,9 @@ private fun <T> parseTopNavItemsOrder(orderString: String, entries: List<T>): Li
     return orderString
         .split(",")
         .mapNotNull { part ->
-            val ordinal = part.toIntOrNull() ?: return@mapNotNull null
-            val isHidden = ordinal < 0
-            val actualOrdinal = if (isHidden) -ordinal else ordinal
+            val trimmed = part.trim()
+            val isHidden = trimmed.startsWith("-")
+            val actualOrdinal = trimmed.removePrefix("-").toIntOrNull() ?: return@mapNotNull null
             actualOrdinal to isHidden
         }
         .filter { !it.second }
@@ -317,9 +317,10 @@ fun moveNavItemToFirstAndUnhide(orderString: String, ordinal: Int, entriesCount:
     }
 
     val parts = normalizedOrderString.split(",").map { part ->
-        val num = part.toIntOrNull() ?: return@map part to false
-        val absNum = if (num < 0) -num else num
-        absNum to (num < 0)
+        val trimmed = part.trim()
+        val isHidden = trimmed.startsWith("-")
+        val absNum = trimmed.removePrefix("-").toIntOrNull() ?: return@map 0 to false
+        absNum to isHidden
     }
 
     // 找到目标项
@@ -361,9 +362,9 @@ fun parseNavItemsOrderToConfig(orderString: String, entriesCount: Int): List<Nav
     return orderString
         .split(",")
         .mapNotNull { part ->
-            val ordinal = part.toIntOrNull() ?: return@mapNotNull null
-            val isHidden = ordinal < 0
-            val actualOrdinal = if (isHidden) -ordinal else ordinal
+            val trimmed = part.trim()
+            val isHidden = trimmed.startsWith("-")
+            val actualOrdinal = trimmed.removePrefix("-").toIntOrNull() ?: return@mapNotNull null
             if (actualOrdinal !in 0 until entriesCount) return@mapNotNull null
             NavItemConfig(actualOrdinal, isHidden)
         }

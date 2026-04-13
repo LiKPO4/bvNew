@@ -1,0 +1,331 @@
+---------------------------- PROCESS STARTED (28950) for package dev.aaa1115910.bv2.debug ----------------------------
+2026-04-09 09:01:27.260 28950-29028 System.out              dev.aaa1115910.bv2.debug             I  getVideoDetail:{"code":0,"message":"OK","ttl":1,"data":{"View":{"bvid":"BV1QmkLY5ESw","aid":113666158495041,"videos":1,"tid":183,"tid_v2":2002,"tname":"","tname_v2":"","copyright":1,"pic":"http://i2.hdslb.com/bfs/archive/1853161b265b44ee7a5af81695c3b0177720b4ea.jpg","title":"“质问唐僧的那一刻，艺术达到了顶峰！”","pubdate":1734408044,"ctime":1734408044,"desc":"感谢审核大大！！！","desc_v2":[{"raw_text":"感谢审核大大！！！","type":1,"biz_id":0}],"state":0,"duration":256,"mission_id":4023025,"rights":{"bp":0,"elec":0,"download":1,"movie":0,"pay":0,"hd5":1,"no_reprint":1,"autoplay":1,"ugc_pay":0,"is_cooperation":0,"ugc_pay_preview":0,"no_background":0,"clean_mode":0,"is_stein_gate":0,"is_360":0,"no_share":0,"arc_pay":0,"free_watch":0},"owner":{"mid":111578972,"name":"前前前世的陌生人","face":"https://i2.hdslb.com/bfs/face/caa531d35eb71a06403da433b0549fe623675dfd.jpg"},"stat":{"aid":113666158495041,"view":10351058,"danmaku":113435,"reply":6791,"favorite":181390,"coin":97018,"share":11202,"now_rank":0,"his_rank":85,"like":409477,"dislike":0,"evaluation":"","vt":0},"argue_info":{"argue_msg":"","argue_type":0,"argue_link":""},"dynamic":"“质问唐僧的那一刻，艺术达到了顶峰”","cid":27381926762,"dimension":{"width":3840,"height":2160,"rotate":0},"premiere":null,"teenage_mode":0,"is_chargeable_season":false,"is_story":false,"is_upower_exclusive":false,"is_upower_play":false,"is_upower_preview":false,"enable_vt":0,"vt_display":"","is_upower_exclusive_with_qa":false,"no_cache":false,"pages":[{"cid":27381926762,"page":1,"from":"vupload","part":"“质问唐僧的那一刻，艺术达到了顶峰！”","duration":256,"vid":"","weblink":"","dimension":{"width":3840,"height":2160,"rotate":0},"first_frame":"http://i2.hdslb.com/bfs/storyff/n241217sa3avhp4hfd8moj3odibfm9p5_firsti.jpg","ctime":1734408044}],"subtitle":{"allow_submit":false,"list":[{"id":1646328479605701376,"lan":"ai-zh","lan_doc":"中文","is_lock":false,"subtitle_url":"","type":1,"id_str":"1646328479605701376","ai_type":0,"ai_status":2,"subtitle_height":null,"author":{"mid":0,"name":"","sex":"","face":"","sign":"","rank":0,"birthday":0,"is_fake_account":0,"is_deleted":0,"in_reg_audit":0,"is_senior_member":0,"name_render":null,"handle":""}}]},"is_season_display":false,"user_garb":{"url_image_ani_cut":""},"honor_reply":{"honor":[{"aid":113666158495041,"type":3,"desc":"全站排行榜最高第85名","weekly_recommend_num":0},{"aid":113666158495041,"type":7,"desc":"热门收录","weekly_recommend_num":0}]},"like_icon":"","need_jump_bv":false,"disable_show_up_info":false,"is_story_play":1,"is_view_self":false},"Card":{"card":{"mid":"111578972","name":"前前前世的陌生人","approve":false,"sex":"男","rank":"10000","face":"https://i2.hdslb.com/bfs/face/caa531d35eb71a06403da433b0549fe623675dfd.jpg","face_nft":0,"face_nft_type":0,"DisplayRank":"0","regtime":0,"spacesta":0,"birthday":"","place":"","description":"","article":0,"attentions":[],"fans":417849,"friend":344,"attention":344,"sign":"感谢遇见交流群号：1142539222，先进群，在拉V","level_info":{"current_level":6,"current_min":0,"current_exp":0,"next_exp":0},"pendant":{"pid":0,"name":"","image":"","expire":0,"image_enhance":"","image_enhance_frame":"","n_pid":0},"nameplate":{"nid":1,"name":"黄金殿堂","image":"https://i0.hdslb.com/bfs/face/82896ff40fcb4e7c7259cb98056975830cb55695.png","image_small":"https://i1.hdslb.com/bfs/face/627e342851dfda6fe7380c2fa0cbd7fae2e61533.png","level":"稀有勋章","condition":"单个自制视频总播放数\u003e=100万，数据次日更新"},"Official":{"role":7,"title":"bilibili 新星UP主","desc":"“2020新星计划暑假赛”获奖者","type":0},"official_verify":{"type":0,"desc":"bilibili 新星UP主"},"vip":{"type":2,"status":1,"due_date":1806854400000,"vip_pay_type":0,"theme_type":0,"label":{"path":"http://i0.hdslb.com/bfs/vip/label_annual.png","text":"年度大会员","label_theme":"annual_vip","text_color":"#FFFFFF","bg_style":1,"bg_color":"#FB7299","border_color":"
+2026-04-09 09:01:27.975 28950-28979 VideoPlayerV3ViewModel  dev.aaa1115910.bv2.debug             I  ensureDanmakuView: current=dev.aaa1115910.bv.player.danmaku.DanmakuView{2613588 V.ED..... ......ID 0,0-1920,1080}
+2026-04-09 09:01:28.779 28950-28950 BvPlayer                dev.aaa1115910.bv2.debug             I  Sync danmaku config: DanmakuConfig(enabled=true, opacity=1.0, textSizeSp=18.0, textSizeScale=125, fontWeight=Bold, strokeWidthPx=4, speedLevel=3, area=1.0, laneDensity=Standard, allowScroll=true, allowTop=true, allowBottom=true, minLevel=0)
+2026-04-09 09:01:28.821 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=4.9  frames=5  dropped=3  actMs(avg/p50/p95/max)=0.48/0.05/2.19/2.19  active=0  pending=0  cacheQ=0  mem=heap=48.33/512.00MB native=149.18MB
+2026-04-09 09:01:28.840 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=4.9  frames=5  dropped=3  sameSnap=3  maxSameSnapStreak=3  snapAgeMs(avg/max)=9.6/33.8  mem=heap=50.15/512.00MB native=149.18MB
+2026-04-09 09:01:28.937 28950-29008 VideoPlayerV3ViewModel  dev.aaa1115910.bv2.debug             I  Load danmaku segment success, cid=27381926762, segment=1, size=9063, total=9063
+2026-04-09 09:01:29.824 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.8  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.14/0.04/0.55/1.18  active=28  pending=8  cacheQ=0  mem=heap=69.39/512.00MB native=150.20MB
+2026-04-09 09:01:29.841 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.9  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=18.5/96.0  mem=heap=73.35/512.00MB native=150.19MB
+2026-04-09 09:01:30.189 28950-29008 VideoPlayerV3ViewModel  dev.aaa1115910.bv2.debug             I  Load danmaku mask size: 26
+2026-04-09 09:01:30.825 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.04/0.27/0.43  active=46  pending=12  cacheQ=0  mem=heap=71.77/512.00MB native=151.05MB
+2026-04-09 09:01:30.859 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/22.9  mem=heap=72.05/512.00MB native=150.96MB
+2026-04-09 09:01:31.838 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.2  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.07/0.04/0.19/0.48  active=61  pending=9  cacheQ=1  mem=heap=75.56/512.00MB native=150.84MB
+2026-04-09 09:01:31.872 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.3  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/19.6  mem=heap=72.26/512.00MB native=150.82MB
+2026-04-09 09:01:32.844 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.04/0.33/0.94  active=77  pending=10  cacheQ=0  mem=heap=73.93/512.00MB native=150.49MB
+2026-04-09 09:01:32.873 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/22.9  mem=heap=74.21/512.00MB native=150.44MB
+2026-04-09 09:01:33.856 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.3  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.09/0.04/0.19/1.79  active=87  pending=2  cacheQ=0  mem=heap=77.57/512.00MB native=150.30MB
+2026-04-09 09:01:33.892 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/22.3  mem=heap=77.88/512.00MB native=150.42MB
+2026-04-09 09:01:34.865 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.5  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.04/0.30/0.37  active=94  pending=8  cacheQ=0  mem=heap=78.06/512.00MB native=150.45MB
+2026-04-09 09:01:34.901 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.5  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.7/26.7  mem=heap=78.43/512.00MB native=150.55MB
+2026-04-09 09:01:35.868 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.06/0.25/0.34  active=103  pending=17  cacheQ=2  mem=heap=78.21/512.00MB native=150.43MB
+2026-04-09 09:01:35.903 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/25.0  mem=heap=78.55/512.00MB native=150.46MB
+2026-04-09 09:01:36.871 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.21/0.31  active=95  pending=12  cacheQ=0  mem=heap=77.37/512.00MB native=150.00MB
+2026-04-09 09:01:36.905 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/23.1  mem=heap=77.65/512.00MB native=149.86MB
+2026-04-09 09:01:37.872 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.06/0.18/0.25  active=97  pending=11  cacheQ=0  mem=heap=76.87/512.00MB native=151.36MB
+2026-04-09 09:01:37.906 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/19.5  mem=heap=77.16/512.00MB native=151.22MB
+2026-04-09 09:01:38.877 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.12/0.06/0.45/1.64  active=99  pending=16  cacheQ=1  mem=heap=80.33/512.00MB native=151.21MB
+2026-04-09 09:01:38.910 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.3  mem=heap=80.33/512.00MB native=151.11MB
+2026-04-09 09:01:39.891 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.2  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.10/0.06/0.26/0.84  active=103  pending=20  cacheQ=0  mem=heap=78.08/512.00MB native=151.17MB
+2026-04-09 09:01:39.924 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.2  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/24.4  mem=heap=78.09/512.00MB native=151.13MB
+2026-04-09 09:01:40.896 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.12/0.05/0.38/1.26  active=105  pending=17  cacheQ=0  mem=heap=77.75/512.00MB native=150.32MB
+2026-04-09 09:01:40.933 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.5  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.7/21.8  mem=heap=78.31/512.00MB native=150.40MB
+2026-04-09 09:01:41.905 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.5  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.23/0.28  active=104  pending=19  cacheQ=0  mem=heap=81.02/512.00MB native=150.55MB
+2026-04-09 09:01:41.937 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/21.7  mem=heap=81.32/512.00MB native=150.42MB
+2026-04-09 09:01:42.908 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.06/0.21/0.28  active=102  pending=22  cacheQ=0  mem=heap=80.22/512.00MB native=150.93MB
+2026-04-09 09:01:42.944 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.6  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.7/25.1  mem=heap=80.51/512.00MB native=151.00MB
+2026-04-09 09:01:43.911 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.06/0.24/0.38  active=108  pending=9  cacheQ=0  mem=heap=79.54/512.00MB native=150.50MB
+2026-04-09 09:01:43.945 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.0  mem=heap=79.82/512.00MB native=150.45MB
+2026-04-09 09:01:44.913 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.26/0.49  active=107  pending=11  cacheQ=0  mem=heap=81.64/512.00MB native=150.62MB
+2026-04-09 09:01:44.949 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/23.1  mem=heap=81.92/512.00MB native=150.49MB
+2026-04-09 09:01:45.919 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.6  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.06/0.23/0.41  active=105  pending=8  cacheQ=0  mem=heap=81.56/512.00MB native=150.41MB
+2026-04-09 09:01:45.955 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.6  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.7/21.1  mem=heap=81.84/512.00MB native=150.36MB
+2026-04-09 09:01:46.930 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.3  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.07/0.05/0.24/0.45  active=106  pending=1  cacheQ=0  mem=heap=81.35/512.00MB native=150.26MB
+2026-04-09 09:01:46.965 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.5  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.4/20.0  mem=heap=81.63/512.00MB native=150.25MB
+2026-04-09 09:01:47.935 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.23/0.70  active=99  pending=3  cacheQ=0  mem=heap=79.47/512.00MB native=150.23MB
+2026-04-09 09:01:47.968 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/24.0  mem=heap=79.75/512.00MB native=150.39MB
+2026-04-09 09:01:48.952 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.07/0.05/0.16/0.18  active=96  pending=2  cacheQ=0  mem=heap=82.29/512.00MB native=150.50MB
+2026-04-09 09:01:48.968 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/23.0  mem=heap=82.29/512.00MB native=150.48MB
+2026-04-09 09:01:49.967 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.1  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.09/0.06/0.32/0.49  active=89  pending=8  cacheQ=0  mem=heap=81.81/512.00MB native=149.73MB
+2026-04-09 09:01:49.985 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/19.7  mem=heap=81.81/512.00MB native=149.69MB
+2026-04-09 09:01:50.971 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.07/0.05/0.17/0.24  active=93  pending=4  cacheQ=0  mem=heap=81.08/512.00MB native=150.09MB
+2026-04-09 09:01:50.986 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/22.7  mem=heap=81.08/512.00MB native=150.09MB
+2026-04-09 09:01:51.985 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.2  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.20/0.49  active=91  pending=11  cacheQ=0  mem=heap=80.63/512.00MB native=149.64MB
+2026-04-09 09:01:52.001 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.1  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/24.2  mem=heap=80.64/512.00MB native=149.71MB
+2026-04-09 09:01:52.990 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.04/0.17/1.34  active=92  pending=9  cacheQ=0  mem=heap=79.60/512.00MB native=150.09MB
+2026-04-09 09:01:53.008 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.6  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.7/24.8  mem=heap=79.89/512.00MB native=150.03MB
+2026-04-09 09:01:53.992 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.07/0.06/0.16/0.20  active=94  pending=9  cacheQ=0  mem=heap=82.84/512.00MB native=150.42MB
+2026-04-09 09:01:54.011 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.5  mem=heap=82.85/512.00MB native=150.42MB
+2026-04-09 09:01:54.999 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.6  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.07/0.04/0.19/0.29  active=97  pending=8  cacheQ=1  mem=heap=82.52/512.00MB native=150.18MB
+2026-04-09 09:01:55.016 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.7  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/21.6  mem=heap=83.10/512.00MB native=150.18MB
+2026-04-09 09:01:56.002 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.33/0.53  active=91  pending=5  cacheQ=0  mem=heap=82.21/512.00MB native=150.07MB
+2026-04-09 09:01:56.019 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/21.9  mem=heap=82.22/512.00MB native=149.98MB
+2026-04-09 09:01:57.003 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.07/0.05/0.20/0.24  active=93  pending=10  cacheQ=1  mem=heap=84.90/512.00MB native=150.06MB
+2026-04-09 09:01:57.020 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/21.4  mem=heap=80.66/512.00MB native=150.01MB
+2026-04-09 09:01:58.006 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.06/0.04/0.18/0.21  active=94  pending=8  cacheQ=0  mem=heap=82.99/512.00MB native=149.88MB
+2026-04-09 09:01:58.022 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.4  mem=heap=83.00/512.00MB native=149.88MB
+2026-04-09 09:01:59.022 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.1  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.07/0.05/0.15/0.19  active=91  pending=13  cacheQ=0  mem=heap=80.65/512.00MB native=149.75MB
+2026-04-09 09:01:59.041 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/22.8  mem=heap=80.66/512.00MB native=149.75MB
+2026-04-09 09:02:00.029 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.6  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.18/0.75  active=96  pending=14  cacheQ=0  mem=heap=84.01/512.00MB native=150.48MB
+2026-04-09 09:02:00.047 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.7  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.7/22.4  mem=heap=84.28/512.00MB native=150.37MB
+2026-04-09 09:02:01.035 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.06/0.24/0.52  active=99  pending=16  cacheQ=0  mem=heap=82.80/512.00MB native=150.11MB
+2026-04-09 09:02:01.051 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/21.0  mem=heap=82.80/512.00MB native=150.04MB
+2026-04-09 09:02:02.049 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.2  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.17/0.32  active=100  pending=15  cacheQ=0  mem=heap=82.14/512.00MB native=150.50MB
+2026-04-09 09:02:02.065 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.2  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/20.5  mem=heap=82.46/512.00MB native=150.54MB
+2026-04-09 09:02:03.053 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.13/0.07/0.36/1.27  active=106  pending=14  cacheQ=0  mem=heap=85.12/512.00MB native=150.15MB
+2026-04-09 09:02:03.082 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/25.5  mem=heap=81.22/512.00MB native=150.18MB
+2026-04-09 09:02:04.066 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.3  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.09/0.06/0.23/0.45  active=115  pending=22  cacheQ=0  mem=heap=84.33/512.00MB native=149.98MB
+2026-04-09 09:02:04.084 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.2  mem=heap=84.63/512.00MB native=149.94MB
+2026-04-09 09:02:05.074 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.5  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.07/0.19/0.20  active=115  pending=26  cacheQ=0  mem=heap=84.63/512.00MB native=150.45MB
+2026-04-09 09:02:05.091 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.6  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.7/20.7  mem=heap=84.63/512.00MB native=150.47MB
+2026-04-09 09:02:06.091 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.11/0.07/0.27/1.00  active=121  pending=28  cacheQ=0  mem=heap=83.75/512.00MB native=150.41MB
+2026-04-09 09:02:06.107 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.1  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/19.4  mem=heap=83.76/512.00MB native=150.33MB
+2026-04-09 09:02:07.103 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.3  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.09/0.06/0.18/0.25  active=121  pending=35  cacheQ=0  mem=heap=83.03/512.00MB native=150.38MB
+2026-04-09 09:02:07.121 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.2  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/21.8  mem=heap=83.32/512.00MB native=150.31MB
+2026-04-09 09:02:08.108 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.7  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.09/0.07/0.23/0.24  active=117  pending=37  cacheQ=0  mem=heap=85.38/512.00MB native=150.84MB
+2026-04-09 09:02:08.125 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.7  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.3/22.5  mem=heap=85.67/512.00MB native=150.85MB
+2026-04-09 09:02:09.108 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.06/0.20/0.44  active=119  pending=29  cacheQ=0  mem=heap=84.00/512.00MB native=149.84MB
+2026-04-09 09:02:09.126 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/25.8  mem=heap=84.00/512.00MB native=149.82MB
+2026-04-09 09:02:10.126 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.12/0.07/0.34/0.87  active=111  pending=35  cacheQ=0  mem=heap=82.39/512.00MB native=150.14MB
+2026-04-09 09:02:10.144 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.9  mem=heap=82.39/512.00MB native=150.07MB
+2026-04-09 09:02:11.142 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.10/0.08/0.17/0.31  active=108  pending=48  cacheQ=0  mem=heap=86.35/512.00MB native=150.41MB
+2026-04-09 09:02:11.160 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.1  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/19.4  mem=heap=86.64/512.00MB native=150.40MB
+2026-04-09 09:02:12.144 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.10/0.08/0.19/0.22  active=109  pending=48  cacheQ=0  mem=heap=85.58/512.00MB native=150.18MB
+2026-04-09 09:02:12.161 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/21.1  mem=heap=85.87/512.00MB native=150.12MB
+2026-04-09 09:02:13.150 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.11/0.08/0.30/0.50  active=113  pending=38  cacheQ=0  mem=heap=83.67/512.00MB native=150.50MB
+2026-04-09 09:02:13.167 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.6  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.7/20.1  mem=heap=83.95/512.00MB native=150.51MB
+2026-04-09 09:02:14.151 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.06/0.21/0.48  active=110  pending=30  cacheQ=0  mem=heap=83.00/512.00MB native=149.91MB
+2026-04-09 09:02:14.168 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/19.5  mem=heap=83.01/512.00MB native=149.89MB
+2026-04-09 09:02:15.153 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.06/0.23/0.31  active=107  pending=20  cacheQ=0  mem=heap=85.69/512.00MB native=150.11MB
+2026-04-09 09:02:15.172 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.7  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/21.2  mem=heap=85.97/512.00MB native=150.01MB
+2026-04-09 09:02:16.164 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.4  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.06/0.30/0.42  active=103  pending=17  cacheQ=0  mem=heap=83.88/512.00MB native=150.05MB
+2026-04-09 09:02:16.182 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.5  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.7/26.4  mem=heap=83.89/512.00MB native=150.09MB
+2026-04-09 09:02:17.166 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.07/0.05/0.18/0.22  active=97  pending=10  cacheQ=0  mem=heap=82.00/512.00MB native=150.39MB
+2026-04-09 09:02:17.183 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/25.5  mem=heap=82.00/512.00MB native=150.25MB
+2026-04-09 09:02:18.180 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.2  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.18/0.23  active=97  pending=7  cacheQ=0  mem=heap=84.88/512.00MB native=150.33MB
+2026-04-09 09:02:18.195 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.3  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/22.8  mem=heap=84.88/512.00MB native=150.36MB
+2026-04-09 09:02:19.195 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.1  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.21/0.26  active=96  pending=17  cacheQ=0  mem=heap=83.47/512.00MB native=150.53MB
+2026-04-09 09:02:19.213 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/27.2  mem=heap=83.48/512.00MB native=150.45MB
+2026-04-09 09:02:20.202 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.6  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.18/0.54  active=91  pending=10  cacheQ=0  mem=heap=81.97/512.00MB native=149.79MB
+2026-04-09 09:02:20.218 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.7  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/22.6  mem=heap=81.98/512.00MB native=149.77MB
+2026-04-09 09:02:21.206 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.06/0.23/0.47  active=92  pending=15  cacheQ=0  mem=heap=85.44/512.00MB native=150.21MB
+2026-04-09 09:02:21.223 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.7  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/27.1  mem=heap=85.73/512.00MB native=150.23MB
+2026-04-09 09:02:22.219 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.3  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.20/0.36  active=89  pending=18  cacheQ=0  mem=heap=83.28/512.00MB native=149.88MB
+2026-04-09 09:02:22.238 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.2  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/23.2  mem=heap=83.55/512.00MB native=149.85MB
+2026-04-09 09:02:23.222 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.06/0.21/0.28  active=93  pending=22  cacheQ=0  mem=heap=82.18/512.00MB native=150.28MB
+2026-04-09 09:02:23.239 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/24.0  mem=heap=82.46/512.00MB native=150.36MB
+2026-04-09 09:02:24.225 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.11/0.06/0.29/1.24  active=92  pending=17  cacheQ=0  mem=heap=85.25/512.00MB native=150.83MB
+2026-04-09 09:02:24.242 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/25.1  mem=heap=85.25/512.00MB native=150.87MB
+2026-04-09 09:02:25.228 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.26/0.28  active=95  pending=16  cacheQ=0  mem=heap=83.95/512.00MB native=151.31MB
+2026-04-09 09:02:25.245 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.9  mem=heap=83.96/512.00MB native=151.28MB
+2026-04-09 09:02:26.244 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.1  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.20/0.53  active=98  pending=20  cacheQ=0  mem=heap=82.50/512.00MB native=151.38MB
+2026-04-09 09:02:26.261 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.1  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/20.0  mem=heap=82.51/512.00MB native=151.35MB
+2026-04-09 09:02:27.250 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.07/0.17/0.34  active=109  pending=13  cacheQ=0  mem=heap=85.31/512.00MB native=151.36MB
+2026-04-09 09:02:27.267 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.7  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/19.6  mem=heap=85.64/512.00MB native=151.32MB
+2026-04-09 09:02:28.264 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.2  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.07/0.06/0.16/0.18  active=110  pending=15  cacheQ=0  mem=heap=84.79/512.00MB native=150.71MB
+2026-04-09 09:02:28.282 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.2  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/24.9  mem=heap=84.80/512.00MB native=150.75MB
+2026-04-09 09:02:29.282 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.12/0.05/0.27/2.67  active=105  pending=13  cacheQ=0  mem=heap=85.41/512.00MB native=150.27MB
+2026-04-09 09:02:29.299 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/23.8  mem=heap=85.68/512.00MB native=150.31MB
+2026-04-09 09:02:30.298 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.1  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.07/0.06/0.17/0.20  active=108  pending=8  cacheQ=0  mem=heap=84.57/512.00MB native=150.41MB
+2026-04-09 09:02:30.316 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/21.5  mem=heap=84.84/512.00MB native=150.32MB
+2026-04-09 09:02:31.299 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.06/0.19/0.39  active=103  pending=11  cacheQ=0  mem=heap=83.61/512.00MB native=150.05MB
+2026-04-09 09:02:31.333 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/23.9  mem=heap=83.88/512.00MB native=150.05MB
+2026-04-09 09:02:32.300 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.07/0.05/0.15/0.25  active=99  pending=13  cacheQ=0  mem=heap=86.11/512.00MB native=150.10MB
+2026-04-09 09:02:32.348 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.1  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/23.6  mem=heap=82.63/512.00MB native=150.09MB
+2026-04-09 09:02:33.312 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.3  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.12/0.05/0.45/1.59  active=99  pending=13  cacheQ=0  mem=heap=85.52/512.00MB native=150.05MB
+2026-04-09 09:02:33.365 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/19.4  mem=heap=85.80/512.00MB native=150.03MB
+2026-04-09 09:02:34.330 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.07/0.06/0.15/0.40  active=99  pending=24  cacheQ=0  mem=heap=84.12/512.00MB native=150.37MB
+2026-04-09 09:02:34.381 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.1  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/23.9  mem=heap=84.39/512.00MB native=150.33MB
+2026-04-09 09:02:35.334 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.07/0.05/0.19/0.31  active=102  pending=15  cacheQ=0  mem=heap=83.25/512.00MB native=149.73MB
+2026-04-09 09:02:35.385 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/25.8  mem=heap=83.85/512.00MB native=149.78MB
+2026-04-09 09:02:36.340 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.06/0.05/0.13/0.15  active=98  pending=8  cacheQ=0  mem=heap=85.57/512.00MB native=150.10MB
+2026-04-09 09:02:36.392 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.6  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.7/20.8  mem=heap=85.74/512.00MB native=150.10MB
+2026-04-09 09:02:37.357 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.07/0.05/0.23/0.31  active=93  pending=10  cacheQ=0  mem=heap=84.84/512.00MB native=149.76MB
+2026-04-09 09:02:37.392 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.9  mem=heap=85.11/512.00MB native=149.80MB
+2026-04-09 09:02:38.372 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.1  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.08/0.05/0.22/0.26  active=99  pending=12  cacheQ=0  mem=heap=83.66/512.00MB native=150.28MB
+2026-04-09 09:02:38.407 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.2  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/31.0  mem=heap=83.94/512.00MB native=150.29MB
+2026-04-09 09:02:39.373 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.06/0.05/0.19/0.27  active=94  pending=5  cacheQ=0  mem=heap=85.86/512.00MB native=150.17MB
+2026-04-09 09:02:39.426 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/23.0  mem=heap=85.39/512.00MB native=150.18MB
+2026-04-09 09:02:40.374 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.06/0.04/0.16/0.20  active=88  pending=3  cacheQ=0  mem=heap=84.24/512.00MB native=149.31MB
+2026-04-09 09:02:40.426 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.0  mem=heap=84.78/512.00MB native=149.32MB
+2026-04-09 09:02:41.390 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.1  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.08/0.06/0.21/0.57  active=103  pending=38  cacheQ=0  mem=heap=83.95/512.00MB native=149.62MB
+2026-04-09 09:02:41.427 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/25.4  mem=heap=84.27/512.00MB native=149.53MB
+2026-04-09 09:02:42.393 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.06/0.25/0.28  active=111  pending=69  cacheQ=0  mem=heap=83.84/512.00MB native=149.70MB
+2026-04-09 09:02:42.427 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/19.9  mem=heap=84.12/512.00MB native=149.62MB
+2026-04-09 09:02:43.398 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.10/0.07/0.30/0.59  active=122  pending=76  cacheQ=1  mem=heap=82.99/512.00MB native=149.61MB
+2026-04-09 09:02:43.432 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.7  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/28.4  mem=heap=83.33/512.00MB native=149.62MB
+2026-04-09 09:02:44.398 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.07/0.18/0.22  active=129  pending=63  cacheQ=0  mem=heap=83.28/512.00MB native=149.64MB
+2026-04-09 09:02:44.434 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/23.4  mem=heap=83.61/512.00MB native=149.61MB
+2026-04-09 09:02:45.410 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.3  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.09/0.08/0.16/0.25  active=140  pending=77  cacheQ=0  mem=heap=82.75/512.00MB native=149.75MB
+2026-04-09 09:02:45.447 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.3  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/26.2  mem=heap=83.04/512.00MB native=149.65MB
+2026-04-09 09:02:46.427 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.11/0.09/0.33/0.42  active=153  pending=83  cacheQ=0  mem=heap=82.68/512.00MB native=149.96MB
+2026-04-09 09:02:46.462 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.1  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/23.7  mem=heap=82.97/512.00MB native=149.91MB
+2026-04-09 09:02:47.432 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.12/0.08/0.23/1.02  active=164  pending=83  cacheQ=1  mem=heap=85.91/512.00MB native=150.04MB
+2026-04-09 09:02:47.464 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.4  mem=heap=86.21/512.00MB native=150.03MB
+2026-04-09 09:02:48.434 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.09/0.15/0.19  active=169  pending=81  cacheQ=0  mem=heap=85.95/512.00MB native=150.07MB
+2026-04-09 09:02:48.470 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.7  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.7/20.5  mem=heap=86.30/512.00MB native=150.05MB
+2026-04-09 09:02:49.437 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.11/0.08/0.28/0.35  active=175  pending=68  cacheQ=1  mem=heap=84.55/512.00MB native=150.02MB
+2026-04-09 09:02:49.472 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.5  mem=heap=84.85/512.00MB native=150.04MB
+2026-04-09 09:02:50.439 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.07/0.15/0.18  active=173  pending=53  cacheQ=2  mem=heap=87.69/512.00MB native=150.34MB
+2026-04-09 09:02:50.487 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.1  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/20.7  mem=heap=87.14/512.00MB native=150.34MB
+2026-04-09 09:02:51.445 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.7  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.09/0.08/0.20/0.26  active=165  pending=53  cacheQ=0  mem=heap=85.87/512.00MB native=150.36MB
+2026-04-09 09:02:51.498 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.4  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.4/28.1  mem=heap=86.53/512.00MB native=150.35MB
+2026-04-09 09:02:52.448 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.11/0.09/0.22/0.52  active=169  pending=71  cacheQ=0  mem=heap=85.34/512.00MB native=150.41MB
+2026-04-09 09:02:52.501 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.0  mem=heap=85.71/512.00MB native=150.36MB
+2026-04-09 09:02:53.465 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.1  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.11/0.09/0.20/0.48  active=163  pending=77  cacheQ=0  mem=heap=84.21/512.00MB native=150.37MB
+2026-04-09 09:02:53.516 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.1  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/20.1  mem=heap=84.79/512.00MB native=150.36MB
+2026-04-09 09:02:54.474 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.5  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.12/0.09/0.46/0.88  active=168  pending=68  cacheQ=2  mem=heap=82.66/512.00MB native=150.44MB
+2026-04-09 09:02:54.526 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.4  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.4/21.0  mem=heap=83.24/512.00MB native=150.47MB
+2026-04-09 09:02:55.485 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.4  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.11/0.09/0.29/0.70  active=166  pending=72  cacheQ=0  mem=heap=86.39/512.00MB native=150.41MB
+2026-04-09 09:02:55.537 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.4  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.4/19.2  mem=heap=86.69/512.00MB native=150.37MB
+2026-04-09 09:02:56.485 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.13/0.08/0.37/0.82  active=169  pending=49  cacheQ=0  mem=heap=86.10/512.00MB native=150.49MB
+2026-04-09 09:02:56.538 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.2  mem=heap=86.67/512.00MB native=150.45MB
+2026-04-09 09:02:57.500 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.1  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.09/0.08/0.17/0.39  active=163  pending=57  cacheQ=0  mem=heap=85.09/512.00MB native=150.29MB
+2026-04-09 09:02:57.552 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.2  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/22.3  mem=heap=85.39/512.00MB native=150.22MB
+2026-04-09 09:02:58.516 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.1  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.10/0.08/0.27/0.72  active=158  pending=54  cacheQ=0  mem=heap=83.10/512.00MB native=149.98MB
+2026-04-09 09:02:58.569 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/22.3  mem=heap=83.68/512.00MB native=150.00MB
+2026-04-09 09:02:59.532 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.1  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.11/0.08/0.25/0.36  active=156  pending=63  cacheQ=0  mem=heap=85.23/512.00MB native=150.01MB
+2026-04-09 09:02:59.584 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.1  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/27.6  mem=heap=85.81/512.00MB native=150.03MB
+2026-04-09 09:03:00.544 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.3  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.09/0.08/0.17/0.20  active=154  pending=56  cacheQ=0  mem=heap=84.33/512.00MB native=150.00MB
+2026-04-09 09:03:00.597 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.3  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/20.0  mem=heap=84.92/512.00MB native=150.01MB
+2026-04-09 09:03:01.546 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.08/0.08/0.12/0.20  active=157  pending=53  cacheQ=0  mem=heap=86.92/512.00MB native=150.01MB
+2026-04-09 09:03:01.600 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/26.0  mem=heap=83.37/512.00MB native=150.09MB
+2026-04-09 09:03:02.551 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.08/0.19/0.29  active=154  pending=62  cacheQ=0  mem=heap=85.91/512.00MB native=150.23MB
+2026-04-09 09:03:02.604 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/22.0  mem=heap=86.21/512.00MB native=150.20MB
+2026-04-09 09:03:03.568 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.11/0.08/0.33/0.46  active=155  pending=70  cacheQ=0  mem=heap=85.61/512.00MB native=149.69MB
+2026-04-09 09:03:03.605 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.4  mem=heap=85.91/512.00MB native=149.67MB
+2026-04-09 09:03:04.572 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.08/0.14/0.22  active=149  pending=57  cacheQ=0  mem=heap=83.86/512.00MB native=149.66MB
+2026-04-09 09:03:04.609 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/24.9  mem=heap=84.15/512.00MB native=149.67MB
+2026-04-09 09:03:05.573 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.10/0.07/0.19/0.82  active=148  pending=49  cacheQ=0  mem=heap=82.80/512.00MB native=149.74MB
+2026-04-09 09:03:05.627 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/27.3  mem=heap=83.42/512.00MB native=149.71MB
+2026-04-09 09:03:06.576 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.08/0.22/0.25  active=154  pending=57  cacheQ=0  mem=heap=86.33/512.00MB native=149.71MB
+2026-04-09 09:03:06.628 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.9  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/22.4  mem=heap=86.48/512.00MB native=149.73MB
+2026-04-09 09:03:07.578 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.10/0.08/0.19/0.66  active=150  pending=60  cacheQ=0  mem=heap=86.08/512.00MB native=149.75MB
+2026-04-09 09:03:07.628 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/20.0  mem=heap=86.43/512.00MB native=149.68MB
+2026-04-09 09:03:08.592 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.2  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.10/0.08/0.29/0.57  active=150  pending=50  cacheQ=2  mem=heap=85.72/512.00MB native=149.68MB
+2026-04-09 09:03:08.628 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/29.2  mem=heap=86.08/512.00MB native=149.64MB
+2026-04-09 09:03:09.593 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.08/0.17/0.31  active=150  pending=71  cacheQ=0  mem=heap=86.16/512.00MB native=149.56MB
+2026-04-09 09:03:09.645 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/20.5  mem=heap=86.46/512.00MB native=149.58MB
+2026-04-09 09:03:10.599 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.08/0.16/0.50  active=150  pending=51  cacheQ=1  mem=heap=85.41/512.00MB native=149.57MB
+2026-04-09 09:03:10.652 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.6  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.7/24.5  mem=heap=85.69/512.00MB native=149.60MB
+2026-04-09 09:03:11.604 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.12/0.09/0.35/0.68  active=151  pending=62  cacheQ=0  mem=heap=83.86/512.00MB native=149.70MB
+2026-04-09 09:03:11.655 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/23.4  mem=heap=84.13/512.00MB native=149.67MB
+2026-04-09 09:03:12.626 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.09/0.08/0.14/0.30  active=151  pending=78  cacheQ=1  mem=heap=86.53/512.00MB native=149.73MB
+2026-04-09 09:03:12.671 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.1  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/24.7  mem=heap=82.88/512.00MB native=149.71MB
+2026-04-09 09:03:13.629 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.8  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.09/0.09/0.14/0.17  active=154  pending=77  cacheQ=0  mem=heap=86.30/512.00MB native=149.77MB
+2026-04-09 09:03:13.684 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.2  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/22.7  mem=heap=86.85/512.00MB native=149.83MB
+2026-04-09 09:03:14.633 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.8  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.09/0.16/0.20  active=151  pending=82  cacheQ=1  mem=heap=85.45/512.00MB native=149.68MB
+2026-04-09 09:03:14.684 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/20.4  mem=heap=85.79/512.00MB native=149.70MB
+2026-04-09 09:03:15.649 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.1  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.09/0.08/0.16/0.35  active=145  pending=81  cacheQ=0  mem=heap=83.70/512.00MB native=149.67MB
+2026-04-09 09:03:15.685 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.7  mem=heap=84.00/512.00MB native=149.61MB
+2026-04-09 09:03:16.663 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.2  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.08/0.08/0.15/0.17  active=137  pending=75  cacheQ=0  mem=heap=82.43/512.00MB native=149.68MB
+2026-04-09 09:03:16.698 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.3  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/23.1  mem=heap=82.82/512.00MB native=149.71MB
+2026-04-09 09:03:17.664 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.08/0.17/0.43  active=141  pending=65  cacheQ=1  mem=heap=85.51/512.00MB native=149.76MB
+2026-04-09 09:03:17.705 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.8  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/20.5  mem=heap=85.85/512.00MB native=149.73MB
+2026-04-09 09:03:18.681 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.0  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.11/0.08/0.32/0.75  active=139  pending=61  cacheQ=0  mem=heap=85.26/512.00MB native=149.49MB
+2026-04-09 09:03:18.717 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/21.4  mem=heap=84.71/512.00MB native=149.57MB
+2026-04-09 09:03:19.683 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.9  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.12/0.08/0.46/0.76  active=142  pending=78  cacheQ=1  mem=heap=83.00/512.00MB native=149.52MB
+2026-04-09 09:03:19.718 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.0  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/23.9  mem=heap=83.27/512.00MB native=149.44MB
+2026-04-09 09:03:20.698 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=57.2  frames=58  dropped=0  actMs(avg/p50/p95/max)=0.12/0.08/0.27/0.70  active=147  pending=66  cacheQ=0  mem=heap=85.23/512.00MB native=149.53MB
+2026-04-09 09:03:20.733 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=57.1  frames=58  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.5/22.8  mem=heap=85.53/512.00MB native=149.43MB
+2026-04-09 09:03:21.703 28950-29035 DanmakuEngine           dev.aaa1115910.bv2.debug             D  [Action] fps=56.7  frames=57  dropped=0  actMs(avg/p50/p95/max)=0.09/0.08/0.18/0.23  active=153  pending=80  cacheQ=1  mem=heap=85.31/512.00MB native=149.68MB
+2026-04-09 09:03:21.739 28950-28950 DanmakuPlayer           dev.aaa1115910.bv2.debug             D  [Draw] fps=56.7  frames=57  dropped=0  sameSnap=0  maxSameSnapStreak=0  snapAgeMs(avg/max)=17.6/25.3  mem=heap=85.65/512.00MB native=149.70MB
+
+
+
+PS D:\Code\bv2> node doc/calc_danmaku_averages.js doc/优化5.txt 40
+Draw:                                                                                                                                                                                                                                                              
+  samples: 20
+  avg fps: 54.33
+  avg frames: 54.70
+  avg dropped: 0.15
+  avg sameSnap: 0.15
+  avg maxSameSnapStreak: 0.15
+  max maxSameSnapStreak: 3
+  records with sameSnap>0: 1
+  avg snapAgeMs(avg): 17.24ms
+  avg snapAgeMs(max): 26.67ms
+Action:
+  samples: 20
+  avg fps: 54.32
+  avg frames: 54.65
+  avg dropped: 0.15
+  avg actMs(avg): 0.11ms
+  avg actMs(p50): 0.05ms
+  avg actMs(p95): 0.37ms
+  avg actMs(max): 0.75ms
+Memory:
+  samples: 40
+  avg heap used: 76.58MB
+  avg heap max: 512.00MB
+  avg native used: 150.52MB
+CacheQ:
+  samples: 20
+  avg cacheQ: 0.20
+  min cacheQ: 0
+  max cacheQ: 2
+
+
+PS D:\Code\bv2> node doc/calc_danmaku_averages.js doc/优化5.txt 60
+Draw:
+  samples: 30
+  avg fps: 55.18
+  avg frames: 55.53
+  avg dropped: 0.10
+  avg sameSnap: 0.10
+  avg maxSameSnapStreak: 0.10
+  max maxSameSnapStreak: 3
+  records with sameSnap>0: 1
+  avg snapAgeMs(avg): 17.36ms
+  avg snapAgeMs(max): 25.12ms
+Action:
+  samples: 30
+  avg fps: 55.17
+  avg frames: 55.53
+  avg dropped: 0.10
+  avg actMs(avg): 0.10ms
+  avg actMs(p50): 0.05ms
+  avg actMs(p95): 0.32ms
+  avg actMs(max): 0.64ms
+Memory:
+  samples: 60
+  avg heap used: 78.36MB
+  avg heap max: 512.00MB
+  avg native used: 150.36MB
+CacheQ:
+  samples: 30
+  avg cacheQ: 0.20
+  min cacheQ: 0
+  max cacheQ: 2
+
+
+Draw:
+  samples: 113
+  avg fps: 56.50
+  avg frames: 56.96
+  avg dropped: 0.03
+  avg sameSnap: 0.03
+  avg maxSameSnapStreak: 0.03
+  max maxSameSnapStreak: 3
+  records with sameSnap>0: 1
+  avg snapAgeMs(avg): 17.50ms
+  avg snapAgeMs(max): 23.37ms
+Action:
+  samples: 113
+  avg fps: 56.50
+  avg frames: 56.95
+  avg dropped: 0.03
+  avg actMs(avg): 0.09ms
+  avg actMs(p50): 0.06ms
+  avg actMs(p95): 0.25ms
+  avg actMs(max): 0.52ms
+Memory:
+  samples: 226
+  avg heap used: 82.87MB
+  avg heap max: 512.00MB
+  avg native used: 150.15MB
+CacheQ:
+  samples: 113
+  avg cacheQ: 0.19
+  min cacheQ: 0
+  max cacheQ: 2

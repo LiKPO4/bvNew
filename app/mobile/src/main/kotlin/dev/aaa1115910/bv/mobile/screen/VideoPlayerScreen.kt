@@ -111,6 +111,7 @@ import dev.aaa1115910.bv.player.entity.VideoPlayerSeekThumbData
 import dev.aaa1115910.bv.player.entity.VideoPlayerVideoInfoData
 import dev.aaa1115910.bv.player.entity.VideoPlayerVideoShotData
 import dev.aaa1115910.bv.player.mobile.BvPlayer
+import dev.aaa1115910.bv.player.danmaku.DanmakuView
 import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.formatPubTimeString
@@ -145,6 +146,15 @@ fun VideoPlayerScreen(
     val scope = rememberCoroutineScope()
     val systemUiController = rememberSystemUiController()
     val logger = KotlinLogging.logger("VideoPlayerScreen")
+
+    // 外部创建 DanmakuView，与 videoPlayer 一致的模式
+    val danmakuView = remember { DanmakuView(context).also { playerViewModel.danmakuView = it } }
+
+    DisposableEffect(danmakuView) {
+        onDispose {
+            danmakuView.release()
+        }
+    }
 
     var isVideoFullscreen by rememberSaveable { mutableStateOf(false) }
     val forcePortrait =
@@ -369,7 +379,7 @@ fun VideoPlayerScreen(
                                 .aspectRatio(16f / 9f),
                             isFullScreen = isVideoFullscreen,
                             videoPlayer = playerViewModel.videoPlayer!!,
-                            danmakuPlayer = playerViewModel.danmakuPlayer,
+                            danmakuView = danmakuView,
                             onClearBackToHistoryData = { playerViewModel.lastPlayed = 0 },
                             onEnterFullScreen = {
                                 isVideoFullscreen = true

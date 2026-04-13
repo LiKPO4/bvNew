@@ -5,11 +5,16 @@ import dev.aaa1115910.biliapi.repositories.CoinRepository
 import dev.aaa1115910.biliapi.repositories.FavoriteRepository
 import dev.aaa1115910.biliapi.repositories.LikeRepository
 import dev.aaa1115910.bv.util.Prefs
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.java.KoinJavaComponent.get
+import java.util.concurrent.ConcurrentHashMap
 
 data class VideoActionState(
     val liked: Boolean = false,
@@ -26,16 +31,26 @@ data class VideoActionState(
  */
 object VideoUserActionManager {
     // key = Pair(uid, aid)
-    private val stateMap = mutableMapOf<Pair<Long, Long>, MutableStateFlow<VideoActionState>>()
+    private val stateMap = ConcurrentHashMap<Pair<Long, Long>, MutableStateFlow<VideoActionState>>()
+    private val actionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private fun key(uid: Long, aid: Long) = uid to aid
 
     private fun ensure(aid: Long, uid: Long = Prefs.uid): MutableStateFlow<VideoActionState> {
         val k = key(uid, aid)
-        return stateMap.getOrPut(k) { MutableStateFlow(VideoActionState()) }
+        stateMap[k]?.let { return it }
+        val newFlow = MutableStateFlow(VideoActionState())
+        return stateMap.putIfAbsent(k, newFlow) ?: newFlow
     }
 
     fun getStateFlow(aid: Long, uid: Long = Prefs.uid): StateFlow<VideoActionState> = ensure(aid, uid)
+
+    fun fetchFavoriteDataAsync(aid: Long, uid: Long = Prefs.uid) {
+        if (aid <= 0) return
+        actionScope.launch {
+            fetchFavoriteData(aid, uid)
+        }
+    }
 
     fun updateFromLoadedData(aid: Long, liked: Boolean, favorited: Boolean, coin: Boolean, uid: Long = Prefs.uid) {
         val flow = ensure(aid, uid)
@@ -57,6 +72,8 @@ object VideoUserActionManager {
                 favoriteFolders = list,
                 favoriteFolderIds = list.filter { it.videoInThisFav }.map { it.id }
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             // ignore
         }

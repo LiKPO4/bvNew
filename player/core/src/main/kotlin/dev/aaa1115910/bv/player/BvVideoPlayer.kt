@@ -19,7 +19,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
-import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import dev.aaa1115910.bv.player.impl.exo.ExoMediaPlayer
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
 
@@ -30,7 +29,6 @@ fun BvVideoPlayer(
     videoPlayer: AbstractVideoPlayer,
     playerListener: VideoPlayerListener,
     rotationDegrees: Float = 0f, // 新增参数，视频旋转角度
-    danmakuPlayer: DanmakuPlayer? = null,
     forceUseTextureView: Boolean = false
 ) {
     val logger = logger("BvVideoPlayer")
@@ -97,8 +95,6 @@ fun BvVideoPlayer(
                             videoPlayer.mPlayer?.setVideoTextureView(tv)
                             videoPlayer.prepare()
                             videoPlayer.seekTo(time)
-                            danmakuPlayer?.seekTo(time)
-                            danmakuPlayer?.pause()
                             videoPlayer.start()
 
                             lastRotationDegrees = rotationDegrees
