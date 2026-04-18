@@ -329,7 +329,7 @@ fun MenuControllerPreview() {
     var currentSubtitleBackgroundOpacity by remember { mutableFloatStateOf(0.4f) }
     var currentSubtitleBottomPadding by remember { mutableStateOf(8.dp) }
 
-    var currentPlayMode by remember { mutableStateOf(PlayMode.Default) }
+    var currentPlayMode by remember { mutableStateOf(PlayMode.SingleVideo) }
 
     LaunchedEffect(Unit) {
         currentSubtitleList.apply {

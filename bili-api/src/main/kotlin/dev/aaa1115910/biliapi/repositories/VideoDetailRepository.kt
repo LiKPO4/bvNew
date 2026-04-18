@@ -228,6 +228,7 @@ class VideoDetailRepository(
                     mode = sort.param,
                     paginationStr = Json.encodeToString(mapOf("offset" to page.nextWebPage)),
                     sessData = authRepository.sessionData ?: "",
+                    dedeUserID = authRepository.mid,
                     buvid3 = authRepository.buvid3 ?: ""
                 ).getResponseData()
                 return CommentsData.fromCommentData(webComments)
@@ -274,8 +275,10 @@ class VideoDetailRepository(
                     oid = aid,
                     type = 1,
                     root = commentId,
-                    pageSize = 20,
                     pageNumber = page.nextWebPage,
+                    sessData = authRepository.sessionData ?: "",
+                    dedeUserID = authRepository.mid,
+                    buvid3 = authRepository.buvid3 ?: ""
                 ).getResponseData()
                 return CommentRepliesData.fromCommentReplyData(webReplies)
             }

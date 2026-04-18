@@ -18,8 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Divider
@@ -171,7 +169,7 @@ fun SubCommentPanel(
                 modifier = Modifier
                     .fillMaxHeight()
                     .padding(horizontal = 16.dp, vertical = 16.dp)
-                    .widthIn(min = 300.dp, max = 400.dp)
+                    .widthIn(min = 320.dp, max = 420.dp)
                     .fillMaxWidth(0.3f)
                     .clickable(enabled = true, onClick = {})
                     .onBackPressed { onHide() },

@@ -9,6 +9,7 @@ import dev.aaa1115910.bv.tv.component.HomeTopNavItem
 import dev.aaa1115910.bv.tv.component.PgcTopNavItem
 import dev.aaa1115910.bv.tv.component.TopNavItem
 import dev.aaa1115910.bv.tv.component.UgcTopNavItem
+import dev.aaa1115910.bv.tv.screens.main.DrawerItem
 import dev.aaa1115910.bv.util.Prefs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -369,3 +370,82 @@ fun parseNavItemsOrderToConfig(orderString: String, entriesCount: Int): List<Nav
             NavItemConfig(actualOrdinal, isHidden)
         }
 }
+
+// ======================== 主导航（左侧侧栏）配置 ========================
+
+/**
+ * 可配置的主导航项列表（不含 User 和 Settings）
+ */
+val configurableDrawerItems = listOf(
+    DrawerItem.Search,
+    DrawerItem.Home,
+    DrawerItem.UGC,
+    DrawerItem.PGC,
+    DrawerItem.Live
+)
+
+/**
+ * 解析主导航排序字符串为 DrawerItem 列表（过滤隐藏项）
+ */
+fun parseDrawerNavItemsOrder(orderString: String): List<DrawerItem> {
+    if (orderString.isBlank()) return configurableDrawerItems
+
+    return orderString
+        .split(",")
+        .mapNotNull { part ->
+            val trimmed = part.trim()
+            val isHidden = trimmed.startsWith("-")
+            if (isHidden) return@mapNotNull null
+            val ordinal = trimmed.toIntOrNull() ?: return@mapNotNull null
+            DrawerItem.entries.getOrNull(ordinal)
+        }
+        .filter { it in configurableDrawerItems }
+}
+
+/**
+ * 解析主导航排序字符串为配置列表（用于设置对话框）
+ */
+fun parseDrawerNavItemsOrderToConfig(orderString: String): List<NavItemConfig> {
+    if (orderString.isBlank()) {
+        return configurableDrawerItems.mapIndexed { _, item ->
+            NavItemConfig(item.ordinal, false)
+        }
+    }
+
+    val configs = orderString
+        .split(",")
+        .mapNotNull { part ->
+            val trimmed = part.trim()
+            val isHidden = trimmed.startsWith("-")
+            val ordinal = trimmed.removePrefix("-").toIntOrNull() ?: return@mapNotNull null
+            val drawerItem = DrawerItem.entries.getOrNull(ordinal) ?: return@mapNotNull null
+            if (drawerItem !in configurableDrawerItems) return@mapNotNull null
+            NavItemConfig(ordinal, isHidden)
+        }
+
+    // 追加配置中缺失的可配置项
+    val existingOrdinals = configs.map { it.ordinal }.toSet()
+    val missingConfigs = configurableDrawerItems
+        .filter { it.ordinal !in existingOrdinals }
+        .map { NavItemConfig(it.ordinal, false) }
+
+    return configs + missingConfigs
+}
+
+/**
+ * 保存主导航排序配置
+ */
+fun saveDrawerNavConfigs(navConfigs: List<NavItemConfig>) {
+    val finalOrderString = navConfigs.joinToString(",") { config ->
+        if (config.hidden) "-${config.ordinal}" else "${config.ordinal}"
+    }
+    Prefs.drawerNavItemsOrder = finalOrderString
+}
+
+/**
+ * 获取根据设置过滤和排序后的主导航项列表（Flow 版本）
+ */
+val drawerNavItemsFlow: Flow<List<DrawerItem>>
+    get() = Prefs.drawerNavItemsOrderFlow.map { orderString ->
+        parseDrawerNavItemsOrder(orderString)
+    }

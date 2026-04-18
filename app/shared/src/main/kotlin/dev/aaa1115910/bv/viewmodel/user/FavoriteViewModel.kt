@@ -138,4 +138,8 @@ class FavoriteViewModel(
         resetPageNumber()
         logger.fInfo { "Favorite data cleared" }
     }
+
+    fun removeFavoriteFromList(aid: Long) {
+        favorites.removeAll { it.avid == aid }
+    }
 }

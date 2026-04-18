@@ -2123,6 +2123,7 @@ object BiliHttpApi {
         paginationStr: String = """{"offset":""}""",
         //webLocation: Int = 1815875,
         sessData: String? = null,
+        dedeUserID: Long? = null,
         buvid3: String? = null
     ): BiliResponse<CommentData> =
         client.get("/x/v2/reply/wbi/main") {
@@ -2131,22 +2132,44 @@ object BiliHttpApi {
             parameter("mode", mode)
             parameter("pagination_str", paginationStr)
             //parameter("web_location", webLocation)
-            sessData?.let { header("Cookie", "SESSDATA=$sessData;buvid3=$buvid3;") }
+
+            val cookieParts = mutableListOf<String>()
+            sessData?.takeIf { it.isNotBlank() }?.let { cookieParts.add("SESSDATA=$it") }
+            dedeUserID?.let { cookieParts.add("DedeUserID=$it") }
+            buvid3?.takeIf { it.isNotBlank() }?.let { cookieParts.add("buvid3=$it") }
+            if (cookieParts.isNotEmpty()) {
+                header("Cookie", cookieParts.joinToString(";") + ";")
+            }
         }.body()
 
     suspend fun getCommentReplies(
         oid: Long,
         type: Long,
         root: Long,
-        pageSize: Int = 10,
-        pageNumber: Int = 1
-    ): BiliResponse<CommentReplyData> = client.get("/x/v2/reply/reply") {
-        parameter("oid", oid)
-        parameter("type", type)
-        parameter("root", root)
-        parameter("ps", pageSize)
-        parameter("pn", pageNumber)
-    }.body()
+        pageSize: Int = 20,
+        pageNumber: Int = 1,
+        sessData: String? = null,
+        dedeUserID: Long? = null,
+        buvid3: String? = null
+    ): BiliResponse<CommentReplyData> {
+        var response = client.get("/x/v2/reply/reply") {
+            parameter("oid", oid)
+            parameter("type", type)
+            parameter("root", root)
+            parameter("ps", pageSize)
+            parameter("pn", pageNumber)
+
+            val cookieParts = mutableListOf<String>()
+            sessData?.takeIf { it.isNotBlank() }?.let { cookieParts.add("SESSDATA=$it") }
+            dedeUserID?.let { cookieParts.add("DedeUserID=$it") }
+            buvid3?.takeIf { it.isNotBlank() }?.let { cookieParts.add("buvid3=$it") }
+            if (cookieParts.isNotEmpty()) {
+                header("Cookie", cookieParts.joinToString(";") + ";")
+            }
+        }
+        // println(response.bodyAsText())
+        return response.body()
+    }
 
     suspend fun getSeasonIdByAvid(
         avid: Long

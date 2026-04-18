@@ -31,7 +31,9 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Tab
 import androidx.tv.material3.TabRow
@@ -52,25 +54,37 @@ fun TopNav(
     modifier: Modifier = Modifier,
     paddingTop: Dp = 12.dp,
     items: List<TopNavItem>,
-    isLargePadding: Boolean,
+    useSmallSize: Boolean = false,
     initialSelectedItem: TopNavItem? = null,
     navSwitchMode: NavSwitchMode = NavSwitchMode.Auto,
     tabFocusRequester: FocusRequester? = null,
+    itemFocusRequesterProvider: ((Int, TopNavItem) -> FocusRequester?)? = null,
     onSelectedChanged: (TopNavItem) -> Unit = {},
     onClick: (TopNavItem) -> Unit = {},
     onLeftKeyEvent: () -> Unit = {}
 ) {
+    val sizeScale = if (useSmallSize) 0.8f else 1f
+    val topPadding = paddingTop * sizeScale
+    val horizontalPadding = 12.dp * (if (useSmallSize) 1 / sizeScale else 1f)
+    val bottomPadding = 8.dp * sizeScale
+    val separatorWidth = 12.dp * sizeScale
+
     if (items.isEmpty()) {
         Row(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(top = paddingTop, bottom = 8.dp, start = 12.dp, end = 12.dp),
+                .padding(
+                    top = topPadding,
+                    bottom = bottomPadding,
+                    start = horizontalPadding,
+                    end = horizontalPadding
+                ),
             horizontalArrangement = Arrangement.Center
         ) {}
         return
     }
 
-    val focusRequester = tabFocusRequester ?: remember { FocusRequester() }
+    val defaultFocusRequester = tabFocusRequester ?: remember { FocusRequester() }
 
     var selectedNav by remember(initialSelectedItem) {
         mutableStateOf(initialSelectedItem ?: items.first())
@@ -97,6 +111,12 @@ fun TopNav(
 
     var tabMoved by remember { mutableStateOf(true) }
 
+    val currentTabFocusRequester = run {
+        val focusIndex = (if (navSwitchMode == NavSwitchMode.Confirm) focusedTabIndex else selectedTabIndex)
+            .coerceIn(items.indices)
+        itemFocusRequesterProvider?.invoke(focusIndex, items[focusIndex]) ?: defaultFocusRequester
+    }
+
     LaunchedEffect(items, initialSelectedItem) {
         if (items.isEmpty()) return@LaunchedEffect
 
@@ -120,7 +140,12 @@ fun TopNav(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = paddingTop, bottom = 8.dp, start = 12.dp, end = 12.dp)
+            .padding(
+                top = topPadding,
+                bottom = bottomPadding,
+                start = horizontalPadding,
+                end = horizontalPadding
+            )
             .onFocusChanged {
                 if (!it.hasFocus) {
                     focusedTabIndex = selectedTabIndex
@@ -132,10 +157,10 @@ fun TopNav(
             modifier = Modifier
                 .then(
                     if (navSwitchMode == NavSwitchMode.Auto) {
-                        Modifier.focusRestorer(focusRequester)
+                        Modifier.focusRestorer(currentTabFocusRequester)
                     } else {
                         Modifier.focusProperties {
-                            enter = { focusRequester }
+                            enter = { currentTabFocusRequester }
                         }
                     }
                 )
@@ -154,16 +179,22 @@ fun TopNav(
                 },
             selectedTabIndex = selectedTabIndex,
             indicator = { _, _ -> },
-            separator = { Spacer(modifier = Modifier.width(12.dp)) },
+            separator = { Spacer(modifier = Modifier.width(separatorWidth)) },
         ) {
             items.forEachIndexed { index, tab ->
+                val itemFocusRequester = itemFocusRequesterProvider?.invoke(index, tab)
+                val itemFocusModifier = itemFocusRequester?.let { Modifier.focusRequester(it) } ?: Modifier
+                val useSharedFocusRequester = itemFocusRequester == null &&
+                        if (navSwitchMode == NavSwitchMode.Confirm) index == focusedTabIndex else index == selectedTabIndex
                 NavItemTab(
                     modifier = Modifier
+                        .then(itemFocusModifier)
                         .ifElse(
-                            if (navSwitchMode == NavSwitchMode.Confirm) index == focusedTabIndex else index == selectedTabIndex,
-                            Modifier.focusRequester(focusRequester)
+                            useSharedFocusRequester,
+                            Modifier.focusRequester(defaultFocusRequester)
                         ),
                     topNavItem = tab,
+                    useSmallSize = useSmallSize,
                     selected = index == selectedTabIndex,
                     focused = navSwitchMode == NavSwitchMode.Confirm && index == focusedTabIndex && index != selectedTabIndex,
                     onFocus = {
@@ -203,6 +234,7 @@ fun TopNav(
 private fun TabRowScope.NavItemTab(
     modifier: Modifier = Modifier,
     topNavItem: TopNavItem,
+    useSmallSize: Boolean = false,
     selected: Boolean,
     focused: Boolean = false,
     onClick: () -> Unit,
@@ -210,6 +242,20 @@ private fun TabRowScope.NavItemTab(
 ) {
     val context = LocalContext.current
     var isFocused by remember { mutableStateOf(false) }
+    val sizeScale = if (useSmallSize) 0.85f else 1f
+    val tabHeight = 32.dp * sizeScale
+    val tabHorizontalPadding = 16.dp * sizeScale
+    val tabCornerRadius = 50.dp * sizeScale
+    val baseTextStyle = MaterialTheme.typography.bodyLarge
+    val textStyle = if (useSmallSize) {
+        baseTextStyle.copy(
+            fontSize = if (baseTextStyle.fontSize.isSpecified) baseTextStyle.fontSize * sizeScale else TextUnit.Unspecified,
+            lineHeight = if (baseTextStyle.lineHeight.isSpecified) baseTextStyle.lineHeight * sizeScale else TextUnit.Unspecified,
+            letterSpacing = if (baseTextStyle.letterSpacing.isSpecified) baseTextStyle.letterSpacing * sizeScale else TextUnit.Unspecified
+        )
+    } else {
+        baseTextStyle
+    }
 
     Tab(
         modifier = modifier.onFocusChanged { isFocused = it.hasFocus },
@@ -220,32 +266,32 @@ private fun TabRowScope.NavItemTab(
         val actualFocused = isFocused || focused
         Text(
             modifier = Modifier
-                .height(32.dp)
+                .height(tabHeight)
                 .ifElse(
                     !actualFocused && selected,
                     Modifier.background(
                         color = MaterialTheme.colorScheme.inverseSurface,
-                        shape = RoundedCornerShape(50)
+                        shape = RoundedCornerShape(tabCornerRadius)
                     )
                 )
                 .ifElse(
                     actualFocused && !selected,
                     Modifier.background(
                         color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.3f),
-                        shape = RoundedCornerShape(50)
+                        shape = RoundedCornerShape(tabCornerRadius)
                     )
                 )
                 .ifElse(
                     actualFocused && selected,
                     Modifier.background(
-                        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f),
-                        shape = RoundedCornerShape(50)
+                        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.75f),
+                        shape = RoundedCornerShape(tabCornerRadius)
                     )
                 )
                 .wrapContentHeight(Alignment.CenterVertically)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = tabHorizontalPadding),
             text = topNavItem.getDisplayName(context),
-            style = MaterialTheme.typography.bodyLarge,
+            style = textStyle,
             color = if (!actualFocused && selected) MaterialTheme.colorScheme.surface 
                     else if (actualFocused && !selected) MaterialTheme.colorScheme.inverseSurface
                     else if (actualFocused && selected) MaterialTheme.colorScheme.surface

@@ -62,11 +62,6 @@ fun MenuListItem(
         headlineContent = {
             Box {
                 Row(
-                    modifier = Modifier
-                        .padding(
-                            vertical = 0.dp,
-                            horizontal = if (expanded) 24.dp else 6.dp
-                        ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     AnimatedVisibility(

@@ -17,7 +17,6 @@ import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
-import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.OkHttpUtil
 import dev.aaa1115910.bv.player.VideoPlayerOptions
@@ -41,6 +40,11 @@ class ExoMediaPlayer(
 ) : AbstractVideoPlayer(), Player.Listener {
     var mPlayer: ExoPlayer? = null
     protected var mMediaSource: MediaSource? = null
+
+    // 实时渲染帧率计算
+    private var lastRenderedFrames: Int = 0
+    private var lastFrameTimestamp: Long = 0L
+    private var realTimeFps: Float = 0f
 
     @OptIn(UnstableApi::class)
     private val dataSourceFactory =
@@ -71,12 +75,6 @@ class ExoMediaPlayer(
             }
         }
 
-        val trackSelector = DefaultTrackSelector(context).apply {
-            if (options.enableTunneling) {
-                setParameters(buildUponParameters().setTunnelingEnabled(true).build())
-            }
-        }
-
         // 创建智能缓冲策略，根据设备性能和视频质量动态调整
         val bufferConfig = calculateSmartBufferConfig()
         val loadControl = DefaultLoadControl.Builder()
@@ -97,7 +95,6 @@ class ExoMediaPlayer(
         mPlayer = ExoPlayer
             .Builder(context)
             .setRenderersFactory(renderersFactory)
-            .setTrackSelector(trackSelector)
             .setLoadControl(loadControl)
             .setSeekForwardIncrementMs(1000 * 10)
             .setSeekBackIncrementMs(1000 * 10)
@@ -133,12 +130,26 @@ class ExoMediaPlayer(
     private fun createMediaSource(url: String): MediaSource {
         val uri = android.net.Uri.parse(url)
         val path = uri.path?.lowercase() ?: ""
-        return if (path.endsWith(".m3u8")) {
+        val isHls = path.endsWith(".m3u8")
+        val mediaItem = if (isHls && isLive) {
+            MediaItem.Builder()
+                .setUri(uri)
+                .setLiveConfiguration(
+                    MediaItem.LiveConfiguration.Builder()
+                        .setTargetOffsetMs(5000)
+                        .setMaxPlaybackSpeed(1.02f)
+                        .build()
+                )
+                .build()
+        } else {
+            MediaItem.fromUri(uri)
+        }
+        return if (isHls) {
             HlsMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(MediaItem.fromUri(uri))
+                .createMediaSource(mediaItem)
         } else {
             ProgressiveMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(MediaItem.fromUri(uri))
+                .createMediaSource(mediaItem)
         }
     }
 
@@ -237,19 +248,78 @@ class ExoMediaPlayer(
 
     override val debugInfo: String
         get() {
-            if (!options.showDebugInfo) return ""
+            val player = mPlayer ?: return "player: null"
+            val playbackState = when (player.playbackState) {
+                Player.STATE_IDLE -> "IDLE"
+                Player.STATE_BUFFERING -> "BUFFERING"
+                Player.STATE_READY -> "READY"
+                Player.STATE_ENDED -> "ENDED"
+                else -> "UNKNOWN"
+            }
+            val videoDecoderCounters = getVideoDecoderCounters()
+            val droppedFrames = videoDecoderCounters?.droppedBufferCount ?: 0
+            val renderedFrames = videoDecoderCounters?.renderedOutputBufferCount ?: 0
+            updateRealTimeFps(renderedFrames)
+            val fps = realTimeFps
+            val videoBitrate = player.videoFormat?.bitrate ?: 0
+            val audioBitrate = player.audioFormat?.bitrate ?: 0
+            val bufferedMs = player.totalBufferedDuration
             val base = """
                 player: ${androidx.media3.common.MediaLibraryInfo.VERSION_SLASHY}
+                state: $playbackState | speed: ${player.playbackParameters.speed}x
                 time: ${currentPosition.formatHourMinSec()} / ${duration.formatHourMinSec()}
-                buffered: $bufferedPercentage%
-                tunneling: ${options.enableTunneling}
-                resolution: ${mPlayer?.videoSize?.width} x ${mPlayer?.videoSize?.height}
-                audio: ${mPlayer?.audioFormat?.bitrate ?: 0} kbps
-                video codec: ${mPlayer?.videoFormat?.sampleMimeType ?: "null"}
-                audio codec: ${mPlayer?.audioFormat?.sampleMimeType ?: "null"} (${getAudioRendererName()})
+                buffer: ${bufferedMs / 1000}s ($bufferedPercentage%)
+                resolution: ${player.videoSize.width} x ${player.videoSize.height} @ ${String.format("%.1f", fps)}fps
+                video: ${player.videoFormat?.sampleMimeType ?: "null"} (${videoBitrate / 1000}kbps) [${getVideoDecoderName()}]
+                audio: ${player.audioFormat?.sampleMimeType ?: "null"} (${audioBitrate / 1000}kbps) [${getAudioRendererName()}]
+                frames: rendered=$renderedFrames dropped=$droppedFrames
             """.trimIndent()
             return if (extraDebugInfo.isNotEmpty()) "$base\n$extraDebugInfo" else base
         }
+
+    private fun updateRealTimeFps(currentRenderedFrames: Int) {
+        val now = System.nanoTime()
+        val elapsed = (now - lastFrameTimestamp) / 1_000_000_000.0
+        if (lastFrameTimestamp != 0L && elapsed >= 0.5) {
+            val deltaFrames = currentRenderedFrames - lastRenderedFrames
+            realTimeFps = (deltaFrames / elapsed).toFloat()
+            lastRenderedFrames = currentRenderedFrames
+            lastFrameTimestamp = now
+        } else if (lastFrameTimestamp == 0L || elapsed >= 0.5) {
+            lastRenderedFrames = currentRenderedFrames
+            lastFrameTimestamp = now
+        }
+    }
+
+    private fun getVideoDecoderName(): String {
+        val rendererCount = mPlayer?.rendererCount ?: return "UnknownRenderer"
+        for (i in 0 until rendererCount) {
+            val renderer = mPlayer!!.getRenderer(i)
+            if (renderer.trackType == C.TRACK_TYPE_VIDEO && renderer.state == Renderer.STATE_STARTED) {
+                return renderer.name
+            }
+        }
+        return "UnknownRenderer"
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun getVideoDecoderCounters(): androidx.media3.exoplayer.DecoderCounters? {
+        return try {
+            val rendererCount = mPlayer?.rendererCount ?: return null
+            for (i in 0 until rendererCount) {
+                val renderer = mPlayer!!.getRenderer(i)
+                if (renderer.trackType == C.TRACK_TYPE_VIDEO && renderer is androidx.media3.exoplayer.mediacodec.MediaCodecRenderer) {
+                    val field = androidx.media3.exoplayer.mediacodec.MediaCodecRenderer::class.java
+                        .getDeclaredField("decoderCounters")
+                    field.isAccessible = true
+                    return field.get(renderer) as? androidx.media3.exoplayer.DecoderCounters
+                }
+            }
+            null
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     private fun getAudioRendererName(): String {
         val rendererCount = mPlayer?.rendererCount ?: return "UnknownRenderer"
@@ -277,6 +347,18 @@ class ExoMediaPlayer(
 
     override fun onPlayerError(error: PlaybackException) {
         if (isInBackground) return
+        // HLS 直播落后于直播窗口时，跳转到直播最新位置而非报错
+        if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
+            mPlayer?.let { player ->
+                player.seekToDefaultPosition()
+                player.prepare()
+            }
+            return
+        }
+        // 解码器错误：尝试降级清晰度
+        if (error.errorCode in PlaybackException.ERROR_CODE_DECODER_INIT_FAILED..PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED) {
+            if (onDecoderError?.invoke() == true) return
+        }
         mPlayerEventListener?.onError(error)
     }
 

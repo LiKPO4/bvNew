@@ -87,6 +87,7 @@ fun UpdateDialog(
     )
 
     var latestReleaseBuild by remember { mutableStateOf<Release?>(null) }
+    var updateReleases by remember { mutableStateOf<List<Release>>(emptyList()) }
 
     var downloadJob by remember { mutableStateOf<Job?>(null) }
     DisposableEffect(show) {
@@ -107,6 +108,9 @@ fun UpdateDialog(
                     .assets.first { it.name.startsWith("BV") }
                     .name
                 val revision = name.split("_")[1].toInt()
+                updateReleases = GithubApi.getUpdateReleases(
+                    BuildConfig.VERSION_CODE, BuildConfig.VERSION_NAME
+                )
                 if (revision < BuildConfig.VERSION_CODE || name.contains(BuildConfig.VERSION_NAME)) {
                     updateStatus = UpdateStatus.NoAvailableUpdate
                     return@launch
@@ -180,6 +184,7 @@ fun UpdateDialog(
             modifier = modifier,
             updateStatus = updateStatus,
             latestReleaseBuild = latestReleaseBuild,
+            updateReleases = updateReleases,
             progress = progress,
             bytesSentTotal = bytesSentTotal,
             contentLength = contentLength,
@@ -199,6 +204,7 @@ private fun UpdateDialogContent(
     modifier: Modifier = Modifier,
     updateStatus: UpdateStatus,
     latestReleaseBuild: Release?,
+    updateReleases: List<Release> = emptyList(),
     progress: Float,
     bytesSentTotal: Long,
     contentLength: Long,
@@ -228,10 +234,10 @@ private fun UpdateDialogContent(
                 text(
                     when (updateStatus) {
                         UpdateStatus.UpdatingInfo -> "获取更新信息中"
-                        UpdateStatus.Ready -> latestReleaseBuild!!.name
+                        UpdateStatus.Ready -> "更新内容"
                         UpdateStatus.Downloading -> "下载中"
                         UpdateStatus.Installing -> "安装中"
-                        UpdateStatus.NoAvailableUpdate -> "无可用更新${if(latestReleaseBuild?.name.isNullOrEmpty()) "" else " | 线上最新 ${latestReleaseBuild.name}"}"
+                        UpdateStatus.NoAvailableUpdate -> "无可用更新 | 当前版本内容"
                         UpdateStatus.CheckError -> "检查更新失败"
                         UpdateStatus.DownloadError -> "下载失败"
                         UpdateStatus.InstallError -> "安装失败"
@@ -270,7 +276,13 @@ private fun UpdateDialogContent(
             ) {
                 when (updateStatus) {
                     UpdateStatus.UpdatingInfo -> text("检查更新中...")
-                    UpdateStatus.Ready -> text(latestReleaseBuild?.body ?: "Empty content")
+                    UpdateStatus.Ready -> {
+                        val changelogText = updateReleases.joinToString("\n\n") {
+                            val prefix = if (it.prerelease) "Pre-release" else "Release"
+                            "# $prefix ${it.name}\n${it.body ?: ""}"
+                        }.ifEmpty { "Empty content" }
+                        text(changelogText)
+                    }
                     UpdateStatus.Downloading -> Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -291,7 +303,15 @@ private fun UpdateDialogContent(
                     UpdateStatus.DownloadError -> text("下载失败")
                     UpdateStatus.InstallError -> text("安装失败")
                     UpdateStatus.CheckError -> text("获取更新信息失败")
-                    UpdateStatus.NoAvailableUpdate -> text(latestReleaseBuild?.body ?: "真没更新，骗你是小狗！")
+                    UpdateStatus.NoAvailableUpdate -> {
+                        val release = latestReleaseBuild
+                        if (release != null) {
+                            val prefix = if (release.prerelease) "Pre-release" else "Release"
+                            text("# $prefix ${release.name}\n${release.body ?: ""}")
+                        } else {
+                            text("真没更新，骗你是小狗！")
+                        }
+                    }
                 }
             }
         },

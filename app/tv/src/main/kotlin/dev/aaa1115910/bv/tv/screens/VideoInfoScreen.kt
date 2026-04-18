@@ -8,6 +8,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -41,6 +42,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -146,6 +148,8 @@ import dev.aaa1115910.bv.util.focusedBorder
 import dev.aaa1115910.bv.util.formatHourMinSec
 import dev.aaa1115910.bv.util.formatPubTimeString
 import dev.aaa1115910.bv.util.ifElse
+import dev.aaa1115910.bv.util.ImageSize
+import dev.aaa1115910.bv.util.resizedImageUrl
 import dev.aaa1115910.bv.util.onBackPressed
 import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.util.swapList
@@ -160,6 +164,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.getKoin
+import java.util.Date
 import kotlin.math.ceil
 
 @Composable
@@ -221,7 +226,6 @@ fun VideoInfoScreen(
     // local copies for like / coin sync
     var liked by remember { mutableStateOf(false) }
     var isCoin by remember { mutableStateOf(false) }
-    val favoriteFolderMetadataList = remember { mutableStateListOf<FavoriteFolderMetadata>() }
     val videoInFavoriteFolderIds = remember { mutableStateListOf<Long>() }
 
     // subscribe shared action state by aid
@@ -236,7 +240,6 @@ fun VideoInfoScreen(
         liked = sharedState.liked
         isCoin = sharedState.coin
         videoInFavoriteFolderIds.swapList(sharedState.favoriteFolderIds)
-        favoriteFolderMetadataList.swapList(sharedState.favoriteFolders)
     }
 
     val setHistory = {
@@ -260,30 +263,13 @@ fun VideoInfoScreen(
     val updateFollowingState: () -> Unit = {
         screenScope.launch(Dispatchers.IO) {
             val userMid = videoDetailViewModel.videoDetail?.author?.mid ?: -1
-
-            // 先检查缓存中是否有关注状态
-            val cachedState = FollowStateManager.getFollowState(userMid)
-            if (cachedState != null) {
-                withContext(Dispatchers.Main) {
-                    showFollowButton = true
-                    isFollowing = cachedState
-                }
-                return@launch
-            }
-
-            // 缓存中没有，调用API获取
             logger.fInfo { "Checking is following user $userMid" }
-            val success = userRepository.checkIsFollowing(
-                mid = userMid,
-                preferApiType = Prefs.apiType
-            )
-            logger.fInfo { "Following user result: $success" }
+            val result = FollowStateManager.ensureFollowState(userMid)
+            logger.fInfo { "Following user result: $result" }
             withContext(Dispatchers.Main) {
-                showFollowButton = success != null
-                if (success != null) {
-                    isFollowing = success
-                    // 更新到缓存中
-                    FollowStateManager.updateFollowState(userMid, success)
+                showFollowButton = result != null
+                if (result != null) {
+                    isFollowing = result
                 }
             }
         }
@@ -323,10 +309,6 @@ fun VideoInfoScreen(
         }
     }
 
-    val fetchFavoriteData: (Long) -> Unit = { avid ->
-        VideoUserActionManager.fetchFavoriteDataAsync(avid, Prefs.uid)
-    }
-
     val updateVideoFavoriteData: (List<Long>) -> Unit = { folderIds ->
         screenScope.launch {
             val success =
@@ -346,7 +328,7 @@ fun VideoInfoScreen(
         }
     }
 
-    val updateVideoUserActionData = {
+    val updateVideoUserActionData: suspend () -> Unit = {
         // update shared state from loaded data
         val configAid = videoDetailViewModel.videoDetail?.aid ?: 0L
         VideoUserActionManager.updateFromLoadedData(
@@ -370,7 +352,10 @@ fun VideoInfoScreen(
                             cid = videoPage.cid,
                             title = if (sectionTitle == "正片") episode.title else sectionTitle,
                             partTitle = if (sectionTitle == "正片") "" else episode.title,
-                            index = epIndex
+                            index = epIndex,
+                            cover = episode.cover,
+                            duration = episode.duration,
+                            pubDate = episode.pubDate,
                         )
                     )
                 }
@@ -389,6 +374,9 @@ fun VideoInfoScreen(
                             title = episode.title,
                             partTitle = videoPage.title,
                             index = pageIndex,
+                            cover = episode.cover,
+                            duration = videoPage.duration,
+                            pubDate = episode.pubDate,
                         )
                     )
                 }
@@ -445,11 +433,10 @@ fun VideoInfoScreen(
 
                 runCatching {
                     videoDetailViewModel.loadDetail(aid, fromSeason)
+                    updateVideoUserActionData()
                     withContext(Dispatchers.Main) {
-                        updateVideoUserActionData()
                         setHistory()
                     }
-                    if (Prefs.isLogin) fetchFavoriteData(aid)
 
                     videoInfoRepository.relatedVideos.clear()
                     videoInfoRepository.description = videoDetailViewModel.videoDetail?.description ?: ""
@@ -707,7 +694,6 @@ fun VideoInfoScreen(
                             isFollowing = isFollowing,
                             tags = videoDetailViewModel.videoDetail!!.tags,
                             isFavorite = favorited,
-                            userFavoriteFolders = favoriteFolderMetadataList,
                             favoriteFolderIds = videoInFavoriteFolderIds,
                             onClickCover = {
                                 logger.fInfo { "Click video cover" }
@@ -747,6 +733,8 @@ fun VideoInfoScreen(
                                                 title = videoDetailViewModel.videoDetail!!.title,
                                                 partTitle = if (videoDetailViewModel.videoDetail!!.pages.size == 1) "" else videoPage.title,
                                                 index = index,
+                                                cover = videoDetailViewModel.videoDetail!!.cover,
+                                                duration = videoPage.duration,
                                             )
                                         }
                                     videoInfoRepository.videoList.clear()
@@ -947,7 +935,7 @@ fun VideoInfoScreen(
                                         partTitle = if (sectionTitle == "正片") if (episode!!.pages.size > 1) episode.pages.first().title else "" else episode!!.title,
                                         played = if (cid == lastPlayedCid) lastPlayedTime * 1000 else 0,
                                         fromSeason = false,
-                                        isVerticalVideo = videoDetailViewModel.videoDetail!!.pages.first().dimension.isVertical,
+                                        isVerticalVideo = if (sectionTitle == "正片" && episode!!.pages.size > 1) episode.pages.first().dimension.isVertical else videoDetailViewModel.videoDetail!!.pages.first().dimension.isVertical,
                                         playerIconIdle = videoDetailViewModel.videoDetail!!.playerIcon?.idle
                                             ?: "",
                                         playerIconMoving = videoDetailViewModel.videoDetail!!.playerIcon?.moving
@@ -977,7 +965,7 @@ fun VideoInfoScreen(
                                         partTitle = episode.pages.find { it.cid == cid }!!.title,
                                         played = if (cid == lastPlayedCid) lastPlayedTime * 1000 else 0,
                                         fromSeason = false,
-                                        isVerticalVideo = videoDetailViewModel.videoDetail!!.pages.find { it.cid == cid }!!.dimension.isVertical,
+                                        isVerticalVideo = if (!sectionTitle.isNullOrEmpty()) episode.pages.find { it.cid == cid }!!.dimension.isVertical else videoDetailViewModel.videoDetail!!.pages.find { it.cid == cid }!!.dimension.isVertical,
                                         playerIconIdle = videoDetailViewModel.videoDetail!!.playerIcon?.idle
                                             ?: "",
                                         playerIconMoving = videoDetailViewModel.videoDetail!!.playerIcon?.moving
@@ -1105,7 +1093,6 @@ fun VideoInfoData(
     isFollowing: Boolean,
     tags: List<Tag>,
     isFavorite: Boolean,
-    userFavoriteFolders: List<FavoriteFolderMetadata> = emptyList(),
     favoriteFolderIds: List<Long> = emptyList(),
     onClickCover: () -> Unit,
     onClickUp: () -> Unit,
@@ -1308,7 +1295,6 @@ fun VideoInfoData(
                                 modifier = Modifier
                                     .height(32.dp), // 设置高度
                                 isFavorite = isFavorite,
-                                userFavoriteFolders = userFavoriteFolders,
                                 favoriteFolderIds = favoriteFolderIds,
                                 onAddToDefaultFavoriteFolder = onAddToDefaultFavoriteFolder,
                                 onUpdateFavoriteFolders = onUpdateFavoriteFolders
@@ -1538,81 +1524,117 @@ private fun VideoPartButton(
     index: Int,
     title: String,
     duration: Int,
+    cover: String? = null,
+    pubDate: Long = 0L,
     played: Int = 0,
     isLastPlayed: Boolean = false,
     isCurrentIntent: Boolean = false,
     type: VideoPartType = VideoPartType.Part,
     onClick: () -> Unit
 ) {
-    val borderColor = when {
-        isLastPlayed -> null
-        isCurrentIntent -> MaterialTheme.colorScheme.primary
-        else -> null
-    }
-    val focusedBorderColor = when {
-        isLastPlayed -> null
-        isCurrentIntent -> Color(0xFFE39B17)
-        else -> null
-    }
+    var hasFocus by remember { mutableStateOf(false) }
+    val hasCover = !cover.isNullOrBlank()
 
     Surface(
-        modifier = modifier,
+        modifier = modifier.onFocusChanged { hasFocus = it.hasFocus },
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
-            pressedContainerColor = MaterialTheme.colorScheme.inverseSurface
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
+            focusedContainerColor = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.9f),
+            focusedContentColor = MaterialTheme.colorScheme.background
         ),
         scale = ClickableSurfaceDefaults.scale(scale = 1f, focusedScale = 1f),
         shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
-        border = ClickableSurfaceDefaults.border(
-            border = borderColor?.let {
-                Border(
-                    border = BorderStroke(2.dp, it),
-                    shape = MaterialTheme.shapes.medium
-                )
-            } ?: Border.None,
-            focusedBorder = focusedBorderColor?.let {
-                Border(
-                    border = BorderStroke(2.dp, it),
-                    shape = MaterialTheme.shapes.medium
-                )
-            } ?: Border.None,
-            pressedBorder = focusedBorderColor?.let {
-                Border(
-                    border = BorderStroke(2.dp, it),
-                    shape = MaterialTheme.shapes.medium
-                )
-            } ?: Border.None
-        ),
         onClick = { onClick() }
     ) {
+        val borderStroke = when {
+            hasFocus -> BorderStroke(2.dp, MaterialTheme.colorScheme.border)
+            isCurrentIntent -> BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+            else -> null
+        }
         Box(
             modifier = Modifier
-                .size(200.dp, 64.dp)
+                .height(72.dp)
+                .width(if (hasCover) 240.dp else 200.dp)
+                .then(
+                    if (borderStroke != null) Modifier.border(
+                        border = borderStroke,
+                        shape = MaterialTheme.shapes.medium
+                    ) else Modifier
+                )
         ) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .fillMaxHeight()
-                    .fillMaxWidth(if (played < 0) 1f else (played / duration.toFloat()))
-            ) {}
-            Text(
-                modifier = Modifier
-                    .padding(8.dp),
-                text = buildAnnotatedString {
-                    if (isLastPlayed) {
-                        withStyle(style = SpanStyle(color = Color(0xFFE39B17))) {
-                            append("继续播放 ")
+                    .fillMaxSize()
+            ) {
+                if (hasCover) {
+                    AsyncImage(
+                        model = cover.resizedImageUrl(ImageSize.UgcEpisodeCover),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .aspectRatio(4f / 3f)
+                            .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
+                    )
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1f)
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = buildAnnotatedString {
+                            if (isLastPlayed) {
+                                withStyle(style = SpanStyle(color = Color(0xFFE39B17))) {
+                                    append("继续播放 ")
+                                }
+                            }
+                            append(when (type) {
+                                VideoPartType.Episode -> "EP"
+                                VideoPartType.Part -> "P"
+                            } + "$index $title")
+                        },
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            lineHeight = 19.sp
+                        )
+                    )
+                    Row(
+                        modifier = Modifier.padding(top = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = (duration * 1000L).formatHourMinSec(),
+                            fontSize = 11.sp,
+                            color = LocalContentColor.current.copy(alpha = 0.9f),
+                            maxLines = 1
+                        )
+                        if (pubDate > 0L) {
+                            Text(
+                                text = Date(pubDate * 1000L).formatPubTimeString(),
+                                fontSize = 11.sp,
+                                color = LocalContentColor.current.copy(alpha = 0.9f),
+                                maxLines = 1
+                            )
                         }
                     }
-                    append(when (type) {
-                        VideoPartType.Episode -> "EP"
-                        VideoPartType.Part -> "P"
-                    } + "$index $title")
-                },
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+                }
+            }
+            if (played != 0) {
+                val progressFraction = if (played < 0) 1f else (played / duration.toFloat()).coerceIn(0f, 1f)
+                val sliderColors = SliderDefaults.colors()
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .height(5.dp)
+                        .fillMaxWidth(progressFraction)
+                        .background(Color(0xFFE39B17))
+                ) {}
+            }
         }
     }
 }
@@ -1645,7 +1667,7 @@ private fun VideoPartRowButton(
         shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.small),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
-                border = BorderStroke(2.dp, Color(0xFFE39B17)),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.border),
                 shape = MaterialTheme.shapes.small
             )
         ),
@@ -1845,6 +1867,8 @@ fun VideoUgcSeasonRow(
                         .onFocusChanged { if (it.hasFocus) focusingEpisode = episode },
                     index = index + 1,
                     title = episode.title,
+                    cover = episode.cover,
+                    pubDate = episode.pubDate,
                     played = if (episode.cid == lastPlayedCid) lastPlayedTime else 0,
                     isLastPlayed = episode.cid == lastPlayedCid || episode.pages.any { it.cid == lastPlayedCid },
                     isCurrentIntent = episode.aid == intentAid,
@@ -2045,7 +2069,7 @@ private fun VideoUgcListDialog(
             properties = DialogProperties(usePlatformDefaultWidth = false),
             text = {
                 Column(
-                    modifier = Modifier.size(600.dp, 330.dp),
+                    modifier = Modifier.size(640.dp, 330.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     TabRow(
@@ -2106,6 +2130,8 @@ private fun VideoUgcListDialog(
                                 index = selectedTabIndex * 20 + index + 1,
                                 type = VideoPartType.Episode,
                                 title = episode.title,
+                                cover = episode.cover,
+                                pubDate = episode.pubDate,
                                 played = if (episode.cid == lastPlayedCid) lastPlayedTime else 0,
                                 isLastPlayed = episode.cid == lastPlayedCid || episode.pages.any { it.cid == lastPlayedCid },
                                 isCurrentIntent = episode.aid == intentAid,

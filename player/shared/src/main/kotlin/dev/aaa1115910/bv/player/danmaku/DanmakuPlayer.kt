@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicInteger
 internal class DanmakuPlayer(private val view: DanmakuView) {
 
     private val cacheManager = CacheManager(
-        density = view.resources.displayMetrics.density,
         mainLooper = Looper.getMainLooper(),
         onRenderSign = { view.postInvalidateOnAnimation() },
     )
@@ -68,7 +67,7 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
         if (released) return
         released = true; started = false
         releaseSemaphoreIfNeeded()
-        runCatching { actionHandler.obtainMessage(MSG_OP_RELEASE).sendToTarget() }
+        try { actionHandler.obtainMessage(MSG_OP_RELEASE).sendToTarget() } catch (_: Exception) {}
     }
 
     fun onViewportChanged(width: Int, height: Int, topInsetPx: Int, bottomInsetPx: Int) {
@@ -100,7 +99,7 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
 
     fun seekTo(positionMs: Long) {
         seekSerial.incrementAndGet()
-        actionHandler.obtainMessage(MSG_OP_SEEK, positionMs).sendToTarget()
+        actionHandler.obtainMessage(MSG_OP_SEEK, positionMs.toDouble()).sendToTarget()
     }
 
     fun draw(canvas: Canvas, rawPositionMs: Long, isPlaying: Boolean, playbackSpeed: Float, config: DanmakuConfig) {
@@ -267,7 +266,7 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
                     removeCallbacksAndMessages(null)
                     Choreographer.getInstance().removeFrameCallback(frameCallback)
                     started = false
-                    runCatching { actionThread.quitSafely() }
+                    try { actionThread.quitSafely() } catch (_: Exception) {}
                     engine.release()
                     cacheManager.release()
                 }
@@ -278,7 +277,7 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
             if (released || started) return
             val pos = positionMs ?: engine.currentPositionMs()
             engine.stepTime(pos, uiFrameId.get())
-            runCatching { engine.act() }
+            try { engine.act() } catch (_: Exception) {}
             view.postInvalidateOnAnimation()
         }
     }
@@ -290,8 +289,8 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
         }
     }
 
-    private data class AppendPayload(val list: List<Danmaku>, val maxItems: Int, val alreadySorted: Boolean)
-    private data class TrimRangePayload(val minTimeMs: Long, val maxTimeMs: Long)
+    private class AppendPayload(val list: List<Danmaku>, val maxItems: Int, val alreadySorted: Boolean)
+    private class TrimRangePayload(val minTimeMs: Long, val maxTimeMs: Long)
 
     companion object {
         private const val TAG = "DanmakuPlayer"

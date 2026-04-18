@@ -68,6 +68,7 @@ dependencies {
     implementation(androidx.compose.ui.tooling.preview)
     implementation(androidx.compose.ui.util)
     implementation(androidx.core.ktx)
+    implementation(libs.coil.compose)
     implementation(libs.logging)
     implementation(libs.material)
     implementation(libs.qrcode)

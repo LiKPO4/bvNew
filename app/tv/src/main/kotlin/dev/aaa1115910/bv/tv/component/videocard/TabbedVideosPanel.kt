@@ -63,9 +63,9 @@ fun TabbedVideosPanel(
     // Build tabs: always show "推荐视频", show "视频列表" only when preloaded is not empty
     val tabs = remember(relatedVideos.size, preloadedVideos.size) {
         buildList {
-            add("推荐视频" to relatedVideos)
+            add("UGC推荐视频" to relatedVideos)
             if (preloadedVideos.isNotEmpty()) {
-                add("视频列表" to preloadedVideos)
+                add("UGC视频列表" to preloadedVideos)
             }
         }
     }

@@ -7,6 +7,9 @@ abstract class AbstractVideoPlayer {
     /** 跳转播放位置后的回调 */
     var onSeek: ((Long) -> Unit)? = null
 
+    /** 解码器错误回调，返回 true 表示已处理（如降级清晰度），false 表示未处理需走正常错误流程 */
+    var onDecoderError: (() -> Boolean)? = null
+
     /** 标记是否处于后台/生命周期过渡期，用于抑制 Surface 相关的非致命错误 */
     @Volatile
     var isInBackground: Boolean = false
@@ -83,6 +86,9 @@ abstract class AbstractVideoPlayer {
 
     /** 额外调试信息（由外部拼接） */
     var extraDebugInfo: String = ""
+
+    /** 是否为直播模式 */
+    var isLive: Boolean = false
 
     /** 视频宽度 */
     abstract val videoWidth: Int

@@ -50,6 +50,7 @@ import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
 import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.tv.util.stableItemKey
 import dev.aaa1115910.bv.repository.VideoInfoRepository
+import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.viewmodel.user.ToViewViewModel
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -136,16 +137,20 @@ fun ToViewScreen(
         Column(modifier = Modifier.padding(innerPadding)) {
             Text(
                 modifier = Modifier.fillMaxWidth().offset(x = (-20).dp, y = (-2).dp),
-                text = stringResource(R.string.delete_mode_hint),
+                text = if (deleteMode) stringResource(R.string.delete_mode_action_hint) else stringResource(R.string.delete_mode_hint),
                 color = if (deleteMode) Color.Red.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 textAlign = TextAlign.End
             )
             ProvideListBringIntoViewSpec(padding = 24.dp) {
                 LazyVerticalGrid(
                     modifier = listFocusRestorer.containerModifier(
-                        Modifier
-                            .onPreviewKeyEvent { keyEvent ->
+                        Modifier.blockDownFocusExitAtGridEnd(
+                            currentIndex = currentIndex,
+                            itemCount = toViewViewModel.histories.size,
+                            columnCount = 4
+                        )
+                        .onPreviewKeyEvent { keyEvent ->
                             if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_UP &&
                                 (keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_MENU ||
                                  keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DEL)
@@ -170,8 +175,8 @@ fun ToViewScreen(
                     start = 20.dp,
                     end = 20.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-                horizontalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(13.dp)
             ) {
                 itemsIndexed(
                     items = toViewViewModel.histories,

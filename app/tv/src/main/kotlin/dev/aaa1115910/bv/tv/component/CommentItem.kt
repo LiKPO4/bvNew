@@ -81,16 +81,6 @@ fun CommentItem(
         ) {
             // 主评论
             CommentMainContent(comment = comment)
-
-            // 回复数量提示
-            if (comment.replies.isNotEmpty()) {
-                Text(
-                    text = "${comment.repliesCount} 条回复 >>",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White,
-                    modifier = Modifier.padding(start = 52.dp)
-                )
-            }
         }
     }
 }
@@ -176,8 +166,8 @@ private fun CommentMainContent(
                     )
                 }
 
-                // 回复数（当没有显示子评论时才显示）
-                if (comment.replies.isEmpty() && comment.repliesCount > 0) {
+                // 回复数
+                if (comment.repliesCount > 0) {
                     Text(
                         text = "${comment.repliesCount} 回复",
                         style = MaterialTheme.typography.bodySmall,
@@ -382,11 +372,11 @@ fun CommentPictures(
         val rows = items.chunked(2)
         Column(
             modifier = modifier,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             rows.forEach { rowItems ->
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     rowItems.forEach { item ->
                         AsyncImage(

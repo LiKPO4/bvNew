@@ -5,9 +5,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +45,7 @@ import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.FavoriteFolderMetadata
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.tv.component.TvAlertDialog
+import dev.aaa1115910.bv.tv.manager.VideoUserActionManager
 import dev.aaa1115910.bv.ui.theme.BVTheme
 import dev.aaa1115910.bv.util.swapList
 import kotlinx.coroutines.delay
@@ -52,7 +54,6 @@ import kotlinx.coroutines.delay
 fun FavoriteButton(
     modifier: Modifier = Modifier,
     isFavorite: Boolean,
-    userFavoriteFolders: List<FavoriteFolderMetadata> = emptyList(),
     favoriteFolderIds: List<Long> = emptyList(),
     onAddToDefaultFavoriteFolder: () -> Unit,
     onUpdateFavoriteFolders: (List<Long>) -> Unit,
@@ -62,6 +63,7 @@ fun FavoriteButton(
     onDialogVisibilityChanged: (Boolean) -> Unit = {},
     dialogContainerColor: Color = AlertDialogDefaults.containerColor
 ) {
+    val userFavoriteFolders by VideoUserActionManager.getFavoriteFoldersFlow().collectAsState()
     var showFavoriteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(showFavoriteDialog) {
@@ -161,7 +163,7 @@ private fun FavoriteDialog(
             text = {
                 FlowRow(
                     modifier = Modifier
-                        .heightIn(max = 320.dp)
+                        .width(400.dp)
                         .verticalScroll(rememberScrollState())
                         .padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),

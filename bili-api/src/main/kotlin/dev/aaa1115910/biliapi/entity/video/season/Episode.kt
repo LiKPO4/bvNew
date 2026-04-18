@@ -28,6 +28,7 @@ data class Episode(
     val longTitle: String,
     val cover: String,
     val duration: Int,
+    val pubDate: Long = 0,
     val dimension: Dimension?,
     val pages: List<VideoPage>
 ) {
@@ -55,6 +56,7 @@ data class Episode(
                 longTitle = episode.title,
                 cover = episode.arc.pic,
                 duration = episode.arc.duration,
+                pubDate = episode.arc.pubDate.toLong(),
                 dimension = Dimension.fromDimension(episode.page.dimension),
                 pages = episode.pages.map { VideoPage.fromVideoPage(it) }
             )
@@ -69,6 +71,7 @@ data class Episode(
             longTitle = episode.longTitle,
             epid = episode.epId,
             duration = episode.duration,
+            pubDate = episode.pubTime,
             dimension = episode.dimension?.let { Dimension.fromDimension(it) },
             pages = emptyList()
         )

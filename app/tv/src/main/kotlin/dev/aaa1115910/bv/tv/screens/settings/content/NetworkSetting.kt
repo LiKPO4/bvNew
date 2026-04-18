@@ -32,11 +32,13 @@ import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.http.BiliHttpProxyApi
 import dev.aaa1115910.biliapi.http.util.BiliDns
 import dev.aaa1115910.biliapi.repositories.ChannelRepository
+import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.bv.BVApp
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.tv.activities.settings.SpeedTestActivity
 import dev.aaa1115910.bv.tv.component.TvAlertDialog
 import dev.aaa1115910.bv.tv.component.settings.SettingListItem
+import dev.aaa1115910.bv.tv.component.settings.SettingListItemWithDialog
 import dev.aaa1115910.bv.tv.component.settings.SettingSwitchListItem
 import dev.aaa1115910.bv.tv.screens.settings.SettingsMenuNavItem
 import dev.aaa1115910.bv.ui.theme.BVTheme
@@ -49,6 +51,7 @@ fun NetworkSetting(
     channelRepository: ChannelRepository = getKoin().get()
 ) {
     val context = LocalContext.current
+    var selectedApiType by remember { mutableStateOf(Prefs.apiType) }
     var enableProxy by remember { mutableStateOf(Prefs.enableProxy) }
     var proxyHttpServer by remember { mutableStateOf(Prefs.proxyHttpServer) }
     var proxyGRPCServer by remember { mutableStateOf(Prefs.proxyGRPCServer) }
@@ -78,6 +81,20 @@ fun NetworkSetting(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                item {
+                    SettingListItemWithDialog(
+                        title = stringResource(R.string.settings_item_api),
+                        supportText = "",
+                        options = ApiType.entries,
+                        getDisplayName = { apiType, _ -> apiType.name },
+                        value = selectedApiType,
+                        onValueChange = {
+                            selectedApiType = it
+                            Prefs.apiType = it
+                        }
+                    )
+                }
+
                 item {
                     Column {
                         SettingSwitchListItem(

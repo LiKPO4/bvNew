@@ -89,6 +89,7 @@ class VideoPlayerV3ViewModel(
         get() = videoPlayerState
         set(value) {
             value?.onSeek = ::onVideoSeeked
+            value?.onDecoderError = ::fallbackToLowerQuality
             videoPlayerState = value
         }
     var danmakuView: DanmakuView? by mutableStateOf(null)
@@ -414,15 +415,15 @@ class VideoPlayerV3ViewModel(
         currentEpid = epid ?: 0
         epid?.let { this.epid = it }
         seasonId?.let { this.seasonId = it }
-        if (fromSeason && currentPlayMode in listOf(PlayMode.ListOrder, PlayMode.RelatedVideo)) {
-            currentPlayMode = PlayMode.Default
+        if (fromSeason && currentPlayMode in listOf(PlayMode.ListOrder, PlayMode.ListOrderReverse, PlayMode.RelatedVideo)) {
+            currentPlayMode = PlayMode.SingleVideo
         }
         if (!fromSeason) {
-            if (currentPlayMode == PlayMode.ListOrder && preloadedVideoList.isEmpty()) {
-                currentPlayMode = PlayMode.Default
+            if (currentPlayMode in listOf(PlayMode.ListOrder, PlayMode.ListOrderReverse) && preloadedVideoList.isEmpty()) {
+                currentPlayMode = PlayMode.SingleVideo
             }
             if (currentPlayMode == PlayMode.RelatedVideo && relatedVideos.isEmpty()) {
-                currentPlayMode = PlayMode.Default
+                currentPlayMode = PlayMode.SingleVideo
             }
         }
         cancelPlayUrlAutoRefresh("new_media")
@@ -709,7 +710,9 @@ class VideoPlayerV3ViewModel(
         logger.fInfo { "Video available codec: ${availableVideoCodec.toList()}" }
 
         logger.fInfo { "Default codec: $currentVideoCodec" }
-        val currentVideoCodec = if (codecList.contains(Prefs.defaultVideoCodec)) {
+        val currentVideoCodec = if (codecList.contains(this@VideoPlayerV3ViewModel.currentVideoCodec)) {
+            this@VideoPlayerV3ViewModel.currentVideoCodec
+        } else if (codecList.contains(Prefs.defaultVideoCodec)) {
             Prefs.defaultVideoCodec
         } else {
             codecList.minByOrNull { it.ordinal }!!
@@ -718,6 +721,24 @@ class VideoPlayerV3ViewModel(
             this@VideoPlayerV3ViewModel.currentVideoCodec = currentVideoCodec
         }
         logger.fInfo { "Select codec: $currentVideoCodec" }
+    }
+
+    /**
+     * 解码器错误时自动降级到更低清晰度
+     * @return true 表示已成功降级，false 表示已是最低清晰度无法降级
+     */
+    private fun fallbackToLowerQuality(): Boolean {
+        val sortedQualities = availableQuality.sortedByDescending { it.code }
+        val lowerQuality = sortedQualities.firstOrNull { it.code < currentQuality.code }
+            ?: return false
+        logger.fInfo { "Decoder error, fallback from $currentQuality to $lowerQuality" }
+        viewModelScope.launch(Dispatchers.Main) {
+            val position = videoPlayer?.currentPosition ?: 0
+            playQuality(qn = lowerQuality)
+            if (position > 0) videoPlayer?.seekTo(position)
+            videoPlayer?.start()
+        }
+        return true
     }
 
     suspend fun playQuality(
@@ -798,13 +819,14 @@ class VideoPlayerV3ViewModel(
         addLogs(
             "播放清晰度：${availableQuality.firstOrNull { it.code == qn }}, " +
                     "视频编码：${codec.getDisplayName(BVApp.context)}, " +
-                    "音频编码：${(Audio.fromCode(audioItem?.codecId ?: 0))?.getDisplayName(BVApp.context) ?: "未知"}"
+                    "音频编码：${(Audio.fromCode(audioItem?.codecId ?: 0))?.getDisplayName(BVApp.context) ?: "未知"}",
+            replaceIfContains = "播放清晰度"
         )
 
         var videoHost = with(URI(videoUrl)) { "$scheme://$authority" }
         var audioHost = audioUrl?.let { with(URI(it)) { "$scheme://$authority" } } ?: "无音频流，使用纯视频播放"
-        addLogs("video host: $videoHost")
-        addLogs("audio host: $audioHost")
+        addLogs("video host: $videoHost", replaceIfContains = "video host")
+        addLogs("audio host: $audioHost", replaceIfContains = "audio host")
 
         logger.fInfo { "Select audio: $audioItem" }
 
@@ -1119,9 +1141,6 @@ class VideoPlayerV3ViewModel(
 
     private suspend fun addLogs(text: String, replaceIfContains: String? = null) {
         logger.fInfo { text }
-        if (!Prefs.playerShowDebugInfo) {
-            return
-        }
         val lines = logs.lines().filter { it.isNotEmpty() }.toMutableList()
         if (replaceIfContains != null) {
             val idx = lines.indexOfLast { it.contains(replaceIfContains) }
@@ -1300,9 +1319,40 @@ class VideoPlayerV3ViewModel(
     fun playNextVideo() {
         logger.fInfo { "Video finished" }
         when (currentPlayMode) {
-            PlayMode.Default -> {
-                logger.info { "Play mode: $currentPlayMode, play next video in list" }
-                playNextVideoInList()
+            PlayMode.Custom -> {
+                logger.info { "Play mode: $currentPlayMode, using strategy order" }
+                val validOrdinals = dev.aaa1115910.bv.player.entity.NextVideoStrategy.entries.map { it.ordinalValue }.toSet()
+                val strategies = dev.aaa1115910.bv.util.Prefs.playerNextVideoStrategyOrder.split(",")
+                    .filter { !it.startsWith("-") }
+                    .mapNotNull {
+                        val id = it.toIntOrNull() ?: return@mapNotNull null
+                        if (id !in validOrdinals) return@mapNotNull null
+                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.fromOrdinal(id)
+                    }
+                for (strategy in strategies) {
+                    when (strategy) {
+                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.SingleVideo -> {
+                            logger.info { "Strategy SingleVideo: stop" }
+                            return
+                        }
+                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.PartAndEpisode,
+                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.PreloadedVideoList -> {
+                            if (hasNextVideoInList()) { playNextVideoInList(); return }
+                        }
+                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.PartAndEpisodeReverse,
+                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.PreloadedVideoListReverse -> {
+                            if (hasPrevVideoInList()) { playPrevVideoInList(); return }
+                        }
+                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.RelatedVideo -> {
+                            // handled by screen
+                            logger.info { "Strategy RelatedVideo: handled by screen" }
+                        }
+                    }
+                }
+            }
+
+            PlayMode.SingleVideo -> {
+                logger.info { "Play mode: $currentPlayMode, no auto next" }
             }
 
             PlayMode.SingleLoop -> {
@@ -1316,15 +1366,39 @@ class VideoPlayerV3ViewModel(
                 playNextVideoInList()
             }
 
+            PlayMode.ListOrderReverse -> {
+                logger.info { "Play mode: $currentPlayMode, play previous video in list" }
+                playPrevVideoInList()
+            }
+
             PlayMode.PartAndEpisode -> {
                 logger.info { "Play mode: $currentPlayMode, play next video in list" }
                 playNextVideoInList()
+            }
+
+            PlayMode.PartAndEpisodeReverse -> {
+                logger.info { "Play mode: $currentPlayMode, play previous video in list" }
+                playPrevVideoInList()
             }
 
             PlayMode.RelatedVideo -> {
                 logger.info { "Play mode: $currentPlayMode, do nothing (handled by screen)" }
             }
         }
+    }
+
+    private fun hasNextVideoInList(): Boolean {
+        val currentIndex = availableVideoList.indexOfFirst {
+            when (it) { is VideoListItemData -> it.cid == currentCid; else -> false }
+        }
+        return currentIndex >= 0 && currentIndex + 1 < availableVideoList.size
+    }
+
+    private fun hasPrevVideoInList(): Boolean {
+        val currentIndex = availableVideoList.indexOfFirst {
+            when (it) { is VideoListItemData -> it.cid == currentCid; else -> false }
+        }
+        return currentIndex > 0
     }
 
     private fun playNextVideoInList(loop: Boolean = false) {
@@ -1367,6 +1441,32 @@ class VideoPlayerV3ViewModel(
         }
     }
 
+    private fun playPrevVideoInList() {
+        val currentIndex = availableVideoList
+            .indexOfFirst {
+                when (it) {
+                    is VideoListItemData -> it.cid == currentCid
+                    else -> false
+                }
+            }
+        if (currentIndex > 0) {
+            val prevVideos = availableVideoList.subList(0, currentIndex)
+            val prevVideo =
+                prevVideos.lastOrNull { it is VideoListItemData } as? VideoListItemData
+            if (prevVideo != null) {
+                logger.info { "Play previous video: $prevVideo" }
+                partTitle = prevVideo.title
+                loadPlayUrl(
+                    avid = prevVideo.aid,
+                    cid = prevVideo.cid!!,
+                    epid = prevVideo.epid,
+                    seasonId = prevVideo.seasonId,
+                    continuePlayNext = true
+                )
+            }
+        }
+    }
+
     /**
      * 加载直播流（带画质信息）
      * @param roomId 直播间ID
@@ -1381,6 +1481,8 @@ class VideoPlayerV3ViewModel(
         liveUrlRefreshJob = null
         // 重置刷新失败计数
         consecutiveRefreshFailures = 0
+        // 标记播放器为直播模式
+        videoPlayer?.isLive = true
 
         viewModelScope.launch(Dispatchers.IO) {
             logger.fInfo { "Load live stream with quality: roomId=$roomId, qn=$qn" }

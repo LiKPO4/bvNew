@@ -247,9 +247,7 @@ class VideoPlayerV3Activity : ComponentActivity() {
                 ApiType.App -> null
             },
             enableFfmpegAudioRenderer = Prefs.enableFfmpegAudioRenderer,
-            enableAsyncQueueing = Prefs.enableAsyncQueueing,
-            enableTunneling = Prefs.enableTunneling,
-            showDebugInfo = Prefs.playerShowDebugInfo
+            enableAsyncQueueing = Prefs.enableAsyncQueueing
         )
         val videoPlayer = when (Prefs.playerType) {
             PlayerType.Media3 -> ExoPlayerFactory().create(this, options)

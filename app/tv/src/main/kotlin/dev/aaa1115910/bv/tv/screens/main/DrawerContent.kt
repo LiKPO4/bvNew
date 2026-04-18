@@ -25,6 +25,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -48,7 +49,10 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import dev.aaa1115910.bv.entity.NavSwitchMode
+import dev.aaa1115910.bv.tv.util.drawerNavItemsFlow
+import dev.aaa1115910.bv.tv.util.parseDrawerNavItemsOrder
 import dev.aaa1115910.bv.ui.theme.BVTheme
+import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.ifElse
 import dev.aaa1115910.bv.util.isDpadRight
 import dev.aaa1115910.bv.util.isKeyDown
@@ -197,18 +201,21 @@ fun DrawerContent(
                 )
             }
         )
-        // 菜单项列表：直播始终显示
-        val menuItems = remember {
-            listOf(
-                DrawerItem.Search,
-                DrawerItem.Home,
-                DrawerItem.UGC,
-                DrawerItem.PGC,
-                DrawerItem.Live
-            )
+        // 菜单项列表：根据设置排序和过滤
+        val menuItems by drawerNavItemsFlow.collectAsState(
+            initial = remember { parseDrawerNavItemsOrder(Prefs.drawerNavItemsOrder) }
+        )
+
+        // 当选中项不在可见列表中时，自动切换到第一个可见项
+        LaunchedEffect(menuItems) {
+            if (menuItems.isNotEmpty() && selectedItem !in menuItems && selectedItem != DrawerItem.User && selectedItem != DrawerItem.Settings) {
+                selectedItem = menuItems.first()
+                focusedItem = menuItems.first()
+            }
         }
         
         LazyColumn(
+            modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
         ) {
             items(menuItems.size) { index ->
@@ -234,7 +241,7 @@ fun DrawerContent(
                         colors = NavigationRailItemDefaults.colors(
                             indicatorColor = when {
                                 focusOnContent -> MaterialTheme.colorScheme.surfaceVariant
-                                isFocused && isSelected -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f)
+                                isFocused && isSelected -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.75f)
                                 isFocused && !isSelected -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.3f)
                                 isSelected -> MaterialTheme.colorScheme.inverseSurface
                                 else -> MaterialTheme.colorScheme.surfaceVariant
@@ -282,7 +289,7 @@ fun DrawerContent(
                 NavigationRailItemDefaults.colors(
                     indicatorColor = when {
                         focusOnContent -> MaterialTheme.colorScheme.surfaceVariant
-                        f && s -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.8f)
+                        f && s -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.75f)
                         f && !s -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.3f)
                         s -> MaterialTheme.colorScheme.inverseSurface
                         else -> MaterialTheme.colorScheme.surfaceVariant

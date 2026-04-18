@@ -131,7 +131,7 @@ fun DynamicsScreen(
             modifier = Modifier.fillMaxWidth().offset(x = (-20).dp, y = (-8).dp),
             text = stringResource(R.string.entry_follow_screen),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             textAlign = TextAlign.End
         )
         ProvideListBringIntoViewSpec {

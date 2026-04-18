@@ -57,7 +57,7 @@ class AppQrLoginViewModel(
                 logger.info { qrLoginData.url }
                 withContext(Dispatchers.Main) { generateQRImage() }
                 runCatching { timer.cancel() }
-                timer = timeTask(1000, 1000, "check qr login result") {
+                timer = timeTask(2000, 2000, "check qr login result") {
                     viewModelScope.launch {
                         checkLoginResult()
                     }

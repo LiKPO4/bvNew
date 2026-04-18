@@ -14,17 +14,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.KeyboardDoubleArrowDown
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Repeat
-import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -61,11 +62,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Article
-import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.outlined.Comment
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.ArrowDropUp
 import androidx.compose.material.icons.twotone.ScreenRotation
@@ -131,12 +129,7 @@ fun ControllerVideoInfo(
     onOpenSetting: () -> Unit,
     onPlayModeChange: (PlayMode) -> Unit,
     onRotationChange: (VideoRotation) -> Unit,
-    userActionContent: @Composable (
-        modifier: Modifier,
-        focusMap: Map<String, FocusRequester>,
-        onFocus: (String) -> Unit,
-        onPauseAutoHide: (Boolean) -> Unit
-    ) -> Unit = { _, _, _, _ -> },
+    userActionContent: UserActionContent = EmptyUserActionContent,
     onSeekBack: () -> Unit,
     onSeekForward: () -> Unit,
     onSubtitleChange: (Subtitle) -> Unit,
@@ -154,25 +147,6 @@ fun ControllerVideoInfo(
     val videoPlayerVideoInfoData = LocalVideoPlayerVideoInfoData.current
     val videoPlayerStateData = LocalVideoPlayerStateData.current
     val videoPlayerConfigData = LocalVideoPlayerConfigData.current
-
-//    var seekHideTimer: CountDownTimer? by remember { mutableStateOf(null) }
-//    val setCloseInfoTimer: () -> Unit = {
-//        if (show) {
-//            seekHideTimer?.cancel()
-//            seekHideTimer = object : CountDownTimer(5000, 1000) {
-//                override fun onTick(millisUntilFinished: Long) {}
-//                override fun onFinish() = onHideInfo()
-//            }
-//            seekHideTimer?.start()
-//        } else {
-//            seekHideTimer?.cancel()
-//            seekHideTimer = null
-//        }
-//    }
-//
-//    LaunchedEffect(Unit) {
-//        setCloseInfoTimer()
-//    }
 
     Box(
         modifier = modifier.fillMaxSize()
@@ -331,12 +305,7 @@ fun ControllerVideoInfoBottom(
     fromSeason: Boolean = false,
     isLive: Boolean = false,
     isFollowingUp: Boolean = false,
-    userActionContent: @Composable (
-        modifier: Modifier,
-        focusMap: Map<String, FocusRequester>,
-        onFocus: (String) -> Unit,
-        onPauseAutoHide: (Boolean) -> Unit
-    ) -> Unit = { _, _, _, _ -> },
+    userActionContent: UserActionContent = EmptyUserActionContent,
     onSeekBack: () -> Unit,
     onSeekForward: () -> Unit,
     availableSubtitleTracks: List<Subtitle> = emptyList(),
@@ -375,12 +344,15 @@ fun ControllerVideoInfoBottom(
 
     val currentQualityText = if (isLive) currentLiveQualityDescription.ifEmpty { "画质" } else currentResolution.getShortDisplayName(context).ifEmpty { "画质" }
 
-    val playModeIcon = when (currentPlayMode) {
-        PlayMode.Default -> Icons.Rounded.Repeat
-        PlayMode.SingleLoop -> Icons.Rounded.RepeatOne
-        PlayMode.ListOrder -> Icons.AutoMirrored.Outlined.ViewList
-        PlayMode.PartAndEpisode -> Icons.AutoMirrored.Outlined.Article
-        PlayMode.RelatedVideo -> Icons.Outlined.Shuffle
+    val playModeIconId = when (currentPlayMode) {
+        PlayMode.SingleVideo -> R.drawable.ic_play_mode_single
+        PlayMode.SingleLoop -> R.drawable.ic_play_mode_single_loop
+        PlayMode.ListOrder -> R.drawable.ic_play_mode_list_order
+        PlayMode.ListOrderReverse -> R.drawable.ic_play_mode_list_order_reverse
+        PlayMode.PartAndEpisode -> R.drawable.ic_play_mode_part_and_episode
+        PlayMode.PartAndEpisodeReverse -> R.drawable.ic_play_mode_part_and_episode_reverse
+        PlayMode.RelatedVideo -> R.drawable.ic_play_mode_related_video
+        PlayMode.Custom -> R.drawable.ic_play_mode_custom
     }
 
     val buttons = remember(isLive, fromSeason, showDanmaku, currentPlayMode, speed, rotation, currentSubtitleId, isFollowingUp, showNextVideoBtn, currentLiveQualityDescription, currentResolution, availableResolutions, buttonConfigs) {
@@ -453,7 +425,7 @@ fun ControllerVideoInfoBottom(
             ),
             ControlButton(
                 id = "playMode",
-                icon = playModeIcon,
+                painterId = playModeIconId,
                 onClick = { showPlayModeDialog = true },
                 visible = !isLive
             ),
@@ -515,9 +487,9 @@ fun ControllerVideoInfoBottom(
     val userActionFocusRequesters = remember {
         mutableStateOf(
             mapOf(
-                "like" to FocusRequester(),
-                "fav" to FocusRequester(),
-                "coin" to FocusRequester()
+                UserActionKey.Like to FocusRequester(),
+                UserActionKey.Favorite to FocusRequester(),
+                UserActionKey.Coin to FocusRequester()
             )
         )
     }
@@ -646,7 +618,7 @@ fun ControllerVideoInfoBottom(
                     seekbarHasFocus = it.isFocused
                 }
                 .focusProperties {
-                    up = userActionFocusRequesters.value["like"] ?: FocusRequester()
+                    up = userActionFocusRequesters.value[UserActionKey.Like] ?: FocusRequester()
                     down = defaultFocusButtonId?.let { focusRequesters[it] } ?: FocusRequester()
                 }
                 .ifElse(!isLive, Modifier.focusable())
@@ -847,12 +819,13 @@ private fun PlayModeDialog(
         PlayMode.entries.filter { mode ->
             when (mode) {
                 PlayMode.ListOrder -> hasPreloadedVideoList && !fromSeason
+                PlayMode.ListOrderReverse -> hasPreloadedVideoList && !fromSeason
                 PlayMode.RelatedVideo -> hasRelatedVideos && !fromSeason
                 else -> true
             }
         }
     }
-    val effectivePlayMode = if (currentPlayMode in availableModes) currentPlayMode else PlayMode.Default
+    val effectivePlayMode = if (currentPlayMode in availableModes) currentPlayMode else PlayMode.SingleVideo
     val focusRequesters = remember(availableModes) { availableModes.associateWith { FocusRequester() } }
     var lastInteractionTime by remember { mutableStateOf(System.currentTimeMillis()) }
 
@@ -871,7 +844,8 @@ private fun PlayModeDialog(
     Dialog(onDismissRequest = { onHideDialog() }) {
         Surface(
             modifier = modifier
-                .width(240.dp),
+                .width(240.dp)
+                .heightIn(max = 300.dp),
             color = Color.Black.copy(alpha = 0.5f),
             shape = MaterialTheme.shapes.medium
         ) {
@@ -883,13 +857,17 @@ private fun PlayModeDialog(
                     fontSize = 18.sp
                 )
 
-                Column {
-                    availableModes.forEach { mode ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(top = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(availableModes) { mode ->
                         val selected = mode == effectivePlayMode
                         Button(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 8.dp, start = 8.dp, end = 8.dp)
+                                .padding(horizontal = 8.dp)
                                 .focusRequester(focusRequesters[mode]!!),
                             shape = ButtonDefaults.shape(MaterialTheme.shapes.medium),
                             scale = ButtonDefaults.scale(focusedScale = 1f),

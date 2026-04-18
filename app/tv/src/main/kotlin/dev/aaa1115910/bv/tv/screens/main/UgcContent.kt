@@ -210,7 +210,6 @@ fun UgcContent(
                     .focusRequester(navFocusRequester)
                     .onFocusChanged { topNavHasFocus = it.hasFocus },
                 items = effectiveNavItems,
-                isLargePadding = !focusOnContent,
                 initialSelectedItem = selectedTab,
                 navSwitchMode = navSwitchMode,
                 onSelectedChanged = { nav ->

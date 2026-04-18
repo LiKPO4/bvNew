@@ -392,6 +392,9 @@ fun SeasonInfoScreen(
                                             "第 ${episode.title.toInt()} 集"
                                         }.getOrDefault(episode.title) + " " + episode.longTitle,
                                         index = index,
+                                        cover = episode.cover,
+                                        duration = episode.duration / 1000,
+                                        pubDate = episode.pubDate
                                     )
                                 }
                                 videoInfoRepository.videoList.clear()
@@ -426,6 +429,9 @@ fun SeasonInfoScreen(
                                                 "第 ${episode.title.toInt()} 集"
                                             }.getOrDefault(episode.title) + " " + episode.longTitle,
                                             index = index,
+                                            cover = episode.cover,
+                                            duration = episode.duration,
+                                        pubDate = episode.pubDate
                                         )
                                     } ?: emptyList()
                                 videoInfoRepository.videoList.clear()
@@ -454,6 +460,9 @@ fun SeasonInfoScreen(
                                             "第 ${episode.title.toInt()} 集"
                                         }.getOrDefault(episode.title) + " " + episode.longTitle,
                                         index = index,
+                                        cover = episode.cover,
+                                        duration = episode.duration,
+                                        pubDate = episode.pubDate
                                     )
                                 }
                                 videoInfoRepository.videoList.clear()
@@ -679,7 +688,6 @@ fun SeasonEpisodeButton(
     onClick: () -> Unit
 ) {
     val isPreview = LocalInspectionMode.current
-    val borderColor = Color(0xFFE39B17)
 
     Surface(
         modifier = modifier,
@@ -693,16 +701,16 @@ fun SeasonEpisodeButton(
         border = ClickableSurfaceDefaults.border(
             border = if (isLastPlayed) {
                 Border(
-                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
                     shape = MaterialTheme.shapes.medium
                 )
             } else Border.None,
             focusedBorder = Border(
-                border = BorderStroke(2.dp, Color(0xFFE39B17)),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.border),
                 shape = MaterialTheme.shapes.medium
             ),
             pressedBorder = Border(
-                border = BorderStroke(2.dp, Color(0xFFE39B17)),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.border),
                 shape = MaterialTheme.shapes.medium
             )
         ),
@@ -927,7 +935,7 @@ private fun SeasonEpisodeRowButton(
         shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.small),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
-                border = BorderStroke(2.dp, Color(0xFFE39B17)),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.border),
                 shape = MaterialTheme.shapes.small
             )
         ),
@@ -961,7 +969,7 @@ fun SeasonEpisodeRow(
     val focusRequester = remember { FocusRequester() }
     val rowState = rememberLazyListState()
     var hasFocus by remember { mutableStateOf(false) }
-    val titleColor = if (hasFocus) Color.White else Color.White.copy(alpha = 0.6f)
+    val titleColor = if (hasFocus) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
     val titleFontSize by animateFloatAsState(
         targetValue = if (hasFocus) 30f else 14f,
         label = "title font size"

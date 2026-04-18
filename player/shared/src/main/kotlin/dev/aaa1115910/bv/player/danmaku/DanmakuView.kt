@@ -23,11 +23,8 @@ class DanmakuView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
 ) : View(context, attrs) {
 
-    init {
-        setLayerType(LAYER_TYPE_HARDWARE, null)
-    }
-
     private val player = DanmakuPlayer(this)
+    private var currentLayerType: Int = LAYER_TYPE_NONE
 
     private var positionProvider: (() -> Long)? = null
     private var isPlayingProvider: (() -> Boolean)? = null
@@ -53,6 +50,7 @@ class DanmakuView @JvmOverloads constructor(
     private val maskPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
         xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
     }
+    private val maskDstRect = Rect()
 
     fun setPositionProvider(provider: () -> Long) { positionProvider = provider }
     fun setIsPlayingProvider(provider: () -> Boolean) { isPlayingProvider = provider }
@@ -107,8 +105,8 @@ class DanmakuView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val cfg = configProvider?.invoke() ?: defaultConfig()
-        if (cfg != lastConfig) { lastConfig = cfg; player.updateConfig(cfg) }
+        val cfg = configProvider?.invoke() ?: DEFAULT_CONFIG
+        if (cfg !== lastConfig && cfg != lastConfig) { lastConfig = cfg; player.updateConfig(cfg) }
 
         updateViewportIfNeeded()
         if (!cfg.enabled) {
@@ -122,38 +120,49 @@ class DanmakuView @JvmOverloads constructor(
         if (rawPos != lastRawPositionMs) lastPositionChangeUptimeMs = now
         lastRawPositionMs = rawPos
 
-        val isPlaying = runCatching { isPlayingProvider?.invoke() }.getOrNull()
-            ?: (now - lastPositionChangeUptimeMs < STOP_WHEN_IDLE_MS)
-        val speed = runCatching { playbackSpeedProvider?.invoke() }.getOrNull()
-            ?.takeIf { it.isFinite() && it > 0f } ?: 1f
-
-        // Apply mask: hardware layer provides offscreen compositing for DstIn blending
-        val mask = maskFrame
-        val maskBitmap = if (mask != null) getOrBuildMaskBitmap(mask) else null
-        if (maskBitmap != null) {
-            val areaRatio = cfg.area.takeIf { it > 0f } ?: 1f
-            player.draw(canvas, rawPos, isPlaying, speed, cfg)
-            drawMaskBitmap(canvas, maskBitmap, videoAspectRatio, areaRatio)
+        val fallbackPlaying = now - lastPositionChangeUptimeMs < STOP_WHEN_IDLE_MS
+        val playingProvider = isPlayingProvider
+        val isPlaying = if (playingProvider != null) {
+            try { playingProvider() } catch (_: Exception) { fallbackPlaying }
         } else {
-            player.draw(canvas, rawPos, isPlaying, speed, cfg)
+            fallbackPlaying
+        }
+        val speedProvider = playbackSpeedProvider
+        val speed = if (speedProvider != null) {
+            val candidate = try { speedProvider() } catch (_: Exception) { Float.NaN }
+            if (candidate.isFinite() && candidate > 0f) candidate else 1f
+        } else {
+            1f
+        }
+
+        // DstIn blending for mask requires an offscreen buffer — use hardware layer only when needed.
+        val mask = maskFrame
+        val needsHwLayer = mask != null
+        val desiredLayerType = if (needsHwLayer) LAYER_TYPE_HARDWARE else LAYER_TYPE_NONE
+        if (desiredLayerType != currentLayerType) {
+            setLayerType(desiredLayerType, null)
+            currentLayerType = desiredLayerType
+        }
+
+        player.draw(canvas, rawPos, isPlaying, speed, cfg)
+
+        if (mask != null) {
+            val maskBitmap = getOrBuildMaskBitmap(mask)
+            if (maskBitmap != null) drawMaskBitmap(canvas, maskBitmap, videoAspectRatio)
         }
     }
 
     private fun getOrBuildMaskBitmap(frame: DanmakuMaskFrame): Bitmap? {
-        if (frame === cachedMaskFrame && cachedMaskBitmap != null) return cachedMaskBitmap
+        if (frame == cachedMaskFrame && cachedMaskBitmap != null) return cachedMaskBitmap
         cachedMaskBitmap?.recycle()
         cachedMaskFrame = frame
-        cachedMaskBitmap = buildMaskBitmap(frame)
-        return cachedMaskBitmap
-    }
-
-    private fun buildMaskBitmap(frame: DanmakuMaskFrame): Bitmap? {
-        return runCatching {
+        cachedMaskBitmap = try {
             when (frame) {
                 is DanmakuWebMaskFrame -> buildWebMaskBitmap(frame)
                 is DanmakuMobMaskFrame -> buildMobMaskBitmap(frame)
             }
-        }.getOrNull()
+        } catch (_: Exception) { null }
+        return cachedMaskBitmap
     }
 
     /** Web 蒙版：使用 androidsvg 库解析完整 SVG，渲染到 Bitmap */
@@ -189,7 +198,7 @@ class DanmakuView @JvmOverloads constructor(
      * 将蒙版 Bitmap 以 DstIn 模式绘制到 canvas 上，正确处理视频 letterbox/pillarbox。
      * 逻辑与 DanmakuMaskModifiers.bitmapMask 一致。
      */
-    private fun drawMaskBitmap(canvas: Canvas, bitmap: Bitmap, videoAspect: Float, areaRatio: Float) {
+    private fun drawMaskBitmap(canvas: Canvas, bitmap: Bitmap, videoAspect: Float) {
         val screenW = width.toFloat()
         val screenH = height.toFloat()
         if (screenW <= 0f || screenH <= 0f) return
@@ -200,7 +209,7 @@ class DanmakuView @JvmOverloads constructor(
         val offsetX: Float
         val offsetY: Float
 
-        val ratio = videoAspect.takeIf { it > 0f } ?: (16f / 9f)
+        val ratio = if (videoAspect > 0f) videoAspect else 16f / 9f
         if (ratio > screenAspect) {
             dstW = screenW
             dstH = dstW / ratio
@@ -213,8 +222,8 @@ class DanmakuView @JvmOverloads constructor(
             offsetX = (screenW - dstW) / 2f
         }
 
-        val dst = Rect(offsetX.toInt(), offsetY.toInt(), (offsetX + dstW).toInt(), (offsetY + dstH).toInt())
-        canvas.drawBitmap(bitmap, null, dst, maskPaint)
+        maskDstRect.set(offsetX.toInt(), offsetY.toInt(), (offsetX + dstW).toInt(), (offsetY + dstH).toInt())
+        canvas.drawBitmap(bitmap, null, maskDstRect, maskPaint)
     }
 
     private fun updateViewportIfNeeded() {
@@ -227,9 +236,8 @@ class DanmakuView @JvmOverloads constructor(
 
     private fun dp(v: Float): Int = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, resources.displayMetrics).toInt()
 
-    private fun defaultConfig(): DanmakuConfig = DanmakuConfig()
-
     private companion object {
+        private val DEFAULT_CONFIG = DanmakuConfig()
         const val STOP_WHEN_IDLE_MS = 700L
     }
 }

@@ -90,7 +90,6 @@ fun PlayerSetting(
     val showOnlineViewerCount by Prefs.showOnlineViewerCountFlow.collectAsState(Prefs.showOnlineViewerCount)
     var showLiveViewerCountTipDialog by remember { mutableStateOf(false) }
     val showLiveViewerCountTip by Prefs.showLiveViewerCountTipFlow.collectAsState(Prefs.showLiveViewerCountTip)
-    var enableTunneling by remember { mutableStateOf(Prefs.enableTunneling) }
     var enableAsyncQueueing by remember { mutableStateOf(Prefs.enableAsyncQueueing) }
     var skipPgcIntroOutro by remember { mutableStateOf(Prefs.skipPgcIntroOutro) }
     var showControllerButtonDialog by remember { mutableStateOf(false) }
@@ -160,6 +159,19 @@ fun PlayerSetting(
                 )
             }
             item {
+                SettingListItemWithDialog(
+                    title = stringResource(R.string.settings_item_live_codec),
+                    supportText = stringResource(R.string.settings_item_live_codec),
+                    options = LiveCodec.entries.toList(),
+                    getDisplayName = { item, ctx -> item.getDisplayName(ctx) },
+                    value = defaultLiveCodec,
+                    onValueChange = {
+                        defaultLiveCodec = it
+                        Prefs.defaultLiveCodec = it
+                    }
+                )
+            }
+            item {
                 SettingSwitchListItem(
                     title = stringResource(R.string.settings_other_ffmpeg_audio_renderer_title),
                     supportText = stringResource(R.string.settings_other_ffmpeg_audio_renderer_text),
@@ -178,39 +190,6 @@ fun PlayerSetting(
                     onCheckedChange = {
                         enableAsyncQueueing = it
                         Prefs.enableAsyncQueueing = it
-                    }
-                )
-            }
-            item {
-                SettingSwitchListItem(
-                    title = "启用隧道播放模式",
-                    supportText = "隧道播放模式能改善播放性能，但是无法改变播放速度、而且部分设备可能会播放异常",
-                    checked = enableTunneling,
-                    onCheckedChange = {
-                        enableTunneling = it
-                        Prefs.enableTunneling = it
-                    }
-                )
-            }
-            item {
-                SettingSwitchListItem(
-                    title = stringResource(R.string.settings_player_show_bottom_progress_bar_title),
-                    supportText = stringResource(R.string.settings_player_show_bottom_progress_bar_text),
-                    checked = playerShowBottomProgressBar,
-                    onCheckedChange = {
-                        playerShowBottomProgressBar = it
-                        Prefs.playerShowBottomProgressBar = it
-                    }
-                )
-            }
-            item {
-                SettingSwitchListItem(
-                    title = stringResource(R.string.settings_player_show_debug_info_title),
-                    supportText = stringResource(R.string.settings_player_show_debug_info_text),
-                    checked = playerShowDebugInfo,
-                    onCheckedChange = {
-                        playerShowDebugInfo = it
-                        Prefs.playerShowDebugInfo = it
                     }
                 )
             }
@@ -246,6 +225,35 @@ fun PlayerSetting(
                 )
             }
             item {
+                SettingListItem(
+                    title = "长按确认键行为",
+                    supportText = "设置播放器中长按确认键的行为",
+                    valueText = when (playerLongPressAction) {
+                        0 -> "打开菜单"
+                        1 -> "加速播放"
+                        else -> "打开菜单"
+                    },
+                    onClick = { showLongPressActionDialog = true }
+                )
+            }
+            if (playerLongPressAction == 1) {
+                item {
+                    SettingNumberListItem(
+                        title = "长按加速速度",
+                        supportText = "长按确认键时的播放速度",
+                        value = playerLongPressSpeed,
+                        minValue = 1.25,
+                        maxValue = 3.0,
+                        isInteger = false,
+                        step = 0.25,
+                        onValueChange = {
+                            playerLongPressSpeed = it
+                            Prefs.playerLongPressSpeed = it.toFloat()
+                        }
+                    )
+                }
+            }
+            item {
                 SettingListItemWithDialog(
                     title = stringResource(R.string.settings_player_default_start_position_title),
                     supportText = stringResource(R.string.settings_player_default_start_position_text),
@@ -255,6 +263,30 @@ fun PlayerSetting(
                     onValueChange = {
                         playerDefaultStartPosition = it
                         Prefs.playerDefaultStartPosition = it
+                    }
+                )
+            }
+            item {
+                SettingSwitchListItem(
+                    title = "跳过 PGC 片头片尾",
+                    supportText = "自动跳过 PGC 片头片尾",
+                    checked = skipPgcIntroOutro,
+                    onCheckedChange = {
+                        skipPgcIntroOutro = it
+                        Prefs.skipPgcIntroOutro = it
+                    }
+                )
+            }
+            item {
+                SettingListItemWithDialog(
+                    title = "默认字幕",
+                    supportText = "首次播放时自动加载的字幕语言，仅加载非AI生成的字幕",
+                    options = DefaultSubtitle.entries,
+                    getDisplayName = { item, _ -> item.displayName() },
+                    value = defaultSubtitle,
+                    onValueChange = {
+                        defaultSubtitle = it
+                        Prefs.defaultSubtitle = it
                     }
                 )
             }
@@ -304,76 +336,6 @@ fun PlayerSetting(
                 )
             }
             item {
-                SettingListItem(
-                    title = "视频在线观看人数",
-                    supportText = "设置播放器在线人数显示方式",
-                    valueText = when (showOnlineViewerCount) {
-                        0 -> "不显示"
-                        1 -> "30 秒后隐藏"
-                        2 -> "始终显示"
-                        else -> "30 秒后隐藏"
-                    },
-                    onClick = { showOnlineViewerCountDialog = true }
-                )
-            }
-            item {
-                SettingListItem(
-                    title = "直播人气&高能观众",
-                    supportText = "设置直播人气和高能观众显示方式",
-                    valueText = when (showLiveViewerCountTip) {
-                        0 -> "不显示"
-                        1 -> "30 秒后隐藏"
-                        2 -> "始终显示"
-                        else -> "30 秒后隐藏"
-                    },
-                    onClick = { showLiveViewerCountTipDialog = true }
-                )
-            }
-            item {
-                SettingSwitchListItem(
-                    title = "跳过 PGC 片头片尾",
-                    supportText = "自动跳过 PGC 片头片尾",
-                    checked = skipPgcIntroOutro,
-                    onCheckedChange = {
-                        skipPgcIntroOutro = it
-                        Prefs.skipPgcIntroOutro = it
-                    }
-                )
-            }
-            item {
-                SettingListItemWithDialog(
-                    title = "默认字幕",
-                    supportText = "首次播放时自动加载的字幕语言，仅加载非AI生成的字幕",
-                    options = DefaultSubtitle.entries,
-                    getDisplayName = { item, _ -> item.displayName() },
-                    value = defaultSubtitle,
-                    onValueChange = {
-                        defaultSubtitle = it
-                        Prefs.defaultSubtitle = it
-                    }
-                )
-            }
-            item {
-                SettingListItem(
-                    title = "控制栏按钮",
-                    supportText = "自定义控制栏按钮的显示、排序和默认焦点",
-                    onClick = { showControllerButtonDialog = true }
-                )
-            }
-            item {
-                SettingListItemWithDialog(
-                    title = stringResource(R.string.settings_item_live_codec),
-                    supportText = stringResource(R.string.settings_item_live_codec),
-                    options = LiveCodec.entries.toList(),
-                    getDisplayName = { item, ctx -> item.getDisplayName(ctx) },
-                    value = defaultLiveCodec,
-                    onValueChange = {
-                        defaultLiveCodec = it
-                        Prefs.defaultLiveCodec = it
-                    }
-                )
-            }
-            item {
                 SettingNumberListItem(
                     title = stringResource(R.string.settings_player_danmaku_filter_level_title),
                     supportText = stringResource(R.string.settings_player_danmaku_filter_level_text),
@@ -404,33 +366,59 @@ fun PlayerSetting(
                 )
             }
             item {
-                SettingListItem(
-                    title = "长按确认键行为",
-                    supportText = "设置播放器中长按确认键的行为",
-                    valueText = when (playerLongPressAction) {
-                        0 -> "打开菜单"
-                        1 -> "加速播放"
-                        else -> "打开菜单"
-                    },
-                    onClick = { showLongPressActionDialog = true }
+                SettingSwitchListItem(
+                    title = stringResource(R.string.settings_player_show_debug_info_title),
+                    supportText = stringResource(R.string.settings_player_show_debug_info_text),
+                    checked = playerShowDebugInfo,
+                    onCheckedChange = {
+                        playerShowDebugInfo = it
+                        Prefs.playerShowDebugInfo = it
+                    }
                 )
             }
-            if (playerLongPressAction == 1) {
-                item {
-                    SettingNumberListItem(
-                        title = "长按加速速度",
-                        supportText = "长按确认键时的播放速度",
-                        value = playerLongPressSpeed,
-                        minValue = 1.25,
-                        maxValue = 3.0,
-                        isInteger = false,
-                        step = 0.25,
-                        onValueChange = {
-                            playerLongPressSpeed = it
-                            Prefs.playerLongPressSpeed = it.toFloat()
-                        }
-                    )
-                }
+            item {
+                SettingListItem(
+                    title = "视频在线观看人数",
+                    supportText = "设置播放器在线人数显示方式",
+                    valueText = when (showOnlineViewerCount) {
+                        0 -> "不显示"
+                        1 -> "30 秒后隐藏"
+                        2 -> "始终显示"
+                        else -> "30 秒后隐藏"
+                    },
+                    onClick = { showOnlineViewerCountDialog = true }
+                )
+            }
+            item {
+                SettingListItem(
+                    title = "直播人气&高能观众",
+                    supportText = "设置直播人气和高能观众显示方式",
+                    valueText = when (showLiveViewerCountTip) {
+                        0 -> "不显示"
+                        1 -> "30 秒后隐藏"
+                        2 -> "始终显示"
+                        else -> "30 秒后隐藏"
+                    },
+                    onClick = { showLiveViewerCountTipDialog = true }
+                )
+            }
+            item {
+                SettingListItem(
+                    title = "播放器控制栏按钮",
+                    supportText = "自定义控制栏按钮的显示、排序和默认焦点",
+                    onClick = { showControllerButtonDialog = true }
+                )
+            }
+            item {
+                SettingSwitchListItem(
+                    title = stringResource(R.string.settings_player_show_bottom_progress_bar_title),
+                    supportText = stringResource(R.string.settings_player_show_bottom_progress_bar_text),
+                    checked = playerShowBottomProgressBar,
+                    onCheckedChange = {
+                        playerShowBottomProgressBar = it
+                        Prefs.playerShowBottomProgressBar = it
+                    }
+                )
             }
         }
 
@@ -808,17 +796,32 @@ private fun NextVideoStrategyEditDialog(
     var strategyConfigs by remember {
         mutableStateOf(
             run {
+                val validOrdinals = NextVideoStrategy.entries.map { it.ordinalValue }.toSet()
                 val parsedConfigs = Prefs.playerNextVideoStrategyOrder.split(",").mapNotNull {
                     if (it.isBlank()) return@mapNotNull null
                     val hidden = it.startsWith("-")
                     val id = it.replace("-", "").toIntOrNull() ?: return@mapNotNull null
-                    NextVideoStrategyConfig(NextVideoStrategy.fromOrdinal(id), hidden, id)
+                    if (id !in validOrdinals) return@mapNotNull null
+                    val strategy = NextVideoStrategy.fromOrdinal(id)
+                    if (strategy == NextVideoStrategy.SingleVideo) return@mapNotNull null
+                    NextVideoStrategyConfig(strategy, hidden, id)
                 }.toMutableList()
-                val allStrategies = NextVideoStrategy.entries
+                val allStrategies = NextVideoStrategy.entries.filter { it != NextVideoStrategy.SingleVideo }
                 val existingIds = parsedConfigs.map { it.ordinal }.toSet()
+                // 互斥对：启用其中一个时，另一个默认禁用
+                val mutualExclusivePairs = mapOf(
+                    NextVideoStrategy.PreloadedVideoList.ordinalValue to NextVideoStrategy.PreloadedVideoListReverse.ordinalValue,
+                    NextVideoStrategy.PreloadedVideoListReverse.ordinalValue to NextVideoStrategy.PreloadedVideoList.ordinalValue,
+                    NextVideoStrategy.PartAndEpisode.ordinalValue to NextVideoStrategy.PartAndEpisodeReverse.ordinalValue,
+                    NextVideoStrategy.PartAndEpisodeReverse.ordinalValue to NextVideoStrategy.PartAndEpisode.ordinalValue,
+                )
+                val enabledIds = parsedConfigs.filter { !it.hidden }.map { it.ordinal }.toSet()
                 allStrategies.forEach { strategy ->
                     if (strategy.ordinalValue !in existingIds) {
-                        parsedConfigs.add(NextVideoStrategyConfig(strategy, hidden = false, ordinal = strategy.ordinalValue))
+                        // 如果互斥对中的另一方已启用，则默认禁用
+                        val pairOrdinal = mutualExclusivePairs[strategy.ordinalValue]
+                        val shouldHide = pairOrdinal != null && pairOrdinal in enabledIds
+                        parsedConfigs.add(NextVideoStrategyConfig(strategy, hidden = shouldHide, ordinal = strategy.ordinalValue))
                     }
                 }
                 parsedConfigs.toList()
@@ -932,8 +935,25 @@ private fun NextVideoStrategyEditDialog(
                                 }
                                 Key.Enter, Key.DirectionCenter -> {
                                     val config = strategyConfigs[selectedIndex]
+                                    val newHidden = !config.hidden
                                     strategyConfigs = strategyConfigs.toMutableList().apply {
-                                        this[selectedIndex] = config.copy(hidden = !config.hidden)
+                                        this[selectedIndex] = config.copy(hidden = newHidden)
+                                        // 互斥处理：启用时自动禁用对应项
+                                        if (!newHidden) {
+                                            val mutualExclusiveOrdinal = when (config.strategy) {
+                                                NextVideoStrategy.PreloadedVideoList -> NextVideoStrategy.PreloadedVideoListReverse.ordinalValue
+                                                NextVideoStrategy.PreloadedVideoListReverse -> NextVideoStrategy.PreloadedVideoList.ordinalValue
+                                                NextVideoStrategy.PartAndEpisode -> NextVideoStrategy.PartAndEpisodeReverse.ordinalValue
+                                                NextVideoStrategy.PartAndEpisodeReverse -> NextVideoStrategy.PartAndEpisode.ordinalValue
+                                                else -> null
+                                            }
+                                            if (mutualExclusiveOrdinal != null) {
+                                                val pairIndex = indexOfFirst { it.ordinal == mutualExclusiveOrdinal }
+                                                if (pairIndex >= 0) {
+                                                    this[pairIndex] = this[pairIndex].copy(hidden = true)
+                                                }
+                                            }
+                                        }
                                     }
                                     true
                                 }

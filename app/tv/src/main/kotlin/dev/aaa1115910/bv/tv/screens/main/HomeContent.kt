@@ -217,10 +217,8 @@ fun HomeContent(
             TopNav(
                 modifier = Modifier
                     .focusRequester(navFocusRequester)
-                    .padding(end = 80.dp)
                     .onFocusChanged { topNavHasFocus = it.hasFocus },
                 items = effectiveNavItems,
-                isLargePadding = !focusOnContent && currentListOnTop,
                 initialSelectedItem = selectedTab,
                 navSwitchMode = navSwitchMode,
                 onSelectedChanged = { nav ->

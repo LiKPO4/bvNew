@@ -41,6 +41,7 @@ class CommentRepository(
                     mode = sort.param,
                     paginationStr = Json.encodeToString(mapOf("offset" to page.nextWebPage)),
                     sessData = authRepository.sessionData ?: "",
+                    dedeUserID = authRepository.mid,
                     buvid3 = authRepository.buvid3 ?: ""
                 ).getResponseData()
                 return CommentsData.fromCommentData(webComments)
@@ -84,8 +85,10 @@ class CommentRepository(
                     oid = commentId,
                     type = type,
                     root = rpid,
-                    pageSize = 20,
                     pageNumber = page.nextWebPage,
+                    sessData = authRepository.sessionData ?: "",
+                    dedeUserID = authRepository.mid,
+                    buvid3 = authRepository.buvid3 ?: ""
                 ).getResponseData()
                 return CommentRepliesData.fromCommentReplyData(webReplies)
             }

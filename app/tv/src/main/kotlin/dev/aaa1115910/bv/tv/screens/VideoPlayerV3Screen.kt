@@ -76,6 +76,7 @@ import dev.aaa1115910.bv.player.tv.BvPlayer
 import dev.aaa1115910.bv.player.tv.controller.LiveViewerCountTip
 import dev.aaa1115910.bv.player.tv.controller.OnlineViewerCountTip
 import dev.aaa1115910.bv.player.tv.controller.SkipTip
+import dev.aaa1115910.bv.player.tv.controller.UserActionKey
 import dev.aaa1115910.bv.tv.activities.video.TagActivity
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.component.buttons.CoinButton
@@ -97,6 +98,7 @@ import dev.aaa1115910.bv.util.swapList
 import dev.aaa1115910.bv.viewmodel.VideoPlayerV3ViewModel
 import dev.aaa1115910.bv.tv.component.GeetestTvVerifyDialog
 import dev.aaa1115910.biliapi.http.BiliHttpApi
+import dev.aaa1115910.bv.player.entity.NextVideoStrategy
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -130,10 +132,9 @@ fun VideoPlayerV3Screen(
     LaunchedEffect(followStateMap, playerViewModel.upId) {
         val currentUpId = playerViewModel.upId
         if (currentUpId > 0) {
-            FollowStateManager.getFollowState(currentUpId)?.let { following ->
-                if (playerViewModel.isFollowingUp != following) {
-                    playerViewModel.isFollowingUp = following
-                }
+            val result = FollowStateManager.ensureFollowState(currentUpId)
+            if (result != null && playerViewModel.isFollowingUp != result) {
+                playerViewModel.isFollowingUp = result
             }
         }
     }
@@ -417,6 +418,14 @@ fun VideoPlayerV3Screen(
                                 .firstOrNull { it is VideoListItemData } as? VideoListItemData
                         } else null
 
+                    // 找出上一个剧集/分P（逆序模式用）
+                    val prevEp =
+                        if (currentIndex > 0) {
+                            playerViewModel.availableVideoList
+                                .take(currentIndex)
+                                .lastOrNull { it is VideoListItemData } as? VideoListItemData
+                        } else null
+
                     // 标记当前稿件已播放
                     PlayedAidsCache.markPlayed(playerViewModel.currentAid)
 
@@ -433,22 +442,39 @@ fun VideoPlayerV3Screen(
                         preloaded[preloadIndex + 1]
                     } else null
 
+                    // 找出预加载列表的上一个（逆序模式用）
+                    val prevPreloaded = if (preloadIndex > 0) {
+                        preloaded[preloadIndex - 1]
+                    } else null
+
                     // nextVideo 可以是分P/剧集(VideoListItemData) 或推荐卡片(VideoCardData)
                     var nextVideo: Any? = null
 
                     when (playerViewModel.currentPlayMode) {
-                        PlayMode.Default -> {
+                        PlayMode.Custom -> {
                             // 使用设置中的策略顺序
-                            val strategies = Prefs.playerNextVideoStrategyOrder.split(",").filter { !it.startsWith("-") }.map { dev.aaa1115910.bv.player.entity.NextVideoStrategy.fromOrdinal(it.toInt()) }
+                            val validOrdinals = NextVideoStrategy.entries.map { it.ordinalValue }.toSet()
+                            val strategies = Prefs.playerNextVideoStrategyOrder.split(",").filter { !it.startsWith("-") }.mapNotNull { val id = it.toIntOrNull() ?: return@mapNotNull null; if (id !in validOrdinals) return@mapNotNull null; NextVideoStrategy.fromOrdinal(id) }
                             for (strategy in strategies) {
-                                if (strategy == dev.aaa1115910.bv.player.entity.NextVideoStrategy.PartAndEpisode) {
+                                if (strategy == NextVideoStrategy.SingleVideo) {
+                                    // 单视频模式：不自动播放下一个
+                                    break
+                                } else if (strategy == NextVideoStrategy.PartAndEpisode) {
                                     if (nextEp != null) { nextVideo = nextEp; break }
-                                } else if (strategy == dev.aaa1115910.bv.player.entity.NextVideoStrategy.PreloadedVideoList) {
+                                } else if (strategy == NextVideoStrategy.PreloadedVideoList) {
                                     if (nextPreloaded != null) { nextVideo = nextPreloaded; break }
-                                } else if (strategy == dev.aaa1115910.bv.player.entity.NextVideoStrategy.RelatedVideo) {
+                                } else if (strategy == NextVideoStrategy.RelatedVideo) {
                                     if (nextRelatedVideo != null) { nextVideo = nextRelatedVideo; break }
+                                } else if (strategy == NextVideoStrategy.PartAndEpisodeReverse) {
+                                    if (prevEp != null) { nextVideo = prevEp; break }
+                                } else if (strategy == NextVideoStrategy.PreloadedVideoListReverse) {
+                                    if (prevPreloaded != null) { nextVideo = prevPreloaded; break }
                                 }
                             }
+                        }
+                        PlayMode.SingleVideo -> {
+                            // 单视频模式：不自动播放下一个
+                            logger.info { "PlayMode.SingleVideo: no auto next" }
                         }
                         PlayMode.SingleLoop -> {
                             // BvPlayer.onEnd 已处理循环，这里不应到达
@@ -457,8 +483,14 @@ fun VideoPlayerV3Screen(
                         PlayMode.ListOrder -> {
                             nextVideo = nextPreloaded
                         }
+                        PlayMode.ListOrderReverse -> {
+                            nextVideo = prevPreloaded
+                        }
                         PlayMode.PartAndEpisode -> {
                             nextVideo = nextEp
+                        }
+                        PlayMode.PartAndEpisodeReverse -> {
+                            nextVideo = prevEp
                         }
                         PlayMode.RelatedVideo -> {
                             nextVideo = nextRelatedVideo
@@ -471,7 +503,7 @@ fun VideoPlayerV3Screen(
                                 if (!immediate) {
                                     autoActionTipText = "即将播放下一个"
                                     autoActionTipVisible = true
-                                    delay(1300)
+                                    delay(1380)
                                 }
                                 autoActionTipVisible = false
                                 if (autoActionCountdownJob != null) {
@@ -529,7 +561,7 @@ fun VideoPlayerV3Screen(
                             try {
                                 autoActionTipText = "播放结束，即将退出"
                                 autoActionTipVisible = true
-                                delay(1300)
+                                delay(1380)
                                 autoActionTipVisible = false
                                 if (autoActionCountdownJob != null) {
                                     autoActionCountdownJob = null
@@ -723,9 +755,9 @@ fun VideoPlayerV3Screen(
                     onPauseAutoHide ->
                     if (Prefs.isLogin && !playerViewModel.fromSeason) {
                         // 增加操作：点赞、收藏、投币。通过 focusMap 获取 focusRequester 并在 onFocusChanged 回调时通知 controller
-                        val likeFocus = focusMap["like"]
-                        val favFocus = focusMap["fav"]
-                        val coinFocus = focusMap["coin"]
+                        val likeFocus = focusMap[UserActionKey.Like]
+                        val favFocus = focusMap[UserActionKey.Favorite]
+                        val coinFocus = focusMap[UserActionKey.Coin]
 
                         Row(
                             modifier = modifier
@@ -737,7 +769,7 @@ fun VideoPlayerV3Screen(
                             LikeButton(
                                 modifier = Modifier
                                     .height(26.dp)
-                                    .onFocusChanged { if (it.isFocused) onFocus("like") }
+                                    .onFocusChanged { if (it.isFocused) onFocus(UserActionKey.Like) }
                                     .then(likeFocus?.let { Modifier.focusRequester(it) } ?: Modifier),
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                                 colors = ButtonDefaults.colors(
@@ -783,7 +815,7 @@ fun VideoPlayerV3Screen(
                             FavoriteButton(
                                 modifier = Modifier
                                     .height(24.dp)
-                                    .onFocusChanged { if (it.isFocused) onFocus("fav") }
+                                    .onFocusChanged { if (it.isFocused) onFocus(UserActionKey.Favorite) }
                                     .then(favFocus?.let { Modifier.focusRequester(it) } ?: Modifier),
                                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
                                 colors = ButtonDefaults.colors(
@@ -807,8 +839,6 @@ fun VideoPlayerV3Screen(
                                 ),
                                 dialogContainerColor = Color.Black.copy(alpha = 0.5f),
                                 isFavorite = sharedActionState.favorited,
-                                // read shared state snapshot (UI will recompose when collectAsState in parent is implemented)
-                                userFavoriteFolders = sharedActionState.favoriteFolders,
                                 favoriteFolderIds = sharedActionState.favoriteFolderIds,
                                 onAddToDefaultFavoriteFolder = {
                                     scope.launch {
@@ -831,7 +861,7 @@ fun VideoPlayerV3Screen(
                             CoinButton(
                                 modifier = Modifier
                                     .height(26.dp)
-                                    .onFocusChanged { if (it.isFocused) onFocus("coin") }
+                                    .onFocusChanged { if (it.isFocused) onFocus(UserActionKey.Coin) }
                                     .then(coinFocus?.let { Modifier.focusRequester(it) } ?: Modifier),
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                                 colors = ButtonDefaults.colors(
@@ -873,7 +903,7 @@ fun VideoPlayerV3Screen(
             // 显示跳过提示
             if (autoActionTipVisible) {
                 SkipTip(
-                    modifier = Modifier.padding(bottom = 28.dp),
+                    modifier = Modifier.padding(bottom = 22.dp),
                     show = true,
                     text = autoActionTipText,
                     align = Alignment.BottomEnd

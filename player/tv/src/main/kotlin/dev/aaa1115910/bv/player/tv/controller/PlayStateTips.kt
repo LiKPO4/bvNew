@@ -62,7 +62,7 @@ fun PlayStateTips(
             PauseIcon(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(24.dp)
+                    .padding(20.dp)
             )
         }
         if (videoPlayerStateData.isBuffering && !videoPlayerStateData.isError) {
@@ -82,7 +82,7 @@ fun PlayStateTips(
             PaidRequireTip(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(24.dp)
+                    .padding(20.dp)
                     .graphicsLayer {
                         scaleX = 0.5f
                         scaleY = 0.5f
@@ -108,7 +108,7 @@ fun PauseIcon(
         Icon(
             modifier = Modifier
                 .padding(12.dp, 4.dp)
-                .size(50.dp),
+                .size(46.dp),
             imageVector = Icons.Rounded.Pause,
             contentDescription = null,
             tint = Color.White

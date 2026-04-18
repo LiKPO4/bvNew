@@ -6,6 +6,6 @@ data class CommentPage(
 )
 
 data class CommentReplyPage(
-    val nextWebPage: Int = 0,
+    val nextWebPage: Int = 1,
     val nextAppPage: String = ""
 )

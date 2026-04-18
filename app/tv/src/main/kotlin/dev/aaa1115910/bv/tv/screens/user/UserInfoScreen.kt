@@ -1,5 +1,6 @@
 package dev.aaa1115910.bv.tv.screens.user
 
+import android.app.Activity
 import android.content.Intent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -270,13 +271,16 @@ fun UserInfoScreen(
             logger.fInfo { "Following up count: $followingUpCount" }
         }
     }
-
     val updateData = {
-        userViewModel.updateUserInfo(forceUpdate = true)
-        updateHistories()
-        updateFollowedAnimes()
-        updateFavoriteVideos()
-        updateFollowingUpCount()
+        if (!userViewModel.isLogin) {
+            (context as? Activity)?.finish()
+        } else {
+            userViewModel.updateUserInfo(forceUpdate = true)
+            updateHistories()
+            updateFollowedAnimes()
+            updateFavoriteVideos()
+            updateFollowingUpCount()
+        }
     }
 
     LaunchedEffect(Unit) {

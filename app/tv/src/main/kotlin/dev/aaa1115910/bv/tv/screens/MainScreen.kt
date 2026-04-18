@@ -237,29 +237,6 @@ fun MainScreen(
                 ),
                 color = MaterialTheme.colorScheme.onSurface
             )
-
-            // Box(
-            //     modifier = Modifier
-            //         .fillMaxSize()
-            //         .padding(start = 80.dp) // 为 NavigationRail 留出空间
-            // ) {
-            //     NavHost(
-            //         navController,
-            //         startDestination = startDestination.displayName
-            //     ) {
-            //         DrawerItem.entries.forEach { destination ->
-            //             composable(destination.displayName) {
-            //                 when (destination.displayName) {
-            //                     DrawerItem.Home.displayName -> HomeContent(navFocusRequester = mainFocusRequester)
-            //                     DrawerItem.UGC.displayName -> UgcContent(navFocusRequester = ugcFocusRequester)
-            //                     DrawerItem.PGC.displayName -> PgcContent(navFocusRequester = pgcFocusRequester)
-            //                     DrawerItem.Search.displayName -> SearchInputScreen(defaultFocusRequester = searchFocusRequester)
-            //                     else -> {}
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
         }
         AnimatedVisibility(
             visible = showUserPanel,

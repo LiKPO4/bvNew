@@ -117,9 +117,9 @@ fun TagScreen(
                         )
                 ),
                 columns = GridCells.Fixed(4),
-                contentPadding = PaddingValues(24.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-                horizontalArrangement = Arrangement.spacedBy(24.dp)
+                contentPadding = PaddingValues(20.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 itemsIndexed(
                     items = tagViewModel.topVideos,

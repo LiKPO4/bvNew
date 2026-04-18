@@ -11,7 +11,6 @@ import dev.aaa1115910.bv.player.danmaku.model.DanmakuCacheState
 import dev.aaa1115910.bv.player.danmaku.model.DanmakuItem
 import dev.aaa1115910.bv.player.danmaku.model.DanmakuKind
 import dev.aaa1115910.bv.player.danmaku.model.RenderSnapshot
-import java.util.Arrays
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
@@ -21,15 +20,12 @@ internal class DanmakuEngine(
     private val displayMetrics: DisplayMetrics,
     private val cacheManager: CacheManager,
 ) {
-    private val density = displayMetrics.density.takeIf { it.isFinite() && it > 0f } ?: 1f
-
     // Data (action thread)
     private val actionStateLock = Any()
     private var allItems: MutableList<DanmakuItem> = mutableListOf()
     private var items: MutableList<DanmakuItem> = mutableListOf()
     private var index: Int = 0
     private val active = ArrayList<DanmakuItem>(64)
-    private val pending = ArrayDeque<PendingSpawn>()
     private var lastNowMs: Double = 0.0
 
     // Viewport / Config
@@ -52,6 +48,7 @@ internal class DanmakuEngine(
     private val snapshotA = RenderSnapshot()
     private val snapshotB = RenderSnapshot()
     @Volatile private var latestSnapshot: RenderSnapshot = snapshotA
+    private var snapshotDirty: Boolean = true
 
     // FPS stats (action thread)
     private var actFrameCount: Int = 0
@@ -68,10 +65,11 @@ internal class DanmakuEngine(
     // Layout scratch (action thread)
     private val actionFontMetrics = Paint.FontMetrics()
     private val actionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = Typeface.DEFAULT_BOLD }
-    private var laneLastScroll: Array<DanmakuItem?> = emptyArray()
-    private var laneLastScrollTail = FloatArray(0)
-    private var laneLastTop: Array<DanmakuItem?> = emptyArray()
-    private var laneLastBottom: Array<DanmakuItem?> = emptyArray()
+    private var scrollLaneQueues: Array<ArrayDeque<DanmakuItem>> = emptyArray()
+    private var topLaneBusyUntilMs = DoubleArray(0)
+    private var bottomLaneBusyUntilMs = DoubleArray(0)
+    private var cacheProbeCursor: Int = 0
+    private var cachedCacheStyle: CacheStyle? = null
 
     // Cached layout results (action thread, recomputed only when viewport/config changes)
     @Volatile private var layoutDirty: Boolean = true
@@ -86,10 +84,7 @@ internal class DanmakuEngine(
     private var cachedTopInset: Int = 0
     private var cachedMarginPx: Float = 12f
 
-    // Draw paints (main thread)
-    private val drawFontMetrics = Paint.FontMetrics()
-    private val drawFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = Typeface.DEFAULT_BOLD; isSubpixelText = true }
-    private val drawStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = Typeface.DEFAULT_BOLD; style = Paint.Style.STROKE; isSubpixelText = true }
+    // Draw paint (main thread)
     private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { isFilterBitmap = true }
 
     fun updateViewport(width: Int, height: Int, topInsetPx: Int, bottomInsetPx: Int) {
@@ -199,6 +194,7 @@ internal class DanmakuEngine(
 
                     cachedMarginPx = max(12f, (layoutTextSizePx + outlinePad * 2f) * 0.6f)
                     layoutDirty = false
+                    snapshotDirty = true
                 }
                 val topInset = cachedTopInset
                 val textBoxHeight = cachedTextBoxHeight
@@ -217,47 +213,10 @@ internal class DanmakuEngine(
                 pruneExpired(width, nowMs)
                 skipOld(nowMs, rollingDurationMs)
                 dropIfLagging(nowMs)
-
-                val maxLaneCount = maxOf(laneCount, topFixedLaneCount, bottomFixedLaneCount)
-                ensureLaneBuffers(maxLaneCount)
-                Arrays.fill(laneLastScroll, 0, laneCount, null)
-                Arrays.fill(laneLastScrollTail, 0, laneCount, Float.NEGATIVE_INFINITY)
-                Arrays.fill(laneLastTop, 0, topFixedLaneCount, null)
-                Arrays.fill(laneLastBottom, 0, bottomFixedLaneCount, null)
-
-                for (a in active) {
-                    when (a.kind) {
-                        DanmakuKind.SCROLL -> { if (a.lane !in 0 until laneCount) continue; val cur = laneLastScroll[a.lane]; if (cur == null || a.startTimeMs > cur.startTimeMs) laneLastScroll[a.lane] = a }
-                        DanmakuKind.TOP -> { if (a.lane !in 0 until topFixedLaneCount) continue; val cur = laneLastTop[a.lane]; if (cur == null || a.startTimeMs > cur.startTimeMs) laneLastTop[a.lane] = a }
-                        DanmakuKind.BOTTOM -> { if (a.lane !in 0 until bottomFixedLaneCount) continue; val cur = laneLastBottom[a.lane]; if (cur == null || a.startTimeMs > cur.startTimeMs) laneLastBottom[a.lane] = a }
-                    }
-                }
-                for (lane in 0 until laneCount) {
-                    val a = laneLastScroll[lane] ?: continue
-                    laneLastScrollTail[lane] = scrollX(width, nowMs, a.startTimeMs, a.pxPerMs) + a.textWidthPx
-                }
+                ensureLaneStateBuffers(laneCount, topFixedLaneCount, bottomFixedLaneCount)
+                for (lane in 0 until laneCount) cleanupScrollLaneQueue(scrollLaneQueues[lane], width, nowMs)
 
                 val marginPx = cachedMarginPx
-
-                // Retry pending
-                if (pending.isNotEmpty()) {
-                    val pendingCount = pending.size
-                    var processed = 0
-                    var i = 0
-                    while (i < pendingCount && pending.isNotEmpty()) {
-                        val p = pending.removeFirst(); i++
-                        if (p.nextTryMs > nowMs) { pending.addLast(p); continue }
-                        if (processed >= MAX_PENDING_RETRY_PER_FRAME) { pending.addLast(p); continue }
-                        processed++
-                        val ok = when (p.kind) {
-                            DanmakuKind.SCROLL -> trySpawnScroll(p.item, p.textWidthPx, width, laneCount, rollingDurationMs, marginPx, nowMs)
-                            DanmakuKind.TOP -> trySpawnFixed(p.kind, p.item, p.textWidthPx, topFixedLaneCount, fixedDurationMs, nowMs)
-                            DanmakuKind.BOTTOM -> trySpawnFixed(p.kind, p.item, p.textWidthPx, bottomFixedLaneCount, fixedDurationMs, nowMs)
-                        }
-                        if (ok) continue
-                        if (nowMs - p.firstTryMs <= MAX_DELAY_MS) { p.nextTryMs = (nowMs + DELAY_STEP_MS).toInt(); pending.addLast(p) }
-                    }
-                }
 
                 // Spawn new
                 var spawnAttempts = 0
@@ -266,57 +225,21 @@ internal class DanmakuEngine(
                     val item = items[index]; index++; spawnAttempts++
                     if (item.data.text.isBlank()) continue
                     val textWidth = measureTextWidth(item, outlinePad, cfg)
-                    val kind = kindOf(item.data)
-                    val ok = when (kind) {
-                        DanmakuKind.SCROLL -> trySpawnScroll(item, textWidth, width, laneCount, rollingDurationMs, marginPx, nowMs)
-                        DanmakuKind.TOP -> trySpawnFixed(kind, item, textWidth, topFixedLaneCount, fixedDurationMs, nowMs)
-                        DanmakuKind.BOTTOM -> trySpawnFixed(kind, item, textWidth, bottomFixedLaneCount, fixedDurationMs, nowMs)
+                    when (item.data.mode) {
+                        Danmaku.MODE_TOP -> trySpawnFixed(DanmakuKind.TOP, item, textWidth, topFixedLaneCount, fixedDurationMs, nowMs)
+                        Danmaku.MODE_BOTTOM -> trySpawnFixed(DanmakuKind.BOTTOM, item, textWidth, bottomFixedLaneCount, fixedDurationMs, nowMs)
+                        else -> trySpawnScroll(item, textWidth, width, laneCount, rollingDurationMs, marginPx, nowMs)
                     }
-                    if (!ok) enqueuePending(kind, item, textWidth, nowMs)
                 }
 
-                // Request cache builds
-                val style = CacheStyle(textSizePx, cfg.textSizeScale, cfg.fontWeight, strokeWidthPx, outlinePad, cacheStyleGeneration)
+                var style = cachedCacheStyle
+                if (style == null || style.generation != cacheStyleGeneration) {
+                    style = CacheStyle(textSizePx, cfg.textSizeScale, cfg.fontWeight, strokeWidthPx, outlinePad, cacheStyleGeneration)
+                    cachedCacheStyle = style
+                }
                 val releaseAtFrameId = currentUiFrameId + 1
-                var requested = 0
-                if (cacheManager.queueDepth() < MAX_CACHE_QUEUE_DEPTH) {
-                    for (a in active) {
-                        if (requested >= MAX_CACHE_REQUESTS_PER_FRAME) break
-                        val bmp = a.cacheBitmap
-                        if (bmp != null && !bmp.isRecycled && a.cacheGeneration == style.generation) continue
-                        if (a.cacheState == DanmakuCacheState.Rendering) continue
-                        a.cacheState = DanmakuCacheState.Rendering
-                        cacheManager.requestBuildCache(a, a.textWidthPx, style, releaseAtFrameId)
-                        requested++
-                        if (cacheManager.queueDepth() >= MAX_CACHE_QUEUE_DEPTH) break
-                    }
-                }
-
-                // Publish snapshot
-                val maxYTop = (topInset + usableHeight - textBoxHeight).toFloat().coerceAtLeast(topInset.toFloat())
-                val topFixedMaxYTop = (topInset + topFixedUsableHeight - textBoxHeight).toFloat().coerceAtLeast(topInset.toFloat())
-                val bottomFixedBaseYTop = (height - viewportBottomInsetPx - textBoxHeight).toFloat()
-                val bottomFixedMinYTop = (height - viewportBottomInsetPx - bottomFixedUsableHeight).toFloat().coerceAtLeast(0f)
-                val out = writableSnapshot()
-                out.ensureCapacity(active.size)
-                out.positionMs = nowMs
-                out.count = 0
-                out.pendingCount = pending.size
-                for (a in active) {
-                    val iOut = out.count
-                    val x = when (a.kind) {
-                        DanmakuKind.SCROLL -> scrollX(width, nowMs, a.startTimeMs, a.pxPerMs)
-                        else -> centerX(width, a.textWidthPx)
-                    }
-                    val yTop = when (a.kind) {
-                        DanmakuKind.SCROLL -> (topInset.toFloat() + laneHeight * a.lane).coerceAtMost(maxYTop)
-                        DanmakuKind.TOP -> (topInset.toFloat() + laneHeight * a.lane).coerceAtMost(topFixedMaxYTop)
-                        DanmakuKind.BOTTOM -> (bottomFixedBaseYTop - laneHeight * a.lane).coerceAtLeast(bottomFixedMinYTop)
-                    }
-                    out.items[iOut] = a; out.x[iOut] = x; out.yTop[iOut] = yTop
-                    out.textWidth[iOut] = a.textWidthPx; out.count = iOut + 1
-                }
-                latestSnapshot = out
+                requestCacheBuilds(style, releaseAtFrameId)
+                publishSnapshotIfDirty(nowMs, height, topInset, usableHeight, textBoxHeight, laneHeight, topFixedUsableHeight, bottomFixedUsableHeight)
             }
         } finally {
             if (DanmakuLogStats.logEnabled) {
@@ -329,13 +252,12 @@ internal class DanmakuEngine(
                     val fps = actFrameCount / elapsed
                     Log.d(
                         TAG,
-                        "[Action] fps=%.1f  frames=%d  dropped=%d  %s  active=%d  pending=%d  cacheQ=%d  mem=%s".format(
+                        "[Action] fps=%.1f  frames=%d  dropped=%d  %s  active=%d  cacheQ=%d  mem=%s".format(
                             fps,
                             actFrameCount,
                             actDroppedFrames,
                             actionDurationSummary(),
                             active.size,
-                            pending.size,
                             cacheManager.queueDepth(),
                             DanmakuLogStats.memoryUsageSummary(),
                         )
@@ -384,34 +306,28 @@ internal class DanmakuEngine(
         actDurationSampleCount = 0
     }
 
-    fun renderSnapshot(): RenderSnapshot = latestSnapshot
+    fun renderSnapshot(): RenderSnapshot =
+        latestSnapshot.also { it.positionMs = currentPositionMs }
 
     fun draw(canvas: Canvas, snapshot: RenderSnapshot, config: DanmakuConfig) {
         if (!config.enabled) return
-        val ts = textSizePx
-        val scaleFactor = config.textSizeScale.coerceIn(25, 200) / 100f
-        val drawTs = ts * scaleFactor
-        if (drawFill.textSize != drawTs) { drawFill.textSize = drawTs; drawStroke.textSize = drawTs }
-        val desiredTypeface = config.fontWeight.typeface
-        if (drawFill.typeface != desiredTypeface) { drawFill.typeface = desiredTypeface; drawStroke.typeface = desiredTypeface }
-        if (drawStroke.strokeWidth != strokeWidthPx) drawStroke.strokeWidth = strokeWidthPx
-
-        val outlinePad = outlinePadPx
         val opacityAlpha = (config.opacity * 255f).roundToInt().coerceIn(0, 255)
         bitmapPaint.alpha = opacityAlpha
-        drawFill.getFontMetrics(drawFontMetrics)
-        val baselineOffset = outlinePad - drawFontMetrics.ascent
         val styleGen = cacheStyleGeneration
+        val width = viewportWidth
+        val nowMs = currentPositionMs
 
         for (i in 0 until snapshot.count) {
             val item = snapshot.items[i] ?: continue
-            val x = snapshot.x[i]; val yTop = snapshot.yTop[i]
+            val x = when (item.kind) {
+                DanmakuKind.SCROLL -> scrollX(width, nowMs, item.startTimeMs, item.pxPerMs)
+                else -> centerX(width, item.textWidthPx)
+            }
+            val yTop = snapshot.yTop[i]
             val bmp = item.cacheBitmap
             if (bmp != null && !bmp.isRecycled && item.cacheGeneration == styleGen) {
                 canvas.drawBitmap(bmp, x, yTop, bitmapPaint)
-                continue
             }
-            drawTextDirect(canvas, item, x, yTop, outlinePad, baselineOffset, opacityAlpha, config)
         }
     }
 
@@ -446,7 +362,7 @@ internal class DanmakuEngine(
             }
             rebuildFilteredItems()
             if (appendAtEnd) {
-                // New items are all after existing ones — keep actives, pending, index intact.
+                // New items are all after existing ones — keep actives, lane state and index intact.
                 index = index.coerceIn(0, items.size)
             } else {
                 // Items inserted in middle — recalculate index but keep actives intact.
@@ -465,27 +381,19 @@ internal class DanmakuEngine(
             allItems.removeAll { it.timeMs() < minI || it.timeMs() >= maxI }
             rebuildFilteredItems()
             index = (index).coerceIn(0, items.size)
-            if (pending.isNotEmpty()) {
-                val keep = ArrayDeque<PendingSpawn>()
-                while (pending.isNotEmpty()) {
-                    val p = pending.removeFirst()
-                    if (p.item.timeMs() in minI until maxI) keep.addLast(p)
-                }
-                pending.addAll(keep)
-            }
         }
     }
 
     fun seekTo(positionMs: Double = 0.0) {
         synchronized(actionStateLock) {
             index = lowerBound(positionMs)
-            clearActives(); pending.clear(); lastNowMs = positionMs
+            clearActives(); lastNowMs = positionMs
             publishEmptySnapshot()
         }
     }
 
     fun clear() {
-        synchronized(actionStateLock) { clearActives(); pending.clear(); publishEmptySnapshot() }
+        synchronized(actionStateLock) { clearActives(); publishEmptySnapshot() }
     }
 
     fun release() {
@@ -496,7 +404,7 @@ internal class DanmakuEngine(
             // Recycle cacheBitmaps held by all items (not just active ones)
             for (item in allItems) {
                 val bmp = item.cacheBitmap
-                if (bmp != null && !bmp.isRecycled) runCatching { bmp.recycle() }
+                if (bmp != null && !bmp.isRecycled) try { bmp.recycle() } catch (_: Exception) {}
                 item.cacheBitmap = null
             }
             allItems = mutableListOf()
@@ -520,29 +428,29 @@ internal class DanmakuEngine(
         }
     }
 
-    private fun kindOf(d: Danmaku): DanmakuKind = when (d.mode) {
-        Danmaku.MODE_TOP -> DanmakuKind.TOP
-        Danmaku.MODE_BOTTOM -> DanmakuKind.BOTTOM
-        else -> DanmakuKind.SCROLL
-    }
-
     private fun trySpawnScroll(item: DanmakuItem, textWidth: Float, width: Int, laneCount: Int, rollingDurationMs: Int, marginPx: Float, nowMs: Double): Boolean {
         if (item.data.text.isBlank()) return true
-        val distancePx = (width.toFloat() + textWidth).coerceAtLeast(0f)
-        val rawPx = distancePx / rollingDurationMs.toFloat()
-        val shortPx = width.toFloat() / rollingDurationMs.toFloat()
+        val widthF = width.toFloat()
+        val durationF = rollingDurationMs.toFloat()
+        val distancePx = (widthF + textWidth).coerceAtLeast(0f)
+        val rawPx = distancePx / durationF
+        val shortPx = widthF / durationF
         val maxPx = shortPx * MAX_LONG_SCROLL_SPEED_RATIO
         val pxNew = min(rawPx, maxPx)
         val durationMs = computeScrollDurationMs(distancePx, pxNew, rollingDurationMs)
         for (lane in 0 until laneCount) {
-            val prev = laneLastScroll[lane]
+            val queue = scrollLaneQueues[lane]
+            val prev = queue.lastOrNull()
             if (prev == null) {
                 activate(item, DanmakuKind.SCROLL, lane, textWidth, pxNew, durationMs, nowMs)
-                laneLastScroll[lane] = item; laneLastScrollTail[lane] = width.toFloat() + textWidth; return true
+                queue.addLast(item)
+                return true
             }
-            if (isScrollLaneAvailable(width.toFloat(), nowMs, prev, laneLastScrollTail[lane], pxNew, marginPx)) {
+            val tailPrev = scrollX(width, nowMs, prev.startTimeMs, prev.pxPerMs) + prev.textWidthPx
+            if (isScrollLaneAvailable(widthF, nowMs, prev, tailPrev, pxNew, marginPx)) {
                 activate(item, DanmakuKind.SCROLL, lane, textWidth, pxNew, durationMs, nowMs)
-                laneLastScroll[lane] = item; laneLastScrollTail[lane] = width.toFloat() + textWidth; return true
+                queue.addLast(item)
+                return true
             }
         }
         return false
@@ -550,30 +458,40 @@ internal class DanmakuEngine(
 
     private fun trySpawnFixed(kind: DanmakuKind, item: DanmakuItem, textWidth: Float, laneCount: Int, fixedDurationMs: Int, nowMs: Double): Boolean {
         if (item.data.text.isBlank()) return true
-        val lanes = when (kind) { DanmakuKind.TOP -> laneLastTop; DanmakuKind.BOTTOM -> laneLastBottom; else -> return false }
+        val busyUntil = when (kind) {
+            DanmakuKind.TOP -> topLaneBusyUntilMs
+            DanmakuKind.BOTTOM -> bottomLaneBusyUntilMs
+            else -> return false
+        }
         for (lane in 0 until laneCount) {
-            val prev = lanes[lane]
-            if (prev == null || nowMs - prev.startTimeMs >= prev.durationMs) {
+            if (busyUntil[lane] <= nowMs) {
                 activate(item, kind, lane, textWidth, 0f, fixedDurationMs, nowMs)
-                lanes[lane] = item; return true
+                busyUntil[lane] = nowMs + fixedDurationMs
+                return true
             }
         }
         return false
     }
 
     private fun activate(item: DanmakuItem, kind: DanmakuKind, lane: Int, textWidth: Float, pxPerMs: Float, durationMs: Int, startTimeMs: Double) {
+        item.isActive = true
         item.kind = kind; item.lane = lane; item.textWidthPx = textWidth
         item.pxPerMs = pxPerMs; item.durationMs = durationMs; item.startTimeMs = startTimeMs.toInt()
         active.add(item)
+        snapshotDirty = true
     }
 
     private fun clearActives() {
+        resetLaneState()
+        cacheProbeCursor = 0
+        snapshotDirty = true
         if (active.isEmpty()) return
         val releaseAt = currentUiFrameId + 1
         for (i in active.size - 1 downTo 0) releaseItemCache(active.removeAt(i), releaseAt)
     }
 
     private fun releaseItemCache(item: DanmakuItem, releaseAtFrameId: Int) {
+        item.isActive = false
         val bmp = item.cacheBitmap
         if (bmp != null) { cacheManager.enqueueRelease(bmp, releaseAtFrameId); item.cacheBitmap = null }
         item.cacheState = DanmakuCacheState.Init; item.cacheGeneration = -1
@@ -585,14 +503,17 @@ internal class DanmakuEngine(
         var write = 0
         for (read in 0 until active.size) {
             val a = active[read]
-            val elapsed = nowMs - a.startTimeMs
-            var keep = elapsed < a.durationMs
-            if (keep && a.kind == DanmakuKind.SCROLL) keep = scrollX(width, nowMs, a.startTimeMs, a.pxPerMs) + a.textWidthPx >= 0f
-            if (!keep) { releaseItemCache(a, releaseAt); continue }
+            val keep = !isExpired(width, nowMs, a)
+            if (!keep) {
+                releaseItemCache(a, releaseAt)
+                snapshotDirty = true
+                continue
+            }
             if (write != read) active[write] = a
             write++
         }
         if (write < active.size) active.subList(write, active.size).clear()
+        if (cacheProbeCursor >= active.size) cacheProbeCursor = 0
     }
 
     private fun skipOld(nowMs: Double, rollingDurationMs: Int) {
@@ -605,12 +526,12 @@ internal class DanmakuEngine(
         while (index < items.size && items[index].timeMs() < dropBefore) index++
     }
 
-    private fun enqueuePending(kind: DanmakuKind, item: DanmakuItem, textWidth: Float, nowMs: Double) {
-        if (pending.size >= MAX_PENDING) pending.removeFirst()
-        pending.addLast(PendingSpawn(kind, item, textWidth, (nowMs + DELAY_STEP_MS).toInt(), nowMs.toInt()))
+    private fun publishEmptySnapshot() {
+        val out = writableSnapshot()
+        out.clear()
+        latestSnapshot = out
+        snapshotDirty = false
     }
-
-    private fun publishEmptySnapshot() { val out = writableSnapshot(); out.clear(); latestSnapshot = out }
     private fun writableSnapshot(): RenderSnapshot = if (latestSnapshot === snapshotA) snapshotB else snapshotA
 
     private fun scrollX(width: Int, nowMs: Double, startTimeMs: Int, pxPerMs: Float): Float =
@@ -632,7 +553,7 @@ internal class DanmakuEngine(
 
     private fun computeScrollDurationMs(distancePx: Float, pxPerMs: Float, fallback: Int): Int {
         if (!distancePx.isFinite() || distancePx <= 0f || !pxPerMs.isFinite() || pxPerMs <= 0f) return fallback.coerceAtLeast(1)
-        return max(fallback.coerceAtLeast(1), ceil((distancePx / pxPerMs).toDouble()).toLong().coerceIn(1L, Int.MAX_VALUE.toLong()).toInt())
+        return max(fallback.coerceAtLeast(1), ceil(distancePx / pxPerMs).toInt().coerceAtLeast(1))
     }
 
 
@@ -643,11 +564,8 @@ internal class DanmakuEngine(
         val clampedSize = min(item.data.textSize, 25)
         val scaleFactor = cfg.textSizeScale.coerceIn(25, 200) / 100f
         val effectiveTextSizePx = (textSizePx * clampedSize / 25f * scaleFactor).coerceAtLeast(1f)
-        val savedTextSize = actionPaint.textSize
         actionPaint.textSize = effectiveTextSizePx
-        val width = actionPaint.measureText(text) + outlinePad * 2f
-        actionPaint.textSize = savedTextSize
-        return width
+        return actionPaint.measureText(text) + outlinePad * 2f
     }
 
     private fun lowerBound(pos: Double): Int {
@@ -656,42 +574,88 @@ internal class DanmakuEngine(
         return l
     }
 
-    private fun ensureLaneBuffers(laneCount: Int) {
-        if (laneLastScroll.size < laneCount) laneLastScroll = arrayOfNulls(laneCount)
-        if (laneLastScrollTail.size < laneCount) laneLastScrollTail = FloatArray(laneCount)
-        if (laneLastTop.size < laneCount) laneLastTop = arrayOfNulls(laneCount)
-        if (laneLastBottom.size < laneCount) laneLastBottom = arrayOfNulls(laneCount)
+    private fun requestCacheBuilds(style: CacheStyle, releaseAtFrameId: Int) {
+        if (active.isEmpty()) return
+        if (cacheManager.queueDepth() >= MAX_CACHE_QUEUE_DEPTH) return
+        val scanCount = min(active.size, MAX_CACHE_SCAN_PER_FRAME)
+        var requested = 0
+        for (offset in 0 until scanCount) {
+            if (requested >= MAX_CACHE_REQUESTS_PER_FRAME) break
+            val indexInActive = (cacheProbeCursor + offset) % active.size
+            val item = active[indexInActive]
+            val bmp = item.cacheBitmap
+            val hasValidCache = bmp != null && !bmp.isRecycled && item.cacheGeneration == style.generation
+            if (hasValidCache) continue
+            if (item.cacheState == DanmakuCacheState.Rendering) continue
+            item.cacheState = DanmakuCacheState.Rendering
+            cacheManager.requestBuildCache(item, item.textWidthPx, style, releaseAtFrameId)
+            requested++
+        }
+        cacheProbeCursor = if (active.isEmpty()) 0 else (cacheProbeCursor + scanCount) % active.size
     }
 
-    private fun drawTextDirect(canvas: Canvas, item: DanmakuItem, x: Float, yTop: Float, outlinePad: Float, baselineOffset: Float, opacityAlpha: Int, cfg: DanmakuConfig) {
-        val text = item.data.text
-        if (text.isBlank()) return
-        val drawStrokeEnabled = strokeWidthPx > 0.01f
-        val rgb = item.data.color and 0xFFFFFF
-        if (drawStrokeEnabled) drawStroke.color = ((opacityAlpha * 0xCC / 255).coerceIn(0, 255) shl 24) or 0x000000
-        drawFill.color = (opacityAlpha shl 24) or rgb
+    private fun publishSnapshotIfDirty(
+        nowMs: Double,
+        height: Int,
+        topInset: Int,
+        usableHeight: Int,
+        textBoxHeight: Float,
+        laneHeight: Float,
+        topFixedUsableHeight: Int,
+        bottomFixedUsableHeight: Int,
+    ) {
+        if (!snapshotDirty) return
+        val topInsetF = topInset.toFloat()
+        val maxYTop = (topInset + usableHeight - textBoxHeight).coerceAtLeast(topInsetF)
+        val topFixedMaxYTop = (topInset + topFixedUsableHeight - textBoxHeight).coerceAtLeast(topInsetF)
+        val bottomFixedBaseYTop = height - viewportBottomInsetPx - textBoxHeight
+        val bottomFixedMinYTop = (height - viewportBottomInsetPx - bottomFixedUsableHeight).toFloat().coerceAtLeast(0f)
+        val out = writableSnapshot()
+        out.ensureCapacity(active.size)
+        out.positionMs = nowMs
+        out.count = 0
+        for (a in active) {
+            val iOut = out.count
+            val yTop = when (a.kind) {
+                DanmakuKind.SCROLL -> (topInsetF + laneHeight * a.lane).coerceAtMost(maxYTop)
+                DanmakuKind.TOP -> (topInsetF + laneHeight * a.lane).coerceAtMost(topFixedMaxYTop)
+                DanmakuKind.BOTTOM -> (bottomFixedBaseYTop - laneHeight * a.lane).coerceAtLeast(bottomFixedMinYTop)
+            }
+            out.items[iOut] = a
+            out.yTop[iOut] = yTop
+            out.count = iOut + 1
+        }
+        latestSnapshot = out
+        snapshotDirty = false
+    }
 
-        // Compute per-danmaku effective text size
-        val clampedSize = min(item.data.textSize, 25)
-        val scaleFactor = cfg.textSizeScale.coerceIn(25, 200) / 100f
-        val effectiveTs = (textSizePx * clampedSize / 25f * scaleFactor).coerceAtLeast(1f)
-        val baseTs = textSizePx * scaleFactor
-        if (drawFill.textSize != effectiveTs) { drawFill.textSize = effectiveTs; drawStroke.textSize = effectiveTs }
-        drawFill.getFontMetrics(drawFontMetrics)
-        val adjustedBaseline = outlinePad - drawFontMetrics.ascent
+    private fun ensureLaneStateBuffers(scrollLaneCount: Int, topLaneCount: Int, bottomLaneCount: Int) {
+        if (scrollLaneQueues.size < scrollLaneCount) {
+            val old = scrollLaneQueues
+            scrollLaneQueues = Array(scrollLaneCount) { idx -> old.getOrNull(idx) ?: ArrayDeque() }
+        }
+        if (topLaneBusyUntilMs.size < topLaneCount) topLaneBusyUntilMs = topLaneBusyUntilMs.copyOf(topLaneCount)
+        if (bottomLaneBusyUntilMs.size < bottomLaneCount) bottomLaneBusyUntilMs = bottomLaneBusyUntilMs.copyOf(bottomLaneCount)
+    }
 
-        val textX = x + outlinePad
-        val baseline = yTop + adjustedBaseline
-        if (drawStrokeEnabled) canvas.drawText(text, textX, baseline, drawStroke)
-        canvas.drawText(text, textX, baseline, drawFill)
+    private fun resetLaneState() {
+        for (queue in scrollLaneQueues) queue.clear()
+        topLaneBusyUntilMs.fill(0.0)
+        bottomLaneBusyUntilMs.fill(0.0)
+    }
 
-        // Restore base text size
-        if (drawFill.textSize != baseTs) { drawFill.textSize = baseTs; drawStroke.textSize = baseTs }
+    private fun cleanupScrollLaneQueue(queue: ArrayDeque<DanmakuItem>, width: Int, nowMs: Double) {
+        while (queue.isNotEmpty()) { val f = queue.first(); if (!f.isActive || isExpired(width, nowMs, f)) queue.removeFirst() else break }
+        while (queue.isNotEmpty()) { val l = queue.last(); if (!l.isActive || isExpired(width, nowMs, l)) queue.removeLast() else break }
+    }
+
+    private fun isExpired(width: Int, nowMs: Double, item: DanmakuItem): Boolean {
+        val elapsed = nowMs - item.startTimeMs
+        if (elapsed >= item.durationMs) return true
+        return item.kind == DanmakuKind.SCROLL && scrollX(width, nowMs, item.startTimeMs, item.pxPerMs) + item.textWidthPx < 0f
     }
 
     private fun sp(v: Float): Float = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, v, displayMetrics)
-
-    private data class PendingSpawn(val kind: DanmakuKind, val item: DanmakuItem, val textWidthPx: Float, var nextTryMs: Int, val firstTryMs: Int)
 
     private companion object {
         private const val TAG = "DanmakuEngine"
@@ -705,16 +669,10 @@ internal class DanmakuEngine(
         const val FIXED_DURATION_MS = 4_000
         // 长弹幕允许比短弹幕更快，但最多只放大到短弹幕基准速度的这个倍数。
         const val MAX_LONG_SCROLL_SPEED_RATIO = 1.5f
-        // 轨道暂时放不下时，pending 弹幕下一次重试插入的间隔。
-        const val DELAY_STEP_MS = 220
-        // 单条 pending 弹幕最多等待这么久，超过后直接放弃，避免无限积压。
-        const val MAX_DELAY_MS = 1_600
-        // pending 队列最大容量，超出时丢弃最旧等待项，限制内存和重试成本。
-        const val MAX_PENDING = 260
         // 单帧最多尝试生成多少条到时弹幕，防止瞬时高峰拖垮 action 线程。
         const val MAX_SPAWN_PER_FRAME = 48
-        // 单帧最多重试多少条 pending 弹幕，避免重试本身抢占主要布局时间。
-        const val MAX_PENDING_RETRY_PER_FRAME = 48
+        // 单帧最多探测多少个 active 项来补缓存，避免每帧全量扫描 active。
+        const val MAX_CACHE_SCAN_PER_FRAME = 16
         // 播放时间落后太多时，直接跳过更早的弹幕，优先追上当前播放进度。
         const val MAX_CATCH_UP_LAG_MS = 1_200
         // 单帧最多向缓存线程提交多少个位图构建请求，限制异步渲染压力。

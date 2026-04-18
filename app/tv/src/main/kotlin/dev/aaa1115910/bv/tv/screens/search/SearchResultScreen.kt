@@ -248,7 +248,6 @@ fun SearchResultScreen(
             TopNav(
                 paddingTop = 0.dp,
                 items = searchTopNavItems,
-                isLargePadding = false,
                 initialSelectedItem = searchTopNavItems.firstOrNull {
                     it.searchType == searchResultViewModel.searchType
                 },

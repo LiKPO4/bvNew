@@ -91,12 +91,7 @@ fun VideoPlayerController(
     onOpenDanmaku: () -> Unit,
     onHideDanmaku: () -> Unit,
     onPlayModeChange: (PlayMode) -> Unit,
-    userActionContent: @Composable (
-        modifier: Modifier,
-        focusMap: Map<String, FocusRequester>,
-        onFocus: (String) -> Unit,
-        onPauseAutoHide: (Boolean) -> Unit
-    ) -> Unit,
+    userActionContent: UserActionContent,
 
     //menu events
     onResolutionChange: (Resolution) -> Unit,
@@ -535,7 +530,7 @@ fun VideoPlayerController(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     text = "${videoPlayerConfigData.longPressSpeed}x 加速播放中",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.5f)
+                    color = Color.White.copy(alpha = 0.55f)
                 )
             }
         }

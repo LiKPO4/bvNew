@@ -3,11 +3,11 @@ package dev.aaa1115910.bv.player.danmaku
 import kotlin.math.abs
 
 internal class DanmakuTimer {
-    @Volatile private var lastFrameNanos: Long = 0L
-    @Volatile private var smoothPositionMs: Double = 0.0
-    @Volatile private var lastSeekSerial: Int = 0
-    @Volatile private var lastPlaying: Boolean = false
-    @Volatile private var lastPlaybackSpeed: Double = 1.0
+    private var lastFrameNanos: Long = 0L
+    private var smoothPositionMs: Double = 0.0
+    private var lastSeekSerial: Int = 0
+    private var lastPlaying: Boolean = false
+    private var lastPlaybackSpeed: Double = 1.0
 
     fun reset(positionMs: Long, nowNanos: Long, seekSerial: Int, isPlaying: Boolean, playbackSpeed: Float) {
         lastFrameNanos = nowNanos
@@ -16,8 +16,6 @@ internal class DanmakuTimer {
         lastPlaying = isPlaying
         lastPlaybackSpeed = normalizeSpeed(playbackSpeed)
     }
-
-    fun currentPositionMs(): Double = smoothPositionMs
 
     fun step(nowNanos: Long, rawPositionMs: Long, isPlaying: Boolean, playbackSpeed: Float, seekSerial: Int): Double {
         val raw = rawPositionMs.coerceAtLeast(0L).toDouble()
@@ -62,7 +60,7 @@ internal class DanmakuTimer {
     }
 
     private fun normalizeSpeed(playbackSpeed: Float): Double =
-        playbackSpeed.takeIf { it.isFinite() && it > 0f }?.toDouble() ?: 1.0
+        if (playbackSpeed.isFinite() && playbackSpeed > 0f) playbackSpeed.toDouble() else 1.0
 
     private companion object {
         const val IDLE_REANCHOR_THRESHOLD_MS = 120.0

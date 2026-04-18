@@ -2,6 +2,8 @@ package dev.aaa1115910.bv.player.tv
 
 import android.os.CountDownTimer
 import android.os.SystemClock
+import dev.aaa1115910.bv.player.tv.controller.EmptyUserActionContent
+import dev.aaa1115910.bv.player.tv.controller.UserActionContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
@@ -128,12 +130,7 @@ fun BvPlayer(
     onLiveRetry: () -> Unit = {},
     onShowComment: () -> Unit = {},
     onShowDescription: () -> Unit = {},
-    userActionContent: @Composable (
-        modifier: Modifier,
-        focusMap: Map<String, FocusRequester>,
-        onFocus: (String) -> Unit,
-        onPauseAutoHide: (Boolean) -> Unit
-    ) -> Unit = { _, _, _, _ -> },
+    userActionContent: UserActionContent = EmptyUserActionContent,
     onViewerCountTipCanShowChanged: (Boolean) -> Unit = {},
     viewerCountText: String = "",
     danmakuView: DanmakuView,

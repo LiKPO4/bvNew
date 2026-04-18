@@ -93,6 +93,7 @@ fun SubCommentItem(
 
             // 内容
             Column(
+                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // 用户名
@@ -158,6 +159,7 @@ fun SubCommentRootItem(
         onClick = { /* 右键展开/收起 */ },
         onLongClick = onLongClick,
         modifier = Modifier
+            .fillMaxWidth()
             .focusRequester(focusRequester)
             .onPreviewKeyEvent { event ->
                 when {
@@ -223,6 +225,7 @@ fun SubCommentRootItem(
                 )
 
                 Column(
+                    modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(

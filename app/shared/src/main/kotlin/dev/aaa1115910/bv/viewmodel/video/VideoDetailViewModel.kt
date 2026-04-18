@@ -105,6 +105,8 @@ class VideoDetailViewModel(
                         title = videoDetail!!.title,
                         partTitle = videoPage.title,
                         index = index,
+                        cover = videoDetail!!.cover,
+                        duration = videoPage.duration,
                     )
                 }
             videoInfoRepository.videoList.clear()
@@ -123,7 +125,10 @@ class VideoDetailViewModel(
                             cid = videoPage.cid,
                             title = episode.title,
                             partTitle = "",
-                            index = epIndex
+                            index = epIndex,
+                            cover = episode.cover,
+                            duration = episode.duration,
+                            pubDate = episode.pubDate,
                         )
                     )
                 }
@@ -142,6 +147,9 @@ class VideoDetailViewModel(
                             title = episode.title,
                             partTitle = videoPage.title,
                             index = pageIndex,
+                            cover = episode.cover,
+                            duration = videoPage.duration,
+                            pubDate = episode.pubDate,
                         )
                     )
                 }

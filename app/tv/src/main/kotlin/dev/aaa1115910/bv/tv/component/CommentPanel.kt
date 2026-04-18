@@ -3,7 +3,6 @@ package dev.aaa1115910.bv.tv.component
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -17,15 +16,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredWidthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -45,12 +41,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,8 +52,6 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.biliapi.entity.reply.Comment
 import dev.aaa1115910.biliapi.entity.reply.CommentPage
 import dev.aaa1115910.biliapi.entity.reply.CommentSort
@@ -70,7 +59,6 @@ import dev.aaa1115910.biliapi.entity.video.season.Episode
 import dev.aaa1115910.biliapi.entity.video.season.Section
 import dev.aaa1115910.biliapi.repositories.CommentRepository
 import dev.aaa1115910.bv.util.Prefs
-import dev.aaa1115910.bv.util.focusedBorder
 import dev.aaa1115910.bv.util.isDpadDown
 import dev.aaa1115910.bv.util.isDpadLeft
 import dev.aaa1115910.bv.util.isKeyDown
@@ -81,6 +69,8 @@ import kotlinx.coroutines.launch
 import org.koin.compose.getKoin
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import dev.aaa1115910.bv.util.ImageSize
+import dev.aaa1115910.bv.util.resizedImageUrl
 
 /**
  * 评论浮层组件
@@ -131,7 +121,7 @@ fun CommentPanel(
     // 选集相关状态
     var currentEpisode by remember { mutableStateOf<Episode?>(null) }
     var focusOnSidebar by remember { mutableStateOf(false) }
-    var scrollToCurrentEpisode by remember { mutableStateOf(false) }
+    var sidebarFocusRequestToken by remember { mutableIntStateOf(0) }
     var pendingFocusToComments by remember { mutableStateOf(false) }
 
     // 合并所有剧集（正片 + 章节）
@@ -164,6 +154,12 @@ fun CommentPanel(
     // 是否显示侧边栏（多于1集时显示）
     val showSidebar by remember(allEpisodeItems) {
         derivedStateOf { allEpisodeItems.size > 1 }
+    }
+
+    fun requestFocusToCurrentEpisode() {
+        if (!showSidebar) return
+        focusOnSidebar = true
+        sidebarFocusRequestToken++
     }
 
     // 初始化当前选中的剧集
@@ -233,7 +229,7 @@ fun CommentPanel(
             wasSubCommentPanelShown = false
             // 重置边栏焦点状态，确保下次打开时焦点在评论列表
             focusOnSidebar = false
-            scrollToCurrentEpisode = false
+            sidebarFocusRequestToken = 0
             pendingFocusToComments = false
         }
     }
@@ -252,9 +248,13 @@ fun CommentPanel(
             // 切换剧集后评论加载完成，请求焦点到评论列表
             else if (pendingFocusToComments) {
                 delay(100) // 等待渲染完成
-                if (!loading && comments.isNotEmpty()) {
+                if (!loading) {
                     delay(100) // 等待渲染完成
-                    focusRequester.requestFocus(scope)
+                    if (comments.isNotEmpty() || !showSidebar || error != null) {
+                        focusRequester.requestFocus(scope)
+                    } else {
+                        requestFocusToCurrentEpisode()
+                    }
                     pendingFocusToComments = false
                 }
             }
@@ -263,7 +263,11 @@ fun CommentPanel(
                 delay(200) // 等待请求完成
                 if(!loading){
                     delay(200) // 等待动画完成
-                    focusRequester.requestFocus(scope)
+                    if (comments.isNotEmpty() || !showSidebar || error != null) {
+                        focusRequester.requestFocus(scope)
+                    } else {
+                        requestFocusToCurrentEpisode()
+                    }
                     hasRequestedFocus = true
                 }
             }
@@ -297,8 +301,8 @@ fun CommentPanel(
                     .fillMaxHeight()
                     .padding(horizontal = 16.dp, vertical = 16.dp)
                     .widthIn(
-                        min = if (showSidebar) 600.dp else 300.dp,
-                        max = if (showSidebar) 700.dp else 400.dp
+                        min = if (showSidebar) 620.dp else 320.dp,
+                        max = if (showSidebar) 720.dp else 420.dp
                     )
                     .fillMaxWidth(if (showSidebar) 0.5f else 0.3f)
                     .clickable(enabled = true, onClick = {}) // 阻止点击穿透
@@ -308,9 +312,7 @@ fun CommentPanel(
                             onHide()
                         } else if (showSidebar) {
                             // 在评论列表时按返回键切换到边栏
-                            focusOnSidebar = true
-                            scrollToCurrentEpisode = true
-                            // 焦点请求由 EpisodeSidebar 内部的 LaunchedEffect 处理
+                            requestFocusToCurrentEpisode()
                         } else {
                             // 没有边栏时直接关闭
                             onHide()
@@ -339,7 +341,6 @@ fun CommentPanel(
                                 loadComments(true)
                                 // 切换剧集后将焦点移回评论列表
                                 focusOnSidebar = false
-                                scrollToCurrentEpisode = false
                                 // 标记需要在评论加载完成后请求焦点
                                 pendingFocusToComments = true
                             },
@@ -350,12 +351,11 @@ fun CommentPanel(
                             onFocusMoved = {
                                 // 焦点返回评论列表
                                 focusOnSidebar = false
-                                scrollToCurrentEpisode = false
                                 scope.launch {
                                     focusRequester.requestFocus(scope)
                                 }
                             },
-                            scrollToCurrent = scrollToCurrentEpisode
+                            focusRequestToken = sidebarFocusRequestToken
                         )
                     }
 
@@ -363,7 +363,12 @@ fun CommentPanel(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxHeight(),
+                            .fillMaxHeight()
+                            .onFocusChanged { focusState ->
+                                if (focusState.hasFocus && focusOnSidebar) {
+                                    focusOnSidebar = false
+                                }
+                            },
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // 标题栏
@@ -447,13 +452,16 @@ fun CommentPanel(
                                     .focusRequester(focusRequester)
                                     .onPreviewKeyEvent { event ->
                                         when {
-                                            // 左键返回顶部
+                                            // 左键：第一条时转移焦点到左侧边栏，否则返回顶部
                                             event.isKeyDown() && event.isDpadLeft() -> {
-                                                scope.launch {
-                                                    listState.scrollToItem(0)
-                                                    // 滚动后重新请求焦点，使焦点移到第一条评论
-                                                    delay(100)
-                                                    focusRequester.requestFocus(scope)
+                                                if (focusedCommentIndex == 0 && showSidebar) {
+                                                    requestFocusToCurrentEpisode()
+                                                } else {
+                                                    scope.launch {
+                                                        listState.scrollToItem(0)
+                                                        delay(100)
+                                                        focusRequester.requestFocus(scope)
+                                                    }
                                                 }
                                                 true
                                             }
@@ -630,7 +638,7 @@ private fun EpisodeSidebar(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester,
     onFocusMoved: () -> Unit = {},
-    scrollToCurrent: Boolean = false
+    focusRequestToken: Int = 0
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -670,12 +678,15 @@ private fun EpisodeSidebar(
         }
     }
 
-    // 当 scrollToCurrent 变为 true 时，直接请求焦点到当前剧集（位置已由初始化 LaunchedEffect 处理）
-    LaunchedEffect(scrollToCurrent) {
-        if (scrollToCurrent) {
+    // 当收到焦点请求时，滚动并请求焦点到当前剧集
+    LaunchedEffect(focusRequestToken) {
+        if (focusRequestToken > 0) {
             delay(50) // 短暂等待确保布局就绪
             val index = episodes.indexOfFirst { it.episode.id == currentEpisode?.id }
             if (index >= 0) {
+                val actualIndex = calculateLazyColumnIndex(episodes, index)
+                listState.scrollToItem(maxOf(0, actualIndex - 2))
+                delay(50)
                 // 直接请求焦点到当前选中的剧集项
                 itemFocusRequesters.getOrNull(index)?.requestFocus()
             } else {
@@ -736,7 +747,7 @@ private fun EpisodeSidebarItem(
     onBackKeyPressed: () -> Unit = {},
     focusRequester: FocusRequester = remember { FocusRequester() }
 ) {
-    val borderColor = if (isSelected) Color(0xFFE39B17) else null
+    val borderColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else null
     val context = LocalContext.current
 
     Surface(
@@ -762,7 +773,7 @@ private fun EpisodeSidebarItem(
                 Border(border = BorderStroke(width = 2.dp, color = it))
             } ?: Border.None,
             focusedBorder = Border(
-                border = BorderStroke(width = 2.dp, color = MaterialTheme.colorScheme.primary),
+                border = BorderStroke(width = 2.dp, color = MaterialTheme.colorScheme.border),
                 shape = MaterialTheme.shapes.small
             )
         ),
@@ -771,7 +782,7 @@ private fun EpisodeSidebarItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -780,9 +791,7 @@ private fun EpisodeSidebarItem(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(MaterialTheme.shapes.extraSmall),
-                model = ImageRequest.Builder(context)
-                    .data(episode.cover)
-                    .build(),
+                model = episode.cover.resizedImageUrl(ImageSize.UgcEpisodeCover),
                 contentDescription = null,
                 contentScale = ContentScale.Crop
             )

@@ -152,68 +152,53 @@ fun LiveContent(
                     }
                 }
 
-                val initialSelectedParent = remember(liveViewModel.currentMode, liveViewModel.currentParentGroup, parentNavItems) {
-                    when (liveViewModel.currentMode) {
-                        LiveMode.RECOMMEND -> parentNavItems.firstOrNull { isLiveRecommendItem(it) }
-                        LiveMode.FOLLOWING -> parentNavItems.firstOrNull { isLiveFollowingItem(it) }
-                        LiveMode.AREA -> parentNavItems.firstOrNull {
-                            isLiveAreaItem(it) && getLiveNavItemAreaGroup(it)?.id == liveViewModel.currentParentGroup?.id
-                        }
-                    } ?: parentNavItems.firstOrNull()
-                }
-
-                // 当配置变化导致当前选中项被隐藏时，自动切换到第一个可见项
+                // 首次加载或配置变化时，确保 ViewModel 模式与导航列表一致
+                var initialSynced by remember { mutableStateOf(false) }
                 LaunchedEffect(parentNavItems) {
-                    val currentInList = when (liveViewModel.currentMode) {
-                        LiveMode.RECOMMEND -> parentNavItems.any { isLiveRecommendItem(it) }
-                        LiveMode.FOLLOWING -> parentNavItems.any { isLiveFollowingItem(it) }
-                        LiveMode.AREA -> parentNavItems.any {
-                            isLiveAreaItem(it) && getLiveNavItemAreaGroup(it)?.id == liveViewModel.currentParentGroup?.id
+                    if (parentNavItems.isEmpty()) return@LaunchedEffect
+
+                    // 分区数据未加载完成前不执行切换逻辑，避免在中间状态发起不必要的请求
+                    if (!initialSynced && liveViewModel.parentAreaGroups.isEmpty()) return@LaunchedEffect
+
+                    val shouldSwitch = if (!initialSynced) {
+                        initialSynced = true
+                        // 首次：排序后的第一项与默认模式不一致时切换
+                        !parentNavItems.first().matchesLiveMode(liveViewModel.currentMode, liveViewModel.currentParentGroup?.id)
+                    } else {
+                        // 后续：当前选中项被隐藏时切换
+                        !parentNavItems.any {
+                            it.matchesLiveMode(liveViewModel.currentMode, liveViewModel.currentParentGroup?.id)
                         }
                     }
-                    if (!currentInList && parentNavItems.isNotEmpty()) {
-                        val firstItem = parentNavItems.first()
+
+                    if (shouldSwitch) {
                         liveViewModel.lastFocusedRoomIndex = 0
-                        when {
-                            isLiveRecommendItem(firstItem) -> liveViewModel.switchToRecommend()
-                            isLiveFollowingItem(firstItem) -> liveViewModel.switchToFollowing()
-                            isLiveAreaItem(firstItem) -> getLiveNavItemAreaGroup(firstItem)?.let {
-                                liveViewModel.switchParentArea(it)
-                            }
-                        }
+                        parentNavItems.first().applyToLiveViewModel(liveViewModel)
                         gridState.scrollToItem(0)
                     }
+                }
+
+                val initialSelectedParent = remember(liveViewModel.currentMode, liveViewModel.currentParentGroup, parentNavItems) {
+                    parentNavItems.firstOrNull {
+                        it.matchesLiveMode(liveViewModel.currentMode, liveViewModel.currentParentGroup?.id)
+                    } ?: parentNavItems.firstOrNull()
                 }
 
                 if (parentNavItems.isNotEmpty()) {
                     TopNav(
                         modifier = Modifier
                             .focusRequester(parentNavFocusRequester)
-                            .padding(end = 80.dp)
                             .onFocusChanged { parentNavHasFocus = it.hasFocus },
                         items = parentNavItems,
-                        isLargePadding = false,
                         initialSelectedItem = initialSelectedParent,
                         navSwitchMode = navSwitchMode,
                         onSelectedChanged = { nav ->
                             liveViewModel.lastFocusedRoomIndex = 0
                             scope.launch { gridState.scrollToItem(0) }
-                            when {
-                                isLiveRecommendItem(nav) -> liveViewModel.switchToRecommend()
-                                isLiveFollowingItem(nav) -> liveViewModel.switchToFollowing()
-                                isLiveAreaItem(nav) -> getLiveNavItemAreaGroup(nav)?.let {
-                                    liveViewModel.switchParentArea(it)
-                                }
-                            }
+                            nav.applyToLiveViewModel(liveViewModel)
                         },
                         onClick = { nav ->
-                            val isSameSelection = when {
-                                isLiveRecommendItem(nav) -> liveViewModel.currentMode == LiveMode.RECOMMEND
-                                isLiveFollowingItem(nav) -> liveViewModel.currentMode == LiveMode.FOLLOWING
-                                isLiveAreaItem(nav) -> liveViewModel.currentMode == LiveMode.AREA && getLiveNavItemAreaGroup(nav)?.id == liveViewModel.currentParentGroup?.id
-                                else -> false
-                            }
-                            if (isSameSelection) {
+                            if (nav.matchesLiveMode(liveViewModel.currentMode, liveViewModel.currentParentGroup?.id)) {
                                 liveViewModel.lastFocusedRoomIndex = 0
                                 liveViewModel.refresh()
                                 scope.launch { gridState.scrollToItem(0) }
@@ -234,11 +219,10 @@ fun LiveContent(
                     TopNav(
                         modifier = Modifier
                             .focusRequester(subNavFocusRequester)
-                            .padding(end = 80.dp)
                             .onFocusChanged { subNavHasFocus = it.hasFocus },
-                        paddingTop = 4.dp,
+                        paddingTop = 0.dp,
                         items = subNavItems,
-                        isLargePadding = !focusOnContent && currentListOnTop,
+                        useSmallSize = true,
                         initialSelectedItem = subNavItems.firstOrNull { it.area.id == liveViewModel.currentSubArea?.id },
                         navSwitchMode = navSwitchMode,
                         onSelectedChanged = { nav ->
@@ -355,5 +339,20 @@ fun LiveContent(
                 }
             }
         }
+    }
+}
+
+private fun TopNavItem.matchesLiveMode(mode: LiveMode, parentGroupId: Int?): Boolean = when {
+    isLiveRecommendItem(this) -> mode == LiveMode.RECOMMEND
+    isLiveFollowingItem(this) -> mode == LiveMode.FOLLOWING
+    isLiveAreaItem(this) -> mode == LiveMode.AREA && getLiveNavItemAreaGroup(this)?.id == parentGroupId
+    else -> false
+}
+
+private fun TopNavItem.applyToLiveViewModel(viewModel: LiveViewModel) {
+    when {
+        isLiveRecommendItem(this) -> viewModel.switchToRecommend()
+        isLiveFollowingItem(this) -> viewModel.switchToFollowing()
+        isLiveAreaItem(this) -> getLiveNavItemAreaGroup(this)?.let { viewModel.switchParentArea(it) }
     }
 }

@@ -18,7 +18,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-internal data class CacheStyle(
+internal class CacheStyle(
     val textSizePx: Float,
     val textSizeScale: Int,
     val fontWeight: DanmakuFontWeight,
@@ -28,14 +28,13 @@ internal data class CacheStyle(
 )
 
 internal class CacheManager(
-    private val density: Float,
     private val mainLooper: Looper,
     private val onRenderSign: () -> Unit,
 ) {
     private val mainHandler = Handler(mainLooper)
     private val thread = HandlerThread("Danmaku-Cache").apply {
         start()
-        runCatching { Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_BACKGROUND) }
+        try { Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_BACKGROUND) } catch (_: Exception) {}
     }
     private val handler: Handler = CacheHandler(thread.looper)
     private val pool = BitmapPool(maxBytes = CACHE_POOL_MAX_BYTES, maxCount = CACHE_POOL_MAX_COUNT)
@@ -54,6 +53,11 @@ internal class CacheManager(
         isSubpixelText = true
     }
     private val fontMetrics = Paint.FontMetrics()
+    private var cachedFontMetricsTextSize: Float = Float.NaN
+    private var cachedPaintTextSize: Float = Float.NaN
+    private var cachedStrokeWidth: Float = Float.NaN
+    private val cacheCanvas = Canvas()
+    private val renderSignRunnable = Runnable { onRenderSign() }
 
     fun queueDepth(): Int = queueDepth.get().coerceAtLeast(0)
 
@@ -76,7 +80,7 @@ internal class CacheManager(
             drained++
             val bmp = head.bitmap
             if (bmp.isRecycled) continue
-            if (!pool.tryPut(bmp)) runCatching { bmp.recycle() }
+            if (!pool.tryPut(bmp)) try { bmp.recycle() } catch (_: Exception) {}
         }
     }
 
@@ -109,7 +113,7 @@ internal class CacheManager(
                     queueDepth.set(0)
                     pool.clear()
                     releaseQueue.clear()
-                    runCatching { thread.quitSafely() }
+                    try { thread.quitSafely() } catch (_: Exception) {}
                 }
             }
         }
@@ -129,28 +133,43 @@ internal class CacheManager(
         val outlinePad = style.outlinePadPx.coerceAtLeast(0f)
         val strokeWidth = style.strokeWidthPx.coerceAtLeast(0f)
         val desiredTypeface = style.fontWeight.typeface
-        if (fill.typeface != desiredTypeface) fill.typeface = desiredTypeface
+        if (fill.typeface != desiredTypeface) {
+            fill.typeface = desiredTypeface
+            cachedFontMetricsTextSize = Float.NaN
+        }
         if (stroke.typeface != desiredTypeface) stroke.typeface = desiredTypeface
 
         // Compute effective font size: min(danmaku.textSize, 25) * (textSizeScale / 100)
-        val effectiveTextSizePx = computeEffectiveTextSize(item.data.textSize, style.textSizeScale, style.textSizePx)
-        fill.textSize = effectiveTextSizePx
-        stroke.textSize = effectiveTextSizePx
-        stroke.strokeWidth = strokeWidth
+        val clampedSize = min(item.data.textSize, 25)
+        val scaleFactor = style.textSizeScale.coerceIn(25, 200) / 100f
+        val effectiveTextSizePx = (style.textSizePx * clampedSize / 25f * scaleFactor).coerceAtLeast(1f)
+        if (effectiveTextSizePx != cachedPaintTextSize) {
+            fill.textSize = effectiveTextSizePx
+            stroke.textSize = effectiveTextSizePx
+            cachedPaintTextSize = effectiveTextSizePx
+        }
+        if (strokeWidth != cachedStrokeWidth) {
+            stroke.strokeWidth = strokeWidth
+            cachedStrokeWidth = strokeWidth
+        }
 
-        fill.getFontMetrics(fontMetrics)
+        if (effectiveTextSizePx != cachedFontMetricsTextSize) {
+            fill.getFontMetrics(fontMetrics)
+            cachedFontMetricsTextSize = effectiveTextSizePx
+        }
         val textHeightPx = (fontMetrics.descent - fontMetrics.ascent).coerceAtLeast(1f)
         val boxHeight = ceil(textHeightPx + outlinePad * 2f).toInt().coerceAtLeast(1)
         val boxWidth = ceil(req.textWidthPx.coerceAtLeast(outlinePad * 2f)).toInt().coerceAtLeast(1)
 
         val bmp = pool.acquire(boxWidth, boxHeight)
-            ?: runCatching { Bitmap.createBitmap(boxWidth, boxHeight, Bitmap.Config.ARGB_8888) }.getOrNull()
+            ?: try { Bitmap.createBitmap(boxWidth, boxHeight, Bitmap.Config.ARGB_8888) } catch (_: Exception) { null }
             ?: return
-        runCatching { bmp.eraseColor(0x00000000) }
+        bmp.eraseColor(0x00000000)
 
-        val canvas = Canvas(bmp)
+        val canvas = cacheCanvas
+        canvas.setBitmap(bmp)
         val rgb = item.data.color and 0xFFFFFF
-        stroke.color = (0xCC shl 24) or 0x000000
+        stroke.color = 0xCC shl 24
         fill.color = (0xFF shl 24) or rgb
 
         val baseline = outlinePad - fontMetrics.ascent
@@ -166,18 +185,11 @@ internal class CacheManager(
         item.cacheState = DanmakuCacheState.Rendered
         if (old != null && old != bmp) enqueueRelease(old, req.releaseAtFrameId)
 
-        mainHandler.post { runCatching { onRenderSign() } }
+        mainHandler.post(renderSignRunnable)
     }
 
-    private fun computeEffectiveTextSize(danmakuTextSize: Int, textSizeScale: Int, baseTextSizePx: Float): Float {
-        val clampedSize = min(danmakuTextSize, 25)
-        val scaleFactor = textSizeScale.coerceIn(25, 200) / 100f
-        // If danmaku textSize == 25 (standard), use base. Otherwise scale proportionally.
-        return (baseTextSizePx * clampedSize / 25f * scaleFactor).coerceAtLeast(1f)
-    }
-
-    private data class CacheRequest(val item: DanmakuItem, val textWidthPx: Float, val style: CacheStyle, val releaseAtFrameId: Int)
-    private data class PendingRelease(val bitmap: Bitmap, val releaseAtFrameId: Int)
+    private class CacheRequest(val item: DanmakuItem, val textWidthPx: Float, val style: CacheStyle, val releaseAtFrameId: Int)
+    private class PendingRelease(val bitmap: Bitmap, val releaseAtFrameId: Int)
 
     private class BitmapPool(private val maxBytes: Long, private val maxCount: Int) {
         private val pool = ArrayDeque<Bitmap>()
@@ -214,7 +226,7 @@ internal class CacheManager(
             val it = pool.iterator()
             while (it.hasNext()) {
                 val b = it.next(); it.remove()
-                runCatching { if (!b.isRecycled) b.recycle() }
+                try { if (!b.isRecycled) b.recycle() } catch (_: Exception) {}
             }
             pooledBytes = 0L
         }

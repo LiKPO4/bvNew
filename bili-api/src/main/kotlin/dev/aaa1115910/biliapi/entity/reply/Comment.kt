@@ -51,7 +51,7 @@ data class Comment(
             return Comment(
                 rpid = reply.rpid,
                 mid = reply.mid,
-                oid = reply.oid.toLong(),
+                oid = reply.oid,
                 type = reply.type,
                 parent = reply.parent,
                 content = reply.content.message.splitWithEmotes(*reply.content.emote.keys.toTypedArray()),
@@ -64,7 +64,7 @@ data class Comment(
                 emotes = reply.content.emote.values.map { Emote.fromEmote(it) },
                 pictures = reply.content.pictures.map { Picture.fromPicture(it) },
                 replies = reply.replies.map { fromReply(it) },
-                repliesCount = reply.count,
+                repliesCount = reply.rcount,
                 like = reply.like.toLong()
             )
         }
@@ -86,8 +86,7 @@ data class Comment(
                 emotes = reply.content.emoteMap.values.map { Emote.fromEmote(it) },
                 pictures = reply.content.picturesList.map { Picture.fromPicture(it) },
                 replies = reply.repliesList.map { fromReplyInfo(it) },
-                repliesCount = runCatching { reply.replyControl.subReplyEntryText.split(" ")[1].toInt() }
-                    .getOrDefault(0),
+                repliesCount = reply.count.toInt(),
                 like = reply.like
             )
         }

@@ -477,14 +477,18 @@ object Prefs {
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefLiveNavItemsOrderRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefLiveNavItemsOrderKey, value) }
 
+    // 主导航（左侧侧栏）排序和隐藏状态
+    val drawerNavItemsOrderFlow: Flow<String>
+        get() = dsm.getPreferenceFlow(PrefKeys.prefDrawerNavItemsOrderRequest)
+
+    var drawerNavItemsOrder: String
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefDrawerNavItemsOrderRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefDrawerNavItemsOrderKey, value) }
+
     // 缓存的直播分区列表（供设置页使用）
     var cachedLiveAreaGroups: String
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefCachedLiveAreaGroupsRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefCachedLiveAreaGroupsKey, value) }
-
-    var enableTunneling: Boolean
-        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefEnableTunnelingRequest).first() }
-        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefEnableTunneling, value) }
 
     var enableAsyncQueueing: Boolean
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefEnableAsyncQueueingRequest).first() }
@@ -600,8 +604,8 @@ object PrefKeys {
     val prefUgcNavItemsOrderKey = stringPreferencesKey("ugc_nav_items_order")
     val prefPgcNavItemsOrderKey = stringPreferencesKey("pgc_nav_items_order")
     val prefLiveNavItemsOrderKey = stringPreferencesKey("live_nav_items_order")
+    val prefDrawerNavItemsOrderKey = stringPreferencesKey("drawer_nav_items_order")
     val prefCachedLiveAreaGroupsKey = stringPreferencesKey("cached_live_area_groups")
-    val prefEnableTunneling = booleanPreferencesKey("enable_tunneling")
     val prefEnableAsyncQueueing = booleanPreferencesKey("enable_async_queueing")
     val prefSkipPgcIntroOutroKey = booleanPreferencesKey("skip_pgc_intro_outro")
     val prefPlayerControllerButtonsOrderKey = stringPreferencesKey("player_controller_buttons_order")
@@ -676,7 +680,7 @@ object PrefKeys {
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
     val prefInterfaceModeRequest = PreferenceRequest(prefInterfaceModeKey, InterfaceMode.Auto.ordinal)
     val prefNavSwitchModeRequest = PreferenceRequest(prefNavSwitchModeKey, NavSwitchMode.Auto.ordinal)
-    val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Default.ordinal)
+    val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.SingleVideo.ordinal)
     val prefDefaultHomeTabRequest = PreferenceRequest(prefDefaultHomeTabKey, 0)
     val prefPortraitVideoFixModeRequest = PreferenceRequest(prefPortraitVideoFixModeKey, 0)
     val prefPlayerShowDebugInfoRequest = PreferenceRequest(prefPlayerShowDebugInfoKey, false)
@@ -697,8 +701,8 @@ object PrefKeys {
     val prefUgcNavItemsOrderRequest = PreferenceRequest(prefUgcNavItemsOrderKey, "")
     val prefPgcNavItemsOrderRequest = PreferenceRequest(prefPgcNavItemsOrderKey, "")
     val prefLiveNavItemsOrderRequest = PreferenceRequest(prefLiveNavItemsOrderKey, "")
+    val prefDrawerNavItemsOrderRequest = PreferenceRequest(prefDrawerNavItemsOrderKey, "")
     val prefCachedLiveAreaGroupsRequest = PreferenceRequest(prefCachedLiveAreaGroupsKey, "")
-    val prefEnableTunnelingRequest = PreferenceRequest(prefEnableTunneling, false)
     val prefEnableAsyncQueueingRequest = PreferenceRequest(prefEnableAsyncQueueing, false)
     val prefSkipPgcIntroOutroRequest = PreferenceRequest(prefSkipPgcIntroOutroKey, false)
     val prefPlayerControllerButtonsOrderRequest = PreferenceRequest(prefPlayerControllerButtonsOrderKey, "")
@@ -709,7 +713,7 @@ object PrefKeys {
     val prefDefaultLiveDanmakuFilterLevelRequest = PreferenceRequest(prefDefaultLiveDanmakuFilterLevelKey, 0)
     val prefPlayerNextVideoStrategyOrderRequest = PreferenceRequest(
         key = prefPlayerNextVideoStrategyOrderKey,
-        defaultValue = "0,1,2"
+        defaultValue = "3"
     )
     val prefPlayerLongPressActionRequest = PreferenceRequest(prefPlayerLongPressActionKey, 1)
     val prefPlayerLongPressSpeedRequest = PreferenceRequest(prefPlayerLongPressSpeedKey, 2f)

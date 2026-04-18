@@ -120,6 +120,51 @@ object GithubApi {
     suspend fun getLatestBuild(): Release =
         if (isAlpha) getLatestPreReleaseBuild() else getLatestReleaseBuild()
 
+    /**
+     * 获取比当前版本新的所有 Release 列表（按发布时间降序）
+     * - 如果当前版本在发布历史中，返回当前版本之后的所有更新
+     * - 如果当前版本不在发布历史中，只返回最新的一个版本
+     * - 如果没有更新，返回空列表
+     */
+    suspend fun getUpdateReleases(
+        currentVersionCode: Int,
+        currentVersionName: String
+    ): List<Release> {
+        val newerReleases = mutableListOf<Release>()
+        var page = 1
+        var currentVersionInHistory = false
+        val maxPages = 10
+
+        outer@ while (page <= maxPages) {
+            val releases = getReleases(page = page)
+            if (releases.isEmpty()) break
+
+            for (release in releases) {
+                if (isAlpha != release.isPreRelease) continue
+
+                val asset = release.assets.firstOrNull { it.name.startsWith("BV") } ?: continue
+                val assetName = asset.name
+                val revision =
+                    runCatching { assetName.split("_")[1].toInt() }.getOrNull() ?: continue
+
+                if (revision <= currentVersionCode || assetName.contains(currentVersionName)) {
+                    currentVersionInHistory =
+                        revision == currentVersionCode || assetName.contains(currentVersionName)
+                    break@outer
+                }
+                newerReleases.add(release)
+            }
+            page++
+        }
+
+        // 当前版本不在发布历史中，只返回最新的一个版本
+        if (!currentVersionInHistory && newerReleases.size > 1) {
+            return listOf(newerReleases.first())
+        }
+
+        return newerReleases
+    }
+
     private fun checkErrorMessage(data: String) {
         val responseElement = json.parseToJsonElement(data)
         if (responseElement !is JsonObject) return

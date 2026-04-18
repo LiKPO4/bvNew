@@ -62,12 +62,13 @@ fun OthersMenuList(
                     val availableModes = PlayMode.entries.filter { mode ->
                         when (mode) {
                             PlayMode.ListOrder -> videoPlayerConfigData.hasPreloadedVideoList && !videoPlayerConfigData.fromSeason
+                            PlayMode.ListOrderReverse -> videoPlayerConfigData.hasPreloadedVideoList && !videoPlayerConfigData.fromSeason
                             PlayMode.RelatedVideo -> videoPlayerConfigData.hasRelatedVideos && !videoPlayerConfigData.fromSeason
                             else -> true
                         }
                     }
                     val effectivePlayMode = if (videoPlayerConfigData.currentPlayMode in availableModes)
-                        videoPlayerConfigData.currentPlayMode else PlayMode.Default
+                        videoPlayerConfigData.currentPlayMode else PlayMode.SingleVideo
                     RadioMenuList(
                         modifier = menuItemsModifier,
                         items = availableModes.map { it.getDisplayName(context) },

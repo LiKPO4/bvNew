@@ -64,14 +64,16 @@ import dev.aaa1115910.bv.tv.component.settings.SettingListItem
 import dev.aaa1115910.bv.tv.component.settings.SettingNumberListItem
 import dev.aaa1115910.bv.tv.component.settings.SettingSwitchListItem
 import dev.aaa1115910.bv.tv.component.HomeTopNavItem
+import dev.aaa1115910.bv.tv.screens.main.DrawerItem
 import dev.aaa1115910.bv.tv.screens.settings.SettingsMenuNavItem
 import dev.aaa1115910.bv.tv.util.NavItemConfig
 import dev.aaa1115910.bv.tv.util.LiveNavItemConfig
 import dev.aaa1115910.bv.tv.util.getLiveNavItemDisplayName
 import dev.aaa1115910.bv.tv.util.parseCachedLiveAreaGroups
+import dev.aaa1115910.bv.tv.util.parseDrawerNavItemsOrderToConfig
 import dev.aaa1115910.bv.tv.util.parseLiveNavItemsOrderToConfig
-import dev.aaa1115910.bv.tv.util.moveNavItemToFirstAndUnhide
 import dev.aaa1115910.bv.tv.util.parseNavItemsOrderToConfig
+import dev.aaa1115910.bv.tv.util.saveDrawerNavConfigs
 import dev.aaa1115910.bv.ui.theme.BVTheme
 import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.requestFocus
@@ -87,16 +89,15 @@ fun UISetting(
     var showThemeTypeDialog by remember { mutableStateOf(false) }
     var showInterfaceModeDialog by remember { mutableStateOf(false) }
     var showNavSwitchModeDialog by remember { mutableStateOf(false) }
-    var showDefaultHomeTabDialog by remember { mutableStateOf(false) }
     var showHomeNavItemsDialog by remember { mutableStateOf(false) }
     var showUgcNavItemsDialog by remember { mutableStateOf(false) }
     var showPgcNavItemsDialog by remember { mutableStateOf(false) }
     var showLiveNavItemsDialog by remember { mutableStateOf(false) }
+    var showDrawerNavItemsDialog by remember { mutableStateOf(false) }
     val density by Prefs.densityFlow.collectAsState(context.resources.displayMetrics.widthPixels / 960f)
     val themeType by Prefs.themeTypeFlow.collectAsState(Prefs.themeType)
     val interfaceMode = Prefs.interfaceMode
     val navSwitchMode by Prefs.navSwitchModeFlow.collectAsState(Prefs.navSwitchMode)
-    var defaultHomeTab by remember { mutableStateOf(HomeTopNavItem.entries.getOrElse(Prefs.defaultHomeTab) { HomeTopNavItem.Recommend }) }
     var showUGCVideoInfo by remember { mutableStateOf(Prefs.showUGCVideoInfo) }
     var videoInfoHistoryIncludeFromPlayer by remember { mutableStateOf(Prefs.videoInfoHistoryIncludeFromPlayer) }
     var ugcVideoInfoHistoryCount by remember { mutableIntStateOf(Prefs.ugcVideoInfoHistoryCount) }
@@ -128,14 +129,6 @@ fun UISetting(
                 }
                 item {
                     SettingListItem(
-                        title = stringResource(R.string.settings_ui_nav_switch_mode_title),
-                        supportText = stringResource(R.string.settings_ui_nav_switch_mode_text),
-                        valueText = navSwitchMode.getDisplayName(context),
-                        onClick = { showNavSwitchModeDialog = true }
-                    )
-                }
-                item {
-                    SettingListItem(
                         title = stringResource(R.string.settings_ui_density_title),
                         supportText = stringResource(R.string.settings_ui_density_text),
                         valueText = density.toString(),
@@ -148,6 +141,49 @@ fun UISetting(
                         supportText = stringResource(R.string.settings_ui_theme_type_text),
                         valueText = themeType.getDisplayName(context),
                         onClick = { showThemeTypeDialog = true }
+                    )
+                }
+                item {
+                    SettingListItem(
+                        title = stringResource(R.string.settings_ui_nav_switch_mode_title),
+                        supportText = stringResource(R.string.settings_ui_nav_switch_mode_text),
+                        valueText = navSwitchMode.getDisplayName(context),
+                        onClick = { showNavSwitchModeDialog = true }
+                    )
+                }
+                item {
+                    SettingListItem(
+                        title = stringResource(R.string.settings_ui_drawer_nav_items_title),
+                        supportText = stringResource(R.string.settings_ui_drawer_nav_items_text),
+                        onClick = { showDrawerNavItemsDialog = true }
+                    )
+                }
+                item {
+                    SettingListItem(
+                        title = stringResource(R.string.settings_ui_home_nav_items_title),
+                        supportText = stringResource(R.string.settings_ui_home_nav_items_text),
+                        onClick = { showHomeNavItemsDialog = true }
+                    )
+                }
+                item {
+                    SettingListItem(
+                        title = stringResource(R.string.settings_ui_ugc_nav_items_title),
+                        supportText = stringResource(R.string.settings_ui_ugc_nav_items_text),
+                        onClick = { showUgcNavItemsDialog = true }
+                    )
+                }
+                item {
+                    SettingListItem(
+                        title = stringResource(R.string.settings_ui_pgc_nav_items_title),
+                        supportText = stringResource(R.string.settings_ui_pgc_nav_items_text),
+                        onClick = { showPgcNavItemsDialog = true }
+                    )
+                }
+                item {
+                    SettingListItem(
+                        title = stringResource(R.string.settings_ui_live_nav_items_title),
+                        supportText = stringResource(R.string.settings_ui_live_nav_items_text),
+                        onClick = { showLiveNavItemsDialog = true }
                     )
                 }
                 item {
@@ -206,42 +242,6 @@ fun UISetting(
                         )
                     }
                 }
-                item {
-                    SettingListItem(
-                        title = stringResource(R.string.settings_ui_default_home_tab_title),
-                        supportText = stringResource(R.string.settings_ui_default_home_tab_text),
-                        valueText = defaultHomeTab.getDisplayName(context),
-                        onClick = { showDefaultHomeTabDialog = true }
-                    )
-                }
-                item {
-                    SettingListItem(
-                        title = stringResource(R.string.settings_ui_home_nav_items_title),
-                        supportText = stringResource(R.string.settings_ui_home_nav_items_text),
-                        onClick = { showHomeNavItemsDialog = true }
-                    )
-                }
-                item {
-                    SettingListItem(
-                        title = stringResource(R.string.settings_ui_ugc_nav_items_title),
-                        supportText = stringResource(R.string.settings_ui_ugc_nav_items_text),
-                        onClick = { showUgcNavItemsDialog = true }
-                    )
-                }
-                item {
-                    SettingListItem(
-                        title = stringResource(R.string.settings_ui_pgc_nav_items_title),
-                        supportText = stringResource(R.string.settings_ui_pgc_nav_items_text),
-                        onClick = { showPgcNavItemsDialog = true }
-                    )
-                }
-                item {
-                    SettingListItem(
-                        title = stringResource(R.string.settings_ui_live_nav_items_title),
-                        supportText = stringResource(R.string.settings_ui_live_nav_items_text),
-                        onClick = { showLiveNavItemsDialog = true }
-                    )
-                }
             }
         }
     }
@@ -279,21 +279,6 @@ fun UISetting(
         onNavSwitchModeChange = { Prefs.navSwitchMode = it }
     )
 
-    DefaultHomeTabDialog(
-        show = showDefaultHomeTabDialog,
-        onHideDialog = { showDefaultHomeTabDialog = false },
-        defaultHomeTab = defaultHomeTab,
-        onDefaultHomeTabChange = {
-            defaultHomeTab = it
-            Prefs.defaultHomeTab = it.ordinal
-
-            // 更新排序配置：将新的默认标签移到第一位，并取消隐藏
-            val currentOrder = Prefs.homeNavItemsOrder
-            val updatedOrder = moveNavItemToFirstAndUnhide(currentOrder, it.ordinal, HomeTopNavItem.entries.size)
-            Prefs.homeNavItemsOrder = updatedOrder
-        }
-    )
-
     HomeNavItemsEditDialog(
         show = showHomeNavItemsDialog,
         onHideDialog = { showHomeNavItemsDialog = false },
@@ -316,6 +301,12 @@ fun UISetting(
         show = showLiveNavItemsDialog,
         onHideDialog = { showLiveNavItemsDialog = false },
         initialOrderString = Prefs.liveNavItemsOrder
+    )
+
+    DrawerNavItemsEditDialog(
+        show = showDrawerNavItemsDialog,
+        onHideDialog = { showDrawerNavItemsDialog = false },
+        initialOrderString = Prefs.drawerNavItemsOrder
     )
 }
 
@@ -524,43 +515,6 @@ private fun ThemeTypeDialogPreview() {
 }
 
 @Composable
-fun DefaultHomeTabDialog(
-    modifier: Modifier = Modifier,
-    show: Boolean,
-    onHideDialog: () -> Unit,
-    defaultHomeTab: HomeTopNavItem,
-    onDefaultHomeTabChange: (HomeTopNavItem) -> Unit
-) {
-    if (show) {
-        TvAlertDialog(
-            modifier = modifier,
-            onDismissRequest = { onHideDialog() },
-            title = { Text(text = stringResource(R.string.settings_ui_default_home_tab_title)) },
-            text = {
-                Column {
-                    HomeTopNavItem.entries.forEach {
-                        ListItem(
-                            selected = defaultHomeTab == it,
-                            onClick = { onDefaultHomeTabChange(it) },
-                            headlineContent = {
-                                Text(text = it.getDisplayName(LocalContext.current))
-                            },
-                            trailingContent = {
-                                RadioButton(
-                                    selected = defaultHomeTab == it,
-                                    onClick = null
-                                )
-                            }
-                        )
-                    }
-                }
-            },
-            confirmButton = {}
-        )
-    }
-}
-
-@Composable
 private fun HomeNavItemsEditDialog(
     modifier: Modifier = Modifier,
     show: Boolean,
@@ -584,6 +538,13 @@ private fun HomeNavItemsEditDialog(
     // 当前选中的索引
     var selectedIndex by remember { mutableIntStateOf(0) }
 
+    // 默认标签
+    var defaultTabOrdinal by remember { mutableIntStateOf(Prefs.defaultHomeTab) }
+
+    // 长按检测
+    var enterDownTime by remember { mutableStateOf(0L) }
+    var longPressHandled by remember { mutableStateOf(false) }
+
     LaunchedEffect(show) {
         if (show) focusRequester.requestFocus(scope)
     }
@@ -592,7 +553,8 @@ private fun HomeNavItemsEditDialog(
         modifier = modifier,
         onDismissRequest = {
             // 关闭时自动保存
-            saveNavConfigs(navConfigs)
+            Prefs.defaultHomeTab = defaultTabOrdinal
+            saveNavConfigs(navConfigs, defaultTabOrdinal)
             onHideDialog()
         },
         title = { Text(text = stringResource(R.string.settings_ui_home_nav_items_title)) },
@@ -605,8 +567,6 @@ private fun HomeNavItemsEditDialog(
                         if (it.type == KeyEventType.KeyDown) {
                             when (it.key) {
                                 Key.DirectionLeft -> {
-                                    // 向左移动：与上一个元素交换位置
-                                    // 但第一个元素（默认标签）不能向左移动
                                     if (selectedIndex > 0) {
                                         navConfigs = navConfigs.toMutableList().apply {
                                             val temp = this[selectedIndex]
@@ -618,7 +578,6 @@ private fun HomeNavItemsEditDialog(
                                     true
                                 }
                                 Key.DirectionRight -> {
-                                    // 向右移动：与下一个元素交换位置
                                     if (selectedIndex < navConfigs.size - 1) {
                                         navConfigs = navConfigs.toMutableList().apply {
                                             val temp = this[selectedIndex]
@@ -630,30 +589,51 @@ private fun HomeNavItemsEditDialog(
                                     true
                                 }
                                 Key.DirectionUp -> {
-                                    // 向上选择
                                     if (selectedIndex > 0) selectedIndex--
                                     true
                                 }
                                 Key.DirectionDown -> {
-                                    // 向下选择
                                     if (selectedIndex < navConfigs.size - 1) selectedIndex++
                                     true
                                 }
                                 Key.Enter, Key.DirectionCenter -> {
-                                    // 确认键：切换隐藏状态（除了默认首页标签）
-                                    val config = navConfigs[selectedIndex]
-                                    val defaultHomeTabOrdinal = Prefs.defaultHomeTab
-                                    if (config.ordinal != defaultHomeTabOrdinal) {
-                                        navConfigs = navConfigs.toMutableList().apply {
-                                            this[selectedIndex] = config.copy(hidden = !config.hidden)
+                                    if (enterDownTime == 0L) {
+                                        enterDownTime = System.currentTimeMillis()
+                                        longPressHandled = false
+                                    } else if (!longPressHandled && System.currentTimeMillis() - enterDownTime >= 600) {
+                                        // 长按：设为默认标签，并取消隐藏
+                                        longPressHandled = true
+                                        val config = navConfigs[selectedIndex]
+                                        defaultTabOrdinal = config.ordinal
+                                        if (config.hidden) {
+                                            navConfigs = navConfigs.toMutableList().apply {
+                                                this[selectedIndex] = config.copy(hidden = false)
+                                            }
                                         }
                                     }
                                     true
                                 }
                                 else -> false
                             }
-                        }
-                        false
+                        } else if (it.type == KeyEventType.KeyUp) {
+                            when (it.key) {
+                                Key.Enter, Key.DirectionCenter -> {
+                                    if (!longPressHandled && enterDownTime > 0L) {
+                                        // 短按：切换显示/隐藏（默认标签不可隐藏）
+                                        val config = navConfigs[selectedIndex]
+                                        if (config.ordinal != defaultTabOrdinal) {
+                                            navConfigs = navConfigs.toMutableList().apply {
+                                                this[selectedIndex] = config.copy(hidden = !config.hidden)
+                                            }
+                                        }
+                                    }
+                                    enterDownTime = 0L
+                                    longPressHandled = false
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else false
                     }
             ) {
                 // 提示文字
@@ -668,7 +648,7 @@ private fun HomeNavItemsEditDialog(
                     val navItem = HomeTopNavItem.entries.getOrNull(config.ordinal)
                     if (navItem != null) {
                         val isSelected = index == selectedIndex
-                        val isDefaultHomeTab = config.ordinal == Prefs.defaultHomeTab
+                        val isDefaultHomeTab = config.ordinal == defaultTabOrdinal
 
                         NavItemEditRow(
                             title = navItem.getDisplayName(LocalContext.current),
@@ -1040,8 +1020,7 @@ private fun EditableNavRow(
  * 保存导航项配置到 Prefs
  * 默认标签强制不隐藏
  */
-private fun saveNavConfigs(navConfigs: List<NavItemConfig>) {
-    val defaultTabOrdinal = Prefs.defaultHomeTab
+private fun saveNavConfigs(navConfigs: List<NavItemConfig>, defaultTabOrdinal: Int) {
     val finalOrderString = navConfigs.joinToString(",") { config ->
         val shouldHide = if (config.ordinal == defaultTabOrdinal) {
             false  // 默认标签强制不隐藏
@@ -1243,6 +1222,108 @@ private fun LiveNavItemsEditDialog(
                             onFocus = { selectedIndex = index }
                         )
                     }
+                }
+            }
+        },
+        confirmButton = {}
+    )
+}
+
+@Composable
+private fun DrawerNavItemsEditDialog(
+    modifier: Modifier = Modifier,
+    show: Boolean,
+    onHideDialog: () -> Unit,
+    initialOrderString: String
+) {
+    if (!show) return
+
+    val scope = rememberCoroutineScope()
+    val focusRequester = remember { FocusRequester() }
+
+    val initialConfigs = remember(initialOrderString) {
+        parseDrawerNavItemsOrderToConfig(initialOrderString)
+    }
+    var navConfigs by remember { mutableStateOf(initialConfigs) }
+    var selectedIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(show) {
+        if (show) focusRequester.requestFocus(scope)
+    }
+
+    TvAlertDialog(
+        modifier = modifier,
+        onDismissRequest = {
+            saveDrawerNavConfigs(navConfigs)
+            onHideDialog()
+        },
+        title = { Text(text = stringResource(R.string.settings_ui_drawer_nav_items_title)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .focusRequester(focusRequester)
+                    .focusable()
+                    .onPreviewKeyEvent {
+                        if (it.type == KeyEventType.KeyDown) {
+                            when (it.key) {
+                                Key.DirectionLeft -> {
+                                    if (selectedIndex > 0) {
+                                        navConfigs = navConfigs.toMutableList().apply {
+                                            val temp = this[selectedIndex]
+                                            this[selectedIndex] = this[selectedIndex - 1]
+                                            this[selectedIndex - 1] = temp
+                                        }
+                                        selectedIndex--
+                                    }
+                                    true
+                                }
+                                Key.DirectionRight -> {
+                                    if (selectedIndex < navConfigs.size - 1) {
+                                        navConfigs = navConfigs.toMutableList().apply {
+                                            val temp = this[selectedIndex]
+                                            this[selectedIndex] = this[selectedIndex + 1]
+                                            this[selectedIndex + 1] = temp
+                                        }
+                                        selectedIndex++
+                                    }
+                                    true
+                                }
+                                Key.DirectionUp -> {
+                                    if (selectedIndex > 0) selectedIndex--
+                                    true
+                                }
+                                Key.DirectionDown -> {
+                                    if (selectedIndex < navConfigs.size - 1) selectedIndex++
+                                    true
+                                }
+                                Key.Enter, Key.DirectionCenter -> {
+                                    val config = navConfigs[selectedIndex]
+                                    navConfigs = navConfigs.toMutableList().apply {
+                                        this[selectedIndex] = config.copy(hidden = !config.hidden)
+                                    }
+                                    true
+                                }
+                                else -> false
+                            }
+                        }
+                        false
+                    }
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_ui_drawer_nav_items_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                navConfigs.forEachIndexed { index, config ->
+                    val drawerItem = DrawerItem.entries.getOrNull(config.ordinal) ?: return@forEachIndexed
+                    NavItemEditRow(
+                        title = drawerItem.displayName,
+                        hidden = config.hidden,
+                        selected = index == selectedIndex,
+                        onFocus = { selectedIndex = index }
+                    )
                 }
             }
         },

@@ -16,6 +16,7 @@ internal class DanmakuItem(
     @Volatile var cacheState: DanmakuCacheState = DanmakuCacheState.Init
 
     // Active state (action thread only)
+    var isActive: Boolean = false
     var kind: DanmakuKind = DanmakuKind.SCROLL
     var lane: Int = 0
     var startTimeMs: Int = 0

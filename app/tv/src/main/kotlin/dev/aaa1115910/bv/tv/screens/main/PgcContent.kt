@@ -176,17 +176,6 @@ fun PgcContent(
             return@BackHandler
         }
         navFocusRequester.requestFocus(scope)
-        // // scroll to top
-        // scope.launch(Dispatchers.Main) {
-        //     when (selectedTab) {
-        //         PgcTopNavItem.Anime -> animeState.animateScrollToItem(0)
-        //         PgcTopNavItem.GuoChuang -> guoChuangState.animateScrollToItem(0)
-        //         PgcTopNavItem.Movie -> movieState.animateScrollToItem(0)
-        //         PgcTopNavItem.Documentary -> documentaryState.animateScrollToItem(0)
-        //         PgcTopNavItem.Tv -> tvState.animateScrollToItem(0)
-        //         PgcTopNavItem.Variety -> varietyState.animateScrollToItem(0)
-        //     }
-        // }
     }
 
     Scaffold(
@@ -195,10 +184,8 @@ fun PgcContent(
             TopNav(
                 modifier = Modifier
                     .focusRequester(navFocusRequester)
-                    .padding(end = 80.dp)
                     .onFocusChanged { topNavHasFocus = it.hasFocus },
                 items = effectiveNavItems,
-                isLargePadding = !focusOnContent && currentListOnTop,
                 initialSelectedItem = selectedTab,
                 navSwitchMode = navSwitchMode,
                 onSelectedChanged = { nav ->

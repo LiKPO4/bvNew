@@ -1,5 +1,6 @@
 package dev.aaa1115910.bv.tv.screens.user
 
+import android.view.KeyEvent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -22,18 +24,27 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.tv.material3.Button
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
+import dev.aaa1115910.biliapi.entity.season.FollowingSeason
 import dev.aaa1115910.biliapi.entity.season.FollowingSeasonStatus
 import dev.aaa1115910.biliapi.entity.season.FollowingSeasonType
 import dev.aaa1115910.bv.R
+import dev.aaa1115910.bv.tv.component.TvAlertDialog
 import dev.aaa1115910.bv.tv.component.videocard.SeasonCard
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
@@ -47,6 +58,7 @@ import dev.aaa1115910.bv.util.getDisplayName
 import dev.aaa1115910.bv.util.resizedImageUrl
 import dev.aaa1115910.bv.viewmodel.user.FollowingSeasonViewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -57,6 +69,7 @@ fun FollowingSeasonScreen(
 ) {
     val context = LocalContext.current
     val logger = KotlinLogging.logger { }
+    val scope = rememberCoroutineScope()
     val gridFocusRestorer = rememberTvLazyListFocusRestorer()
 
     var currentIndex by remember { mutableIntStateOf(0) }
@@ -71,6 +84,16 @@ fun FollowingSeasonScreen(
     )
 
     var showFilter by remember { mutableStateOf(false) }
+
+    var deleteMode by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var selectedSeason by remember { mutableStateOf<FollowingSeason?>(null) }
+    var selectedIndex by remember { mutableIntStateOf(0) }
+
+    val focusRequesters = remember { mutableMapOf<Int, FocusRequester>() }
+    fun getFocusRequester(index: Int): FocusRequester {
+        return focusRequesters.getOrPut(index) { FocusRequester() }
+    }
 
     val followingSeasons = followingSeasonViewModel.followingSeasons
     var followingSeasonType by remember { mutableStateOf(followingSeasonViewModel.followingSeasonType) }
@@ -95,8 +118,14 @@ fun FollowingSeasonScreen(
         }
     }
 
-    val onLongClickSeason = {
-        showFilter = true
+    val onLongClickSeason: (FollowingSeason, Int) -> Unit = { season, index ->
+        if (deleteMode) {
+            val nextIndex = if (index < followingSeasons.size - 1) index + 1 else index - 1
+            if (nextIndex >= 0) runCatching { getFocusRequester(nextIndex).requestFocus() }
+            followingSeasonViewModel.unfollowSeason(seasonId = season.seasonId)
+        } else {
+            showFilter = true
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -145,8 +174,9 @@ fun FollowingSeasonScreen(
                             horizontalAlignment = Alignment.End,
                         ) {
                             Text(
-                                text = stringResource(R.string.filter_dialog_open_tip),
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                text = if (deleteMode) stringResource(R.string.delete_mode_action_hint) else stringResource(R.string.following_season_hint),
+                                color = if (deleteMode) Color.Red.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                fontSize = 11.sp
                             )
                             if (noMore) {
                                 Text(
@@ -154,7 +184,8 @@ fun FollowingSeasonScreen(
                                         R.string.load_data_count_no_more,
                                         followingSeasonViewModel.followingSeasons.size
                                     ),
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    fontSize = 11.sp
                                 )
                             } else {
                                 Text(
@@ -162,7 +193,8 @@ fun FollowingSeasonScreen(
                                         R.string.load_data_count,
                                         followingSeasonViewModel.followingSeasons.size
                                     ),
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    fontSize = 11.sp
                                 )
                             }
                         }
@@ -174,9 +206,9 @@ fun FollowingSeasonScreen(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Text(
-                        text = stringResource(R.string.filter_dialog_open_tip),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                        fontSize = 12.sp
+                        text = if (deleteMode) stringResource(R.string.delete_mode_action_hint) else stringResource(R.string.following_season_hint),
+                        color = if (deleteMode) Color.Red.copy(alpha = 0.8f) else androidx.tv.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        fontSize = 11.sp
                     )
                 }
             }
@@ -192,18 +224,35 @@ fun FollowingSeasonScreen(
                             itemCount = followingSeasons.size,
                             columnCount = 6
                         )
+                        .onPreviewKeyEvent { keyEvent ->
+                            if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_UP &&
+                                (keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_MENU ||
+                                 keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DEL)
+                            ) {
+                                deleteMode = !deleteMode
+                                return@onPreviewKeyEvent true
+                            }
+                            if (deleteMode && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BACK) {
+                                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_UP) {
+                                    deleteMode = false
+                                }
+                                return@onPreviewKeyEvent true
+                            }
+                            false
+                        }
                 ),
                 columns = GridCells.Fixed(6),
                 contentPadding = PaddingValues(24.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-                horizontalArrangement = Arrangement.spacedBy(24.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 itemsIndexed(
                     items = followingSeasons,
-                    key = { index, followingSeason -> "$index-season-${followingSeason.seasonId}" }
+                    key = { _, followingSeason -> "season-${followingSeason.seasonId}" }
                 ) { index, followingSeason ->
                     SeasonCard(
-                        modifier = gridFocusRestorer.firstItemModifier(index),
+                        modifier = gridFocusRestorer.firstItemModifier(index)
+                            .focusRequester(getFocusRequester(index)),
                         data = SeasonCardData(
                             seasonId = followingSeason.seasonId,
                             title = followingSeason.title,
@@ -218,13 +267,19 @@ fun FollowingSeasonScreen(
                             }
                         },
                         onClick = {
-                            SeasonInfoActivity.actionStart(
-                                context = context,
-                                seasonId = followingSeason.seasonId,
-                                proxyArea = ProxyArea.checkProxyArea(followingSeason.title)
-                            )
+                            if (deleteMode) {
+                                selectedSeason = followingSeason
+                                selectedIndex = index
+                                showDeleteConfirmDialog = true
+                            } else {
+                                SeasonInfoActivity.actionStart(
+                                    context = context,
+                                    seasonId = followingSeason.seasonId,
+                                    proxyArea = ProxyArea.checkProxyArea(followingSeason.title)
+                                )
+                            }
                         },
-                        onLongClick = onLongClickSeason
+                        onLongClick = { onLongClickSeason(followingSeason, index) }
                     )
                 }
                 if (followingSeasons.isEmpty() && noMore) {
@@ -258,5 +313,66 @@ fun FollowingSeasonScreen(
         selectedStatus = followingSeasonStatus,
         onSelectedTypeChange = updateType,
         onSelectedStatusChange = updateStatus
+    )
+
+    if (showDeleteConfirmDialog && selectedSeason != null) {
+        DeleteFollowingSeasonConfirmDialog(
+            show = showDeleteConfirmDialog,
+            seasonTitle = selectedSeason!!.title,
+            onConfirm = {
+                val nextIndex = if (selectedIndex < followingSeasons.size - 1) selectedIndex + 1 else selectedIndex - 1
+                if (nextIndex >= 0) runCatching { getFocusRequester(nextIndex).requestFocus() }
+                followingSeasonViewModel.unfollowSeason(seasonId = selectedSeason!!.seasonId)
+                showDeleteConfirmDialog = false
+                selectedSeason = null
+            },
+            onDismiss = {
+                showDeleteConfirmDialog = false
+                scope.launch {
+                    runCatching { getFocusRequester(selectedIndex).requestFocus() }
+                }
+                selectedSeason = null
+            }
+        )
+    }
+}
+
+@Composable
+private fun DeleteFollowingSeasonConfirmDialog(
+    show: Boolean,
+    seasonTitle: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(show) {
+        if (show) focusRequester.requestFocus()
+    }
+
+    TvAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.following_season_delete_confirm_dialog_title)) },
+        text = {
+            Text(
+                text = stringResource(
+                    R.string.following_season_delete_confirm_dialog_text,
+                    seasonTitle
+                )
+            )
+        },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text(text = stringResource(R.string.following_season_delete_confirm_dialog_confirm))
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                modifier = Modifier.focusRequester(focusRequester),
+                onClick = onDismiss
+            ) {
+                Text(text = stringResource(R.string.following_season_delete_confirm_dialog_dismiss))
+            }
+        }
     )
 }

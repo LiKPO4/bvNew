@@ -49,7 +49,7 @@ fun OnlineViewerCountTip(
                     .padding(start = 20.dp, bottom = 32.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val color = Color.White.copy(alpha = 0.5f)
+                val color = Color.White.copy(alpha = 0.55f)
 
                 Icon(
                     modifier = Modifier.scale(0.8f),
