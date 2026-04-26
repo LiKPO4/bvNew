@@ -55,6 +55,7 @@ import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.util.ImageSize
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.getDisplayName
+import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.util.resizedImageUrl
 import dev.aaa1115910.bv.viewmodel.user.FollowingSeasonViewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -65,7 +66,8 @@ import org.koin.androidx.compose.koinViewModel
 fun FollowingSeasonScreen(
     modifier: Modifier = Modifier,
     followingSeasonViewModel: FollowingSeasonViewModel = koinViewModel(),
-    showPageTitle: Boolean = true
+    showPageTitle: Boolean = true,
+    topTabFocusRequester: FocusRequester? = null
 ) {
     val context = LocalContext.current
     val logger = KotlinLogging.logger { }
@@ -89,6 +91,7 @@ fun FollowingSeasonScreen(
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var selectedSeason by remember { mutableStateOf<FollowingSeason?>(null) }
     var selectedIndex by remember { mutableIntStateOf(0) }
+    var focusTopTabWhenListEmpty by remember { mutableStateOf(false) }
 
     val focusRequesters = remember { mutableMapOf<Int, FocusRequester>() }
     fun getFocusRequester(index: Int): FocusRequester {
@@ -120,6 +123,9 @@ fun FollowingSeasonScreen(
 
     val onLongClickSeason: (FollowingSeason, Int) -> Unit = { season, index ->
         if (deleteMode) {
+            if (topTabFocusRequester != null) {
+                focusTopTabWhenListEmpty = true
+            }
             val nextIndex = if (index < followingSeasons.size - 1) index + 1 else index - 1
             if (nextIndex >= 0) runCatching { getFocusRequester(nextIndex).requestFocus() }
             followingSeasonViewModel.unfollowSeason(seasonId = season.seasonId)
@@ -133,6 +139,15 @@ fun FollowingSeasonScreen(
             logger.fInfo { "Start update search result because filter updated" }
             followingSeasonViewModel.clearData()
             followingSeasonViewModel.loadMore()
+        }
+    }
+
+    LaunchedEffect(followingSeasonViewModel.deleting, followingSeasons.size, focusTopTabWhenListEmpty) {
+        if (!focusTopTabWhenListEmpty || followingSeasonViewModel.deleting) return@LaunchedEffect
+        focusTopTabWhenListEmpty = false
+        if (followingSeasons.isEmpty()) {
+            deleteMode = false
+            topTabFocusRequester?.requestFocus(scope)
         }
     }
 
@@ -320,6 +335,9 @@ fun FollowingSeasonScreen(
             show = showDeleteConfirmDialog,
             seasonTitle = selectedSeason!!.title,
             onConfirm = {
+                if (topTabFocusRequester != null) {
+                    focusTopTabWhenListEmpty = true
+                }
                 val nextIndex = if (selectedIndex < followingSeasons.size - 1) selectedIndex + 1 else selectedIndex - 1
                 if (nextIndex >= 0) runCatching { getFocusRequester(nextIndex).requestFocus() }
                 followingSeasonViewModel.unfollowSeason(seasonId = selectedSeason!!.seasonId)

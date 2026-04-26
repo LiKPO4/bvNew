@@ -329,21 +329,30 @@ fun HomeContent(
                     }
                     HomeTopNavItem.FollowingSeason -> {
                         if (userViewModel.isLogin) {
-                            FollowingSeasonScreen(showPageTitle = false)
+                            FollowingSeasonScreen(
+                                showPageTitle = false,
+                                topTabFocusRequester = navFocusRequester
+                            )
                         } else {
                             LoginRequiredScreen()
                         }
                     }
                     HomeTopNavItem.History -> {
                         if (userViewModel.isLogin) {
-                            HistoryScreen(showPageTitle = false)
+                            HistoryScreen(
+                                showPageTitle = false,
+                                topTabFocusRequester = navFocusRequester
+                            )
                         } else {
                             LoginRequiredScreen()
                         }
                     }
                     HomeTopNavItem.ToView -> {
                         if (userViewModel.isLogin) {
-                            ToViewScreen(showPageTitle = false)
+                            ToViewScreen(
+                                showPageTitle = false,
+                                topTabFocusRequester = navFocusRequester
+                            )
                         } else {
                             LoginRequiredScreen()
                         }

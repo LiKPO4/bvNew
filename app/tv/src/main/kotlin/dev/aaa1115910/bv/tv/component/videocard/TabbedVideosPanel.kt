@@ -46,8 +46,8 @@ fun TabbedVideosPanel(
     preloadedVideos: List<VideoCardData>,
     currentAid: Long,
     focusRequester: FocusRequester,
-    onOpenSeasonInfo: (VideoCardData) -> Unit = {},
-    onOpenVideoInfo: (VideoCardData) -> Unit = {},
+    onOpenSeasonInfo: (VideoCardData, Boolean) -> Unit = { _, _ -> },
+    onOpenVideoInfo: (VideoCardData, Boolean) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -63,7 +63,7 @@ fun TabbedVideosPanel(
     // Build tabs: always show "推荐视频", show "视频列表" only when preloaded is not empty
     val tabs = remember(relatedVideos.size, preloadedVideos.size) {
         buildList {
-            add("UGC推荐视频" to relatedVideos)
+            add("推荐视频" to relatedVideos)
             if (preloadedVideos.isNotEmpty()) {
                 add("UGC视频列表" to preloadedVideos)
             }
@@ -170,10 +170,11 @@ fun TabbedVideosPanel(
                     data = videoData,
                     unfocusedBorderColor = if (isCurrentVideo) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else null,
                     onClick = {
+                        val fromUGCList = selectedTabIndex == 1
                         if (videoData.jumpToSeason) {
-                            onOpenSeasonInfo(videoData)
+                            onOpenSeasonInfo(videoData, fromUGCList)
                         } else {
-                            onOpenVideoInfo(videoData)
+                            onOpenVideoInfo(videoData, fromUGCList)
                         }
                     },
                     onLongClick = { onLongClickVideo(videoData) }

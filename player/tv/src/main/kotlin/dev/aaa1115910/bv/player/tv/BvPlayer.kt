@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -252,13 +254,19 @@ fun BvPlayer(
     }
 
 
+    val applyDanmakuConfig: (DanmakuConfig) -> Unit = { newConfig ->
+        danmakuConfig = newConfig
+        danmakuView.setConfig(newConfig)
+        logger.info { "Update danmaku config: $newConfig" }
+    }
+
     val syncDanmakuConfig: () -> Unit = {
         val danmakuTypes = videoPlayerConfigData.currentDanmakuEnabledList
         val allowAll = danmakuTypes.contains(DanmakuType.All)
         val filterLevel = if (videoPlayerConfigData.isLive) videoPlayerConfigData.currentLiveDanmakuFilterLevel else videoPlayerConfigData.currentDanmakuFilterLevel
         val factor = videoPlayerConfigData.currentDanmakuRollingDurationFactor
         val durationMultiplier = 2f - factor
-        danmakuConfig = danmakuConfig.copy(
+        applyDanmakuConfig(danmakuConfig.copy(
             enabled = videoPlayerConfigData.showDanmaku,
             textSizeScale = (videoPlayerConfigData.currentDanmakuScale * 100).toInt(),
             allowScroll = allowAll || danmakuTypes.contains(DanmakuType.Rolling),
@@ -266,29 +274,26 @@ fun BvPlayer(
             allowBottom = allowAll || danmakuTypes.contains(DanmakuType.Bottom),
             minLevel = filterLevel,
             durationMultiplier = durationMultiplier,
-        )
-        logger.info { "Sync danmaku config: $danmakuConfig" }
+            opacity = currentConfigData.currentDanmakuOpacity,
+            area = currentConfigData.currentDanmakuArea,
+        ))
     }
 
     val updateDanmakuConfigTypeFilter: () -> Unit = {
         val danmakuTypes = videoPlayerConfigData.currentDanmakuEnabledList
         val allowAll = danmakuTypes.contains(DanmakuType.All)
-        danmakuConfig = danmakuConfig.copy(
+        applyDanmakuConfig(danmakuConfig.copy(
             allowScroll = allowAll || danmakuTypes.contains(DanmakuType.Rolling),
             allowTop = allowAll || danmakuTypes.contains(DanmakuType.Top),
             allowBottom = allowAll || danmakuTypes.contains(DanmakuType.Bottom),
-        )
-        logger.info { "Update danmaku type filters" }
+        ))
     }
 
     val updateVideoAspectRatio: () -> Unit = {
-        aspectRatioValue = when (currentVideoAspectRatio) {
-            VideoAspectRatio.Default -> defaultAspectRatio
-            VideoAspectRatio.FourToThree -> 4 / 3f
-            VideoAspectRatio.SixteenToNine -> 16 / 9f
-            VideoAspectRatio.NineToSixteen -> 9 / 16f
+        aspectRatioValue = currentVideoAspectRatio.resolveAspectRatio(defaultAspectRatio)
+        logger.info {
+            "Update video player aspectRatio: type=$currentVideoAspectRatio, ratio=$aspectRatioValue"
         }
-        logger.info { "Update video player aspectRatio: $aspectRatioValue" }
     }
 
     val sendHeartbeat: (CoroutineScope, Boolean) -> Unit = heartbeat@{ launchScope, fromPlaybackEnd ->
@@ -602,6 +607,20 @@ fun BvPlayer(
         label = "animatedAspectRatio"
     )
 
+    val videoPlayerModifier = when (currentVideoAspectRatio) {
+        VideoAspectRatio.EqualWidth -> Modifier
+            .fillMaxWidth()
+            .aspectRatio(animatedAspectRatio)
+
+        VideoAspectRatio.EqualHeight -> Modifier
+            .fillMaxHeight()
+            .aspectRatio(animatedAspectRatio, matchHeightConstraintsFirst = true)
+
+        VideoAspectRatio.Stretch -> Modifier.fillMaxSize()
+
+        else -> Modifier.aspectRatio(animatedAspectRatio)
+    }
+
     CompositionLocalProvider(
         LocalVideoPlayerSeekState provides seekState,
         LocalVideoPlayerClockState provides clockState,
@@ -756,16 +775,17 @@ fun BvPlayer(
             onDanmakuSizeChange = { scale ->
                 logger.info { "On danmaku scale change: $scale" }
                 onDanmakuSizeChange(scale)
-                danmakuConfig = danmakuConfig.copy(textSizeScale = (scale * 100).toInt())
-                logger.info { "Update danmaku config: $danmakuConfig" }
+                applyDanmakuConfig(danmakuConfig.copy(textSizeScale = (scale * 100).toInt()))
             },
             onDanmakuOpacityChange = { opacity ->
                 logger.info { "On danmaku opacity change: $opacity" }
                 onDanmakuOpacityChange(opacity)
+                applyDanmakuConfig(danmakuConfig.copy(opacity = opacity))
             },
             onDanmakuAreaChange = { area ->
                 logger.info { "On danmaku area change: $area" }
                 onDanmakuAreaChange(area)
+                applyDanmakuConfig(danmakuConfig.copy(area = area))
             },
             onDanmakuMaskChange = { mask ->
                 logger.info { "On danmaku mask change: $mask" }
@@ -773,15 +793,14 @@ fun BvPlayer(
             },
             onDanmakuFilterLevelChange = { filterLevel ->
                 logger.info { "On danmaku filter level change: $filterLevel" }
-                danmakuConfig = danmakuConfig.copy(minLevel = filterLevel)
+                applyDanmakuConfig(danmakuConfig.copy(minLevel = filterLevel))
                 onDanmakuFilterLevelChange(filterLevel)
             },
             onDanmakuRollingDurationFactorChange = { factor ->
                 logger.info { "On danmaku rolling duration factor change: $factor" }
                 onDanmakuRollingDurationFactorChange(factor)
                 val durationMultiplier = 2f - factor
-                danmakuConfig = danmakuConfig.copy(durationMultiplier = durationMultiplier)
-                logger.info { "Update danmaku config: $danmakuConfig" }
+                applyDanmakuConfig(danmakuConfig.copy(durationMultiplier = durationMultiplier))
             },
             onSubtitleChange = { subtitle ->
                 onSubtitleChange(subtitle)
@@ -812,14 +831,12 @@ fun BvPlayer(
             onOpenDanmaku = {
                 onShowDanmakuChange(true)
                 videoPlayerConfigData.showDanmaku = true
-                danmakuConfig = danmakuConfig.copy(enabled = true)
-                logger.info { "Update danmaku config: $danmakuConfig" }
+                applyDanmakuConfig(danmakuConfig.copy(enabled = true))
             },
             onHideDanmaku = {
                 onShowDanmakuChange(false)
                 videoPlayerConfigData.showDanmaku = false
-                danmakuConfig = danmakuConfig.copy(enabled = false)
-                logger.info { "Update danmaku config: $danmakuConfig" }
+                applyDanmakuConfig(danmakuConfig.copy(enabled = false))
             },
             userActionContent = userActionContent,
             onLoadNextVideo = onLoadNextVideo,
@@ -837,9 +854,7 @@ fun BvPlayer(
             )
 
             BvVideoPlayer(
-                modifier = Modifier
-                    .aspectRatio(animatedAspectRatio)
-                    .align(Alignment.Center),
+                modifier = videoPlayerModifier.align(Alignment.Center),
                 videoPlayer = videoPlayer,
                 playerListener = videoPlayerListener,
                 rotationDegrees = currentVideoRotation.degrees,
@@ -856,17 +871,13 @@ fun BvPlayer(
                         setPositionProvider { if(currentConfigData.isLive) SystemClock.elapsedRealtime() else videoPlayer.currentPosition.coerceAtLeast(0L) }
                         setIsPlayingProvider { videoPlayer.isPlaying }
                         setPlaybackSpeedProvider { currentPlaySpeed }
-                        setConfigProvider {
-                            danmakuConfig.copy(
-                                opacity = currentConfigData.currentDanmakuOpacity,
-                                area = currentConfigData.currentDanmakuArea,
-                            )
-                        }
+                        setConfig(danmakuConfig)
                     }
                 },
                 update = { view ->
                     view.setMaskFrame(currentDanmakuMaskFrame.takeIf { videoPlayerConfigData.currentDanmakuMask })
                     view.setVideoAspectRatio(aspectRatioValue)
+                    view.setVideoAspectRatioType(currentVideoAspectRatio)
                 }
             )
 

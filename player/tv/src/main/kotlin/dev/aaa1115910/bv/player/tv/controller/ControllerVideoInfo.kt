@@ -483,13 +483,14 @@ fun ControllerVideoInfoBottom(
         }.toMutableMap()
     }
 
-    // user action focus requesters (由 Controller 提供给调用方)。创建默认的三项：like/fav/coin
+    // user action focus requesters (由 Controller 提供给调用方)。创建默认的四项：like/fav/coin/toview
     val userActionFocusRequesters = remember {
         mutableStateOf(
             mapOf(
                 UserActionKey.Like to FocusRequester(),
                 UserActionKey.Favorite to FocusRequester(),
-                UserActionKey.Coin to FocusRequester()
+                UserActionKey.Coin to FocusRequester(),
+                UserActionKey.ToView to FocusRequester()
             )
         )
     }
@@ -591,7 +592,7 @@ fun ControllerVideoInfoBottom(
                 style = MaterialTheme.typography.bodyMedium
             )
         }
-        // 当前注入的是：点赞、收藏、投币
+        // 当前注入的是：点赞、收藏、投币、稍后再看
         if (!isLive) {
             userActionContent(
                 Modifier.focusProperties {
@@ -825,7 +826,7 @@ private fun PlayModeDialog(
             }
         }
     }
-    val effectivePlayMode = if (currentPlayMode in availableModes) currentPlayMode else PlayMode.SingleVideo
+    val effectivePlayMode = if (currentPlayMode in availableModes) currentPlayMode else PlayMode.PartAndEpisode
     val focusRequesters = remember(availableModes) { availableModes.associateWith { FocusRequester() } }
     var lastInteractionTime by remember { mutableStateOf(System.currentTimeMillis()) }
 

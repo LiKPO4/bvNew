@@ -9,12 +9,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -62,6 +64,7 @@ import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.tv.util.stableItemKey
 import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.onDelayFocusChanged
+import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.util.toast
 import dev.aaa1115910.bv.viewmodel.user.FavoriteViewModel
 import kotlinx.coroutines.Dispatchers
@@ -130,6 +133,14 @@ fun FavoriteScreen(
                 delay(100)
                 defaultFocusRequester.requestFocus()
             }
+        }
+    }
+
+    fun focusTopTabIfListEmpty() {
+        if (favoriteViewModel.favorites.isEmpty()) {
+            deleteMode = false
+            focusOnGrid = false
+            defaultFocusRequester.requestFocus(scope)
         }
     }
 
@@ -288,6 +299,7 @@ fun FavoriteScreen(
                                             val success = VideoUserActionManager.delVideoFromFavoriteFolder(aid = aid, folderId = folderId)
                                             if (success) {
                                                 favoriteViewModel.removeFavoriteFromList(aid)
+                                                focusTopTabIfListEmpty()
                                                 context.getString(R.string.favorite_delete_success).toast(context)
                                             } else {
                                                 context.getString(R.string.favorite_delete_failed).toast(context)
@@ -313,6 +325,25 @@ fun FavoriteScreen(
                             }
                         )
                     }
+
+                    if (
+                        favoriteViewModel.favorites.isEmpty() &&
+                        favoriteViewModel.currentFavoriteFolderMetadata != null &&
+                        !favoriteViewModel.updatingFolders &&
+                        !favoriteViewModel.updatingFolderItems
+                    ) {
+                        item(span = { GridItemSpan(4) }) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.no_data),
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -334,6 +365,7 @@ fun FavoriteScreen(
                         val success = VideoUserActionManager.delVideoFromFavoriteFolder(aid = aid, folderId = folderId)
                         if (success) {
                             favoriteViewModel.removeFavoriteFromList(aid)
+                            focusTopTabIfListEmpty()
                             context.getString(R.string.favorite_delete_success).toast(context)
                         } else {
                             context.getString(R.string.favorite_delete_failed).toast(context)

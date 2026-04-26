@@ -52,4 +52,36 @@ class ToViewRepository(
             ).code == 0
         }.getOrDefault(false)
     }
+
+    suspend fun clearToView(
+        preferApiType: ApiType = ApiType.Web
+    ): Boolean {
+        return runCatching {
+            when (preferApiType) {
+                ApiType.Web, ApiType.App -> {
+                    BiliHttpApi.clearToView(
+                        csrf = authRepository.biliJct!!,
+                        sessData = authRepository.sessionData!!
+                    ).code == 0
+                }
+            }
+        }.getOrDefault(false)
+    }
+
+    suspend fun addToView(
+        avid: Long,
+        preferApiType: ApiType = ApiType.Web
+    ): Boolean {
+        return runCatching {
+            when (preferApiType) {
+                ApiType.Web, ApiType.App -> {
+                    BiliHttpApi.addToView(
+                        avid = avid,
+                        csrf = authRepository.biliJct!!,
+                        sessData = authRepository.sessionData!!
+                    ).code == 0
+                }
+            }
+        }.getOrDefault(false)
+    }
 }

@@ -68,7 +68,7 @@ fun OthersMenuList(
                         }
                     }
                     val effectivePlayMode = if (videoPlayerConfigData.currentPlayMode in availableModes)
-                        videoPlayerConfigData.currentPlayMode else PlayMode.SingleVideo
+                        videoPlayerConfigData.currentPlayMode else PlayMode.PartAndEpisode
                     RadioMenuList(
                         modifier = menuItemsModifier,
                         items = availableModes.map { it.getDisplayName(context) },

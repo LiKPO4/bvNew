@@ -5,9 +5,9 @@ import android.content.Context
 enum class NextVideoStrategy(val ordinalValue: Int) {
     SingleVideo(1),
     PartAndEpisode(2),
-    PreloadedVideoList(3),
-    PreloadedVideoListReverse(4),
-    PartAndEpisodeReverse(5),
+    PartAndEpisodeReverse(3),
+    PreloadedVideoList(4),
+    PreloadedVideoListReverse(5),
     RelatedVideo(6);
 
     fun displayName(context: Context): String = when (this) {

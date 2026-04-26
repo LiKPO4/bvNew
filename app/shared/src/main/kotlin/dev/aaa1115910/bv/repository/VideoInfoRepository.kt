@@ -12,4 +12,13 @@ class VideoInfoRepository {
     val preloadedVideoList = mutableListOf<VideoCardData>()
     var description: String = ""
     var tags: List<Tag> = emptyList()
+    var lastPreloadedVideoIndex = 0
+
+    fun resolveLastPreloadedVideoIndex(avid: Long): Int {
+        val currentIndex = preloadedVideoList.indexOfFirst { it.avid == avid }
+        if (currentIndex >= 0) {
+            lastPreloadedVideoIndex = currentIndex
+        }
+        return lastPreloadedVideoIndex
+    }
 }

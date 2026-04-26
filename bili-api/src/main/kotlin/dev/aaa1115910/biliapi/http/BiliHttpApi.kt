@@ -626,17 +626,77 @@ object BiliHttpApi {
     }.body()
 
     /**
+     * 清空历史记录
+     */
+    suspend fun clearHistory(
+        csrf: String,
+        sessData: String
+    ): BiliResponseWithoutData = client.post("/x/v2/history/clear") {
+        setBody(
+            FormDataContent(
+                Parameters.build {
+                    append("csrf", csrf)
+                }
+            )
+        )
+        header("Cookie", "SESSDATA=$sessData;")
+    }.body()
+
+    /**
      * 从稍后再看列表中删除视频[avid]
      */
     suspend fun deleteToView(
         avid: Long,
         csrf: String,
         sessData: String
-    ): BiliResponseWithoutData = client.post("/x/v2/history/toview/v2/dels") {
+    ): BiliResponseWithoutData = client.post("/x/v2/history/toview/del") {
         setBody(
             FormDataContent(
                 Parameters.build {
                     append("aid", "$avid")
+                    append("csrf", csrf)
+                }
+            )
+        )
+        header("Cookie", "SESSDATA=$sessData;")
+    }.body()
+
+    /**
+     * 清空稍后再看列表中的视频[avid]
+     */
+    suspend fun clearToView(
+        csrf: String,
+        sessData: String
+    ): BiliResponseWithoutData = client.post("/x/v2/history/toview/clear") {
+        setBody(
+            FormDataContent(
+                Parameters.build {
+                    append("csrf", csrf)
+                }
+            )
+        )
+        header("Cookie", "SESSDATA=$sessData;")
+    }.body()
+
+    /**
+     * 添加视频到稍后再看列表中[avid]
+     */
+    suspend fun addToView(
+        avid: Long? = null,
+        bvid: String? = null,
+        csrf: String,
+        sessData: String
+    ): BiliResponseWithoutData = client.post("/x/v2/history/toview/add") {
+        require(avid != null || bvid != null) { "avid and bvid cannot be null at the same time" }
+        setBody(
+            FormDataContent(
+                Parameters.build {
+                    avid?.let {
+                        append("aid", "$avid")
+                    }
+                    bvid?.let {
+                        append("bvid", bvid)
+                    }
                     append("csrf", csrf)
                 }
             )

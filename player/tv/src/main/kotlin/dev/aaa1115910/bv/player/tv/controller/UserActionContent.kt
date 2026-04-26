@@ -7,7 +7,8 @@ import androidx.compose.ui.focus.FocusRequester
 enum class UserActionKey {
     Like,
     Favorite,
-    Coin
+    Coin,
+    ToView
 }
 
 typealias UserActionContent = @Composable (

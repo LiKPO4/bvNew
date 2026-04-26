@@ -16,6 +16,7 @@ import com.caverock.androidsvg.SVG
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMaskFrame
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMobMaskFrame
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuWebMaskFrame
+import dev.aaa1115910.bv.player.entity.VideoAspectRatio
 import dev.aaa1115910.bv.player.danmaku.model.Danmaku
 
 class DanmakuView @JvmOverloads constructor(
@@ -29,9 +30,7 @@ class DanmakuView @JvmOverloads constructor(
     private var positionProvider: (() -> Long)? = null
     private var isPlayingProvider: (() -> Boolean)? = null
     private var playbackSpeedProvider: (() -> Float)? = null
-    private var configProvider: (() -> DanmakuConfig)? = null
-
-    private var lastConfig: DanmakuConfig? = null
+    private var config: DanmakuConfig = DEFAULT_CONFIG
     private var lastRawPositionMs: Long = 0L
     private var lastPositionChangeUptimeMs: Long = 0L
 
@@ -46,6 +45,7 @@ class DanmakuView @JvmOverloads constructor(
     private var cachedMaskFrame: DanmakuMaskFrame? = null
     private var cachedMaskBitmap: Bitmap? = null
     @Volatile private var videoAspectRatio: Float = 0f
+    @Volatile private var videoAspectRatioType: VideoAspectRatio = VideoAspectRatio.Default
 
     private val maskPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
         xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
@@ -55,7 +55,12 @@ class DanmakuView @JvmOverloads constructor(
     fun setPositionProvider(provider: () -> Long) { positionProvider = provider }
     fun setIsPlayingProvider(provider: () -> Boolean) { isPlayingProvider = provider }
     fun setPlaybackSpeedProvider(provider: () -> Float) { playbackSpeedProvider = provider }
-    fun setConfigProvider(provider: () -> DanmakuConfig) { configProvider = provider }
+    fun setConfig(config: DanmakuConfig) {
+        if (this.config == config) return
+        this.config = config
+        player.updateConfig(config)
+        postInvalidateOnAnimation()
+    }
 
     fun setDanmakus(list: List<Danmaku>) { player.setDanmakus(list); invalidate() }
     fun appendDanmakus(list: List<Danmaku>, maxItems: Int = 0, alreadySorted: Boolean = false) {
@@ -84,6 +89,7 @@ class DanmakuView @JvmOverloads constructor(
 
     fun setMaskFrame(frame: DanmakuMaskFrame?) { maskFrame = frame }
     fun setVideoAspectRatio(ratio: Float) { videoAspectRatio = ratio }
+    fun setVideoAspectRatioType(type: VideoAspectRatio) { videoAspectRatioType = type }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -105,12 +111,10 @@ class DanmakuView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val cfg = configProvider?.invoke() ?: DEFAULT_CONFIG
-        if (cfg !== lastConfig && cfg != lastConfig) { lastConfig = cfg; player.updateConfig(cfg) }
 
         updateViewportIfNeeded()
-        if (!cfg.enabled) {
-            player.draw(canvas, 0L, false, 1f, cfg); return
+        if (!config.enabled) {
+            player.draw(canvas, 0L, false, 1f, config); return
         }
 
         val posProvider = positionProvider ?: return
@@ -144,11 +148,11 @@ class DanmakuView @JvmOverloads constructor(
             currentLayerType = desiredLayerType
         }
 
-        player.draw(canvas, rawPos, isPlaying, speed, cfg)
+        player.draw(canvas, rawPos, isPlaying, speed, config)
 
         if (mask != null) {
             val maskBitmap = getOrBuildMaskBitmap(mask)
-            if (maskBitmap != null) drawMaskBitmap(canvas, maskBitmap, videoAspectRatio)
+            if (maskBitmap != null) drawMaskBitmap(canvas, maskBitmap, videoAspectRatio, videoAspectRatioType)
         }
     }
 
@@ -198,7 +202,12 @@ class DanmakuView @JvmOverloads constructor(
      * 将蒙版 Bitmap 以 DstIn 模式绘制到 canvas 上，正确处理视频 letterbox/pillarbox。
      * 逻辑与 DanmakuMaskModifiers.bitmapMask 一致。
      */
-    private fun drawMaskBitmap(canvas: Canvas, bitmap: Bitmap, videoAspect: Float) {
+    private fun drawMaskBitmap(
+        canvas: Canvas,
+        bitmap: Bitmap,
+        videoAspect: Float,
+        aspectType: VideoAspectRatio,
+    ) {
         val screenW = width.toFloat()
         val screenH = height.toFloat()
         if (screenW <= 0f || screenH <= 0f) return
@@ -210,16 +219,41 @@ class DanmakuView @JvmOverloads constructor(
         val offsetY: Float
 
         val ratio = if (videoAspect > 0f) videoAspect else 16f / 9f
-        if (ratio > screenAspect) {
-            dstW = screenW
-            dstH = dstW / ratio
-            offsetX = 0f
-            offsetY = (screenH - dstH) / 2f
-        } else {
-            dstH = screenH
-            dstW = dstH * ratio
-            offsetY = 0f
-            offsetX = (screenW - dstW) / 2f
+        when (aspectType) {
+            VideoAspectRatio.Stretch -> {
+                dstW = screenW
+                dstH = screenH
+                offsetX = 0f
+                offsetY = 0f
+            }
+
+            VideoAspectRatio.EqualWidth -> {
+                dstW = screenW
+                dstH = dstW / ratio
+                offsetX = 0f
+                offsetY = (screenH - dstH) / 2f
+            }
+
+            VideoAspectRatio.EqualHeight -> {
+                dstH = screenH
+                dstW = dstH * ratio
+                offsetY = 0f
+                offsetX = (screenW - dstW) / 2f
+            }
+
+            else -> {
+                if (ratio > screenAspect) {
+                    dstW = screenW
+                    dstH = dstW / ratio
+                    offsetX = 0f
+                    offsetY = (screenH - dstH) / 2f
+                } else {
+                    dstH = screenH
+                    dstW = dstH * ratio
+                    offsetY = 0f
+                    offsetX = (screenW - dstW) / 2f
+                }
+            }
         }
 
         maskDstRect.set(offsetX.toInt(), offsetY.toInt(), (offsetX + dstW).toInt(), (offsetY + dstH).toInt())

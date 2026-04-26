@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.user.DynamicVideo
+import dev.aaa1115910.bv.R as SharedR
 import dev.aaa1115910.bv.tv.component.LoadingTip
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
@@ -189,6 +190,24 @@ fun DynamicsScreen(
                     )
                 }
 
+                if (
+                    dynamicViewModel.dynamicVideoList.isEmpty() &&
+                    !dynamicViewModel.loadingVideo &&
+                    !dynamicViewModel.videoHasMore
+                ) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(SharedR.string.no_data),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
+
                 if (dynamicViewModel.loadingVideo) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Box(
@@ -200,7 +219,7 @@ fun DynamicsScreen(
                     }
                 }
 
-                if (!dynamicViewModel.videoHasMore) {
+                if (!dynamicViewModel.videoHasMore && dynamicViewModel.dynamicVideoList.isNotEmpty()) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Text(
                             text = "没有更多了捏",

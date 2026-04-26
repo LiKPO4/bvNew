@@ -164,4 +164,41 @@ class HistoryViewModel(
             }
         }
     }
+
+    fun clearHistory() {
+        if (deleting) return
+        deleting = true
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val success = historyRepository.clearHistory(
+                    preferApiType = Prefs.apiType
+                )
+                if (success) {
+                    withContext(Dispatchers.Main) {
+                        clearData()
+                        noMore = true
+                    }
+                    logger.fInfo { "Clear history success" }
+                    withContext(Dispatchers.Main) {
+                        BVApp.context.getString(R.string.history_clear_success)
+                            .toast(BVApp.context)
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        BVApp.context.getString(R.string.history_clear_failed)
+                            .toast(BVApp.context)
+                    }
+                }
+            }.onFailure {
+                logger.fWarn { "Clear history failed: ${it.stackTraceToString()}" }
+                withContext(Dispatchers.Main) {
+                    BVApp.context.getString(R.string.history_clear_failed)
+                        .toast(BVApp.context)
+                }
+            }
+            withContext(Dispatchers.Main) {
+                deleting = false
+            }
+        }
+    }
 }

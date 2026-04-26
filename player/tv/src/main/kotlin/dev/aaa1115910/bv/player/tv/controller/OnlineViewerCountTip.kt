@@ -59,7 +59,7 @@ fun OnlineViewerCountTip(
                 )
                 Text(
                     modifier = Modifier.padding(start = 2.dp),
-                    text = "$count 人正在看",
+                    text = "$count 人在看",
                     style = MaterialTheme.typography.titleMedium.copy(
                         color = color,
                         fontSize = 14.sp,

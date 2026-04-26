@@ -147,9 +147,9 @@ object GithubApi {
                 val revision =
                     runCatching { assetName.split("_")[1].toInt() }.getOrNull() ?: continue
 
-                if (revision <= currentVersionCode || assetName.contains(currentVersionName)) {
+                if (revision < currentVersionCode || assetName.contains(currentVersionName)) {
                     currentVersionInHistory =
-                        revision == currentVersionCode || assetName.contains(currentVersionName)
+                        revision == currentVersionCode && assetName.contains(currentVersionName)
                     break@outer
                 }
                 newerReleases.add(release)

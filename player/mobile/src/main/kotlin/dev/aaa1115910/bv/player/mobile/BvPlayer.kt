@@ -118,13 +118,18 @@ fun BvPlayer(
         bufferedPercentage = videoPlayer.bufferedPercentage
     }
 
+    val applyDanmakuConfig: (DanmakuConfig) -> Unit = { newConfig ->
+        danmakuConfig = newConfig
+        danmakuView.setConfig(newConfig)
+    }
+
     val initDanmakuConfig: () -> Unit = {
         val danmakuTypes = videoPlayerConfigData.currentDanmakuEnabledList
         val allowAll = danmakuTypes.contains(DanmakuType.All)
         val filterLevel = videoPlayerConfigData.currentDanmakuFilterLevel
         val factor = videoPlayerConfigData.currentDanmakuRollingDurationFactor
         val durationMultiplier = 2f - factor
-        danmakuConfig = danmakuConfig.copy(
+        applyDanmakuConfig(danmakuConfig.copy(
             enabled = videoPlayerConfigData.showDanmaku,
             textSizeScale = (videoPlayerConfigData.currentDanmakuScale * 100).toInt(),
             allowScroll = allowAll || danmakuTypes.contains(DanmakuType.Rolling),
@@ -132,27 +137,29 @@ fun BvPlayer(
             allowBottom = allowAll || danmakuTypes.contains(DanmakuType.Bottom),
             minLevel = filterLevel,
             durationMultiplier = durationMultiplier,
-        )
+            opacity = currentConfigData.currentDanmakuOpacity,
+            area = currentConfigData.currentDanmakuArea,
+        ))
     }
 
     val updateDanmakuConfigTypeFilter: () -> Unit = {
         val danmakuTypes = videoPlayerConfigData.currentDanmakuEnabledList
         val allowAll = danmakuTypes.contains(DanmakuType.All)
-        danmakuConfig = danmakuConfig.copy(
+        applyDanmakuConfig(danmakuConfig.copy(
             allowScroll = allowAll || danmakuTypes.contains(DanmakuType.Rolling),
             allowTop = allowAll || danmakuTypes.contains(DanmakuType.Top),
             allowBottom = allowAll || danmakuTypes.contains(DanmakuType.Bottom),
-        )
+        ))
     }
 
     val toggleDanmakuEnabled: (Boolean) -> Unit = { enabled ->
-        danmakuConfig = danmakuConfig.copy(enabled = enabled)
+        applyDanmakuConfig(danmakuConfig.copy(enabled = enabled))
     }
 
     val updateDanmakuConfig: () -> Unit = {
-        danmakuConfig = danmakuConfig.copy(
+        applyDanmakuConfig(danmakuConfig.copy(
             textSizeScale = (videoPlayerConfigData.currentDanmakuScale * 100).toInt(),
-        )
+        ))
     }
 
     val updateVideoAspectRatio: () -> Unit = {
@@ -338,12 +345,18 @@ fun BvPlayer(
                 onEnabledDanmakuTypesChange(enabledDanmakuTypes)
                 updateDanmakuConfigTypeFilter()
             },
-            onDanmakuOpacityChange = onDanmakuOpacityChange,
+            onDanmakuOpacityChange = {
+                onDanmakuOpacityChange(it)
+                applyDanmakuConfig(danmakuConfig.copy(opacity = it))
+            },
             onDanmakuScaleChange = { scale ->
                 onDanmakuScaleChange(scale)
-                updateDanmakuConfig()
+                applyDanmakuConfig(danmakuConfig.copy(textSizeScale = (scale * 100).toInt()))
             },
-            onDanmakuAreaChange = onDanmakuAreaChange,
+            onDanmakuAreaChange = {
+                onDanmakuAreaChange(it)
+                applyDanmakuConfig(danmakuConfig.copy(area = it))
+            },
             onPlayModeChange = onPlayModeChange,
             onPlayNewVideo = {
                 //if (!Prefs.incognitoMode) sendHeartbeat()
@@ -364,12 +377,7 @@ fun BvPlayer(
                         setPositionProvider { videoPlayer.currentPosition.coerceAtLeast(0L) }
                         setIsPlayingProvider { videoPlayer.isPlaying }
                         setPlaybackSpeedProvider { currentConfigData.currentVideoSpeed }
-                        setConfigProvider {
-                            danmakuConfig.copy(
-                                opacity = currentConfigData.currentDanmakuOpacity,
-                                area = currentConfigData.currentDanmakuArea,
-                            )
-                        }
+                        setConfig(danmakuConfig)
                     }
                 },
             )

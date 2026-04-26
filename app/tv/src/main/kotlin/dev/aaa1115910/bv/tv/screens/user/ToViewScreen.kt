@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -49,6 +51,7 @@ import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
 import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.tv.util.stableItemKey
+import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.repository.VideoInfoRepository
 import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.viewmodel.user.ToViewViewModel
@@ -60,7 +63,8 @@ import org.koin.compose.koinInject
 fun ToViewScreen(
     modifier: Modifier = Modifier,
     toViewViewModel: ToViewViewModel = koinViewModel(),
-    showPageTitle: Boolean = true
+    showPageTitle: Boolean = true,
+    topTabFocusRequester: FocusRequester? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -76,8 +80,10 @@ fun ToViewScreen(
 
     var deleteMode by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showClearConfirmDialog by remember { mutableStateOf(false) }
     var selectedVideo by remember { mutableStateOf<VideoCardData?>(null) }
     var selectedIndex by remember { mutableIntStateOf(0) }
+    var focusTopTabWhenListEmpty by remember { mutableStateOf(false) }
 
     val focusRequesters = remember { mutableMapOf<Int, FocusRequester>() }
     fun getFocusRequester(index: Int): FocusRequester {
@@ -88,6 +94,15 @@ fun ToViewScreen(
         if (toViewViewModel.histories.isEmpty()) {
             toViewViewModel.clearData()
             toViewViewModel.update()
+        }
+    }
+
+    LaunchedEffect(toViewViewModel.deleting, toViewViewModel.histories.size, focusTopTabWhenListEmpty) {
+        if (!focusTopTabWhenListEmpty || toViewViewModel.deleting) return@LaunchedEffect
+        focusTopTabWhenListEmpty = false
+        if (toViewViewModel.histories.isEmpty()) {
+            deleteMode = false
+            topTabFocusRequester?.requestFocus(scope)
         }
     }
 
@@ -206,11 +221,8 @@ fun ToViewScreen(
                             },
                             onLongClick = {
                                 if (deleteMode) {
-                                    val nextIndex = if (index < toViewViewModel.histories.size - 1) index + 1 else index - 1
-                                    if (nextIndex >= 0) runCatching { getFocusRequester(nextIndex).requestFocus() }
-                                    toViewViewModel.deleteToView(
-                                        avid = item.avid
-                                    )
+                                    selectedIndex = index
+                                    showClearConfirmDialog = true
                                 } else {
                                     UpInfoActivity.actionStart(
                                         context,
@@ -230,6 +242,20 @@ fun ToViewScreen(
                         )
                     }
                 }
+
+                if (toViewViewModel.histories.isEmpty() && toViewViewModel.noMore) {
+                    item(span = { GridItemSpan(4) }) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.no_data),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
             }
         }
         }
@@ -240,6 +266,9 @@ fun ToViewScreen(
             show = showDeleteConfirmDialog,
             videoTitle = selectedVideo!!.title,
             onConfirm = {
+                if (topTabFocusRequester != null) {
+                    focusTopTabWhenListEmpty = true
+                }
                 val nextIndex = if (selectedIndex < toViewViewModel.histories.size - 1) selectedIndex + 1 else selectedIndex - 1
                 if (nextIndex >= 0) runCatching { getFocusRequester(nextIndex).requestFocus() }
                 toViewViewModel.deleteToView(
@@ -254,6 +283,26 @@ fun ToViewScreen(
                     runCatching { getFocusRequester(selectedIndex).requestFocus() }
                 }
                 selectedVideo = null
+            }
+        )
+    }
+
+    if (showClearConfirmDialog) {
+        ClearToViewConfirmDialog(
+            show = showClearConfirmDialog,
+            onConfirm = {
+                if (topTabFocusRequester != null) {
+                    focusTopTabWhenListEmpty = true
+                }
+                toViewViewModel.clearToView()
+                deleteMode = false
+                showClearConfirmDialog = false
+            },
+            onDismiss = {
+                showClearConfirmDialog = false
+                scope.launch {
+                    runCatching { getFocusRequester(selectedIndex).requestFocus() }
+                }
             }
         )
     }
@@ -291,6 +340,62 @@ private fun DeleteToViewConfirmDialog(
         dismissButton = {
             OutlinedButton(
                 modifier = Modifier.focusRequester(focusRequester),
+                onClick = onDismiss
+            ) {
+                Text(text = stringResource(R.string.toview_delete_confirm_dialog_dismiss))
+            }
+        }
+    )
+}
+
+@Composable
+private fun ClearToViewConfirmDialog(
+    show: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+    var consumeInitialConfirmKeyUp by remember { mutableStateOf(false) }
+
+    fun handleInitialConfirmKeyUp(keyEvent: androidx.compose.ui.input.key.KeyEvent): Boolean {
+        if (!consumeInitialConfirmKeyUp) return false
+        val nativeKeyEvent = keyEvent.nativeKeyEvent
+        val isConfirmKey = nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+            nativeKeyEvent.keyCode == KeyEvent.KEYCODE_ENTER ||
+            nativeKeyEvent.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER
+        if (nativeKeyEvent.action == KeyEvent.ACTION_UP && isConfirmKey) {
+            consumeInitialConfirmKeyUp = false
+            return true
+        }
+        return false
+    }
+
+    LaunchedEffect(show) {
+        if (show) {
+            consumeInitialConfirmKeyUp = true
+            focusRequester.requestFocus()
+        }
+    }
+
+    TvAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.toview_clear_confirm_dialog_title)) },
+        text = {
+            Text(text = stringResource(R.string.toview_clear_confirm_dialog_text))
+        },
+        confirmButton = {
+            Button(
+                modifier = Modifier.onPreviewKeyEvent { handleInitialConfirmKeyUp(it) },
+                onClick = onConfirm
+            ) {
+                Text(text = stringResource(R.string.toview_delete_confirm_dialog_confirm))
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                modifier = Modifier
+                    .focusRequester(focusRequester)
+                    .onPreviewKeyEvent { handleInitialConfirmKeyUp(it) },
                 onClick = onDismiss
             ) {
                 Text(text = stringResource(R.string.toview_delete_confirm_dialog_dismiss))

@@ -38,12 +38,10 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
-import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
@@ -58,7 +56,6 @@ import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekThumbData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerVideoInfoData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerVideoShotData
 import dev.aaa1115910.bv.player.entity.PortraitVideoFixMode
-import dev.aaa1115910.bv.player.entity.PlayerLoadNextAction
 import dev.aaa1115910.bv.player.entity.PlayMode
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoListItemData
@@ -84,13 +81,13 @@ import dev.aaa1115910.bv.tv.component.CommentPanel
 import dev.aaa1115910.bv.tv.component.DescriptionPanel
 import dev.aaa1115910.bv.tv.component.buttons.FavoriteButton
 import dev.aaa1115910.bv.tv.component.buttons.LikeButton
+import dev.aaa1115910.bv.tv.component.buttons.ToViewButton
 import dev.aaa1115910.bv.tv.manager.FollowStateManager
 import dev.aaa1115910.bv.tv.manager.PlayedAidsCache
 import dev.aaa1115910.bv.tv.manager.VideoUserActionManager
 import dev.aaa1115910.bv.tv.manager.VideoUserActionManager.getStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import dev.aaa1115910.bv.tv.component.videocard.VideosRow
 import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.toast
 import dev.aaa1115910.bv.util.formatHourMinSec
@@ -99,6 +96,7 @@ import dev.aaa1115910.bv.viewmodel.VideoPlayerV3ViewModel
 import dev.aaa1115910.bv.tv.component.GeetestTvVerifyDialog
 import dev.aaa1115910.biliapi.http.BiliHttpApi
 import dev.aaa1115910.bv.player.entity.NextVideoStrategy
+import dev.aaa1115910.bv.tv.component.videocard.TabbedVideosPanel
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -247,7 +245,7 @@ fun VideoPlayerV3Screen(
                 viewerCountText = viewerCountText + "  ·  " + playerViewModel.liveOnlineCount
             }
         } else if (Prefs.showOnlineViewerCount > 0 && onlineViewerCount.isNotEmpty()) {
-            viewerCountText = "$onlineViewerCount 人正在看"
+            viewerCountText = "$onlineViewerCount 人在看"
         }
     }
 
@@ -328,7 +326,7 @@ fun VideoPlayerV3Screen(
             fromSeason = playerViewModel.fromSeason,
             showDanmaku = playerViewModel.showDanmaku,
             showRelatedVideos = playerViewModel.showRelatedVideos,
-            showNextVideoBtn = Prefs.playerNextVideoStrategyOrder.split(",").any { !it.startsWith("-") },
+            showNextVideoBtn = !(playerViewModel.currentPlayMode == PlayMode.SingleVideo || playerViewModel.currentPlayMode == PlayMode.SingleLoop || (playerViewModel.currentPlayMode == PlayMode.Custom && Prefs.playerNextVideoStrategyOrder.split(",").none { !it.startsWith("-") })),
             defaultStartPosition = Prefs.playerDefaultStartPosition.toPlayerType(),
             clipInfoList = playerViewModel.clipInfoList,
             skipPgcIntroOutro = Prefs.skipPgcIntroOutro,
@@ -437,7 +435,7 @@ fun VideoPlayerV3Screen(
 
                     // 找出预加载列表的下一个
                     val preloaded = playerViewModel.preloadedVideoList
-                    val preloadIndex = preloaded.indexOfFirst { it.avid == playerViewModel.currentAid }
+                    val preloadIndex = playerViewModel.resolveLastPreloadedVideoIndex()
                     val nextPreloaded = if (preloadIndex >= 0 && preloadIndex + 1 < preloaded.size) {
                         preloaded[preloadIndex + 1]
                     } else null
@@ -481,9 +479,15 @@ fun VideoPlayerV3Screen(
                             logger.info { "PlayMode.SingleLoop: should not reach onLoadNextVideo" }
                         }
                         PlayMode.ListOrder -> {
+                            if (nextPreloaded != null) {
+                                playerViewModel.resolveLastPreloadedVideoIndex(nextPreloaded.avid)
+                            }
                             nextVideo = nextPreloaded
                         }
                         PlayMode.ListOrderReverse -> {
+                            if (prevPreloaded != null) {
+                                playerViewModel.resolveLastPreloadedVideoIndex(prevPreloaded.avid)
+                            }
                             nextVideo = prevPreloaded
                         }
                         PlayMode.PartAndEpisode -> {
@@ -758,6 +762,7 @@ fun VideoPlayerV3Screen(
                         val likeFocus = focusMap[UserActionKey.Like]
                         val favFocus = focusMap[UserActionKey.Favorite]
                         val coinFocus = focusMap[UserActionKey.Coin]
+                        val toViewFocus = focusMap[UserActionKey.ToView]
 
                         Row(
                             modifier = modifier
@@ -895,6 +900,42 @@ fun VideoPlayerV3Screen(
                                     }
                                 }
                             )
+                            ToViewButton(
+                                modifier = Modifier
+                                    .height(26.dp)
+                                    .onFocusChanged { if (it.isFocused) onFocus(UserActionKey.ToView) }
+                                    .then(toViewFocus?.let { Modifier.focusRequester(it) } ?: Modifier),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                colors = ButtonDefaults.colors(
+                                    containerColor = Color.Transparent,
+                                    focusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                    focusedContentColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                border = ButtonDefaults.border(
+                                    border = Border(
+                                        border = BorderStroke(
+                                            width = 1.dp,
+                                            color = Color.Transparent
+                                        )
+                                    ),
+                                    focusedBorder = Border(
+                                        border = BorderStroke(
+                                            width = 1.dp,
+                                            color = Color.White.copy(alpha = 0.45f)
+                                        )
+                                    )
+                                ),
+                                onAddToView = {
+                                    scope.launch {
+                                        val success = VideoUserActionManager.addToView(playerViewModel.currentAid, Prefs.uid)
+                                        if (success) {
+                                            "已添加到稍后再看".toast(context)
+                                        } else {
+                                            "添加到稍后再看失败".toast(context)
+                                        }
+                                    }
+                                }
+                            )
                         }
                     }
                 }
@@ -919,19 +960,25 @@ fun VideoPlayerV3Screen(
                 exit = shrinkVertically(),
                 label = "RelatedVideosForPlayer"
             ) {
-                dev.aaa1115910.bv.tv.component.videocard.TabbedVideosPanel(
+                TabbedVideosPanel(
                     relatedVideos = playerViewModel.relatedVideos,
                     preloadedVideos = playerViewModel.preloadedVideoList,
                     currentAid = playerViewModel.currentAid,
                     focusRequester = relatedVideosFocusRequester,
-                    onOpenSeasonInfo = { videoData ->
+                    onOpenSeasonInfo = { videoData, fromUGCList ->
+                        if (fromUGCList) {
+                            playerViewModel.resolveLastPreloadedVideoIndex(videoData.avid)
+                        }
                         SeasonInfoActivity.actionStart(
                             context = context,
                             epId = videoData.epId!!,
                             proxyArea = ProxyArea.checkProxyArea(videoData.title)
                         )
                     },
-                    onOpenVideoInfo = { videoData ->
+                    onOpenVideoInfo = { videoData, fromUGCList ->
+                        if (fromUGCList) {
+                            playerViewModel.resolveLastPreloadedVideoIndex(videoData.avid)
+                        }
                         VideoInfoActivity.actionStart(
                             context = context,
                             aid = videoData.avid,

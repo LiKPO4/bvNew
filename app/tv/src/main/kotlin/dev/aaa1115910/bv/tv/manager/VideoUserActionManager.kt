@@ -4,6 +4,7 @@ import dev.aaa1115910.biliapi.entity.FavoriteFolderMetadata
 import dev.aaa1115910.biliapi.repositories.CoinRepository
 import dev.aaa1115910.biliapi.repositories.FavoriteRepository
 import dev.aaa1115910.biliapi.repositories.LikeRepository
+import dev.aaa1115910.biliapi.repositories.ToViewRepository
 import dev.aaa1115910.bv.util.Prefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -124,6 +125,21 @@ object VideoUserActionManager {
             withContext(Dispatchers.IO) { coinRepository.addVideoCoin(aid = aid) }
             ensure(aid, uid).value = ensure(aid, uid).value.copy(coin = true)
             true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    suspend fun addToView(aid: Long, uid: Long = Prefs.uid): Boolean {
+        if (aid <= 0 || uid <= 0) return false
+        val toViewRepository: ToViewRepository = get(ToViewRepository::class.java)
+        return try {
+            withContext(Dispatchers.IO) {
+                toViewRepository.addToView(
+                    avid = aid,
+                    preferApiType = Prefs.apiType
+                )
+            }
         } catch (_: Exception) {
             false
         }

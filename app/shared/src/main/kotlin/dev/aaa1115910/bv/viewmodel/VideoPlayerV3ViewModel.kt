@@ -26,7 +26,6 @@ import dev.aaa1115910.biliapi.http.BiliHttpApi
 import dev.aaa1115910.biliapi.http.BiliLiveHttpApi
 import dev.aaa1115910.biliapi.http.entity.VVoucherException
 import dev.aaa1115910.biliapi.http.entity.live.DanmakuEvent
-import dev.aaa1115910.biliapi.http.entity.live.LiveEvent
 import dev.aaa1115910.biliapi.http.entity.live.OnlineRankCountEvent
 import dev.aaa1115910.biliapi.http.entity.live.PopularityChangeEvent
 import dev.aaa1115910.biliapi.repositories.VideoPlayRepository
@@ -35,7 +34,6 @@ import dev.aaa1115910.bilisubtitle.SubtitleParser
 import dev.aaa1115910.bilisubtitle.entity.SubtitleItem
 import dev.aaa1115910.bv.BVApp
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
-
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.DanmakuType
@@ -74,6 +72,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.annotation.KoinViewModel
 import dev.aaa1115910.biliapi.repositories.AuthRepository
+import dev.aaa1115910.bv.player.entity.NextVideoStrategy
 import java.net.URI
 
 @KoinViewModel
@@ -160,6 +159,10 @@ class VideoPlayerV3ViewModel(
     val relatedVideos get() =  videoInfoRepository.relatedVideos
     val videoDescription get() = videoInfoRepository.description
     val videoTags get() = videoInfoRepository.tags
+
+    fun resolveLastPreloadedVideoIndex(avid: Long = currentAid): Int {
+        return videoInfoRepository.resolveLastPreloadedVideoIndex(avid)
+    }
 
     var currentVideoHeight by mutableIntStateOf(0)
     var currentVideoWidth by mutableIntStateOf(0)
@@ -416,14 +419,14 @@ class VideoPlayerV3ViewModel(
         epid?.let { this.epid = it }
         seasonId?.let { this.seasonId = it }
         if (fromSeason && currentPlayMode in listOf(PlayMode.ListOrder, PlayMode.ListOrderReverse, PlayMode.RelatedVideo)) {
-            currentPlayMode = PlayMode.SingleVideo
+            currentPlayMode = PlayMode.PartAndEpisode
         }
         if (!fromSeason) {
             if (currentPlayMode in listOf(PlayMode.ListOrder, PlayMode.ListOrderReverse) && preloadedVideoList.isEmpty()) {
-                currentPlayMode = PlayMode.SingleVideo
+                currentPlayMode = PlayMode.PartAndEpisode
             }
             if (currentPlayMode == PlayMode.RelatedVideo && relatedVideos.isEmpty()) {
-                currentPlayMode = PlayMode.SingleVideo
+                currentPlayMode = PlayMode.PartAndEpisode
             }
         }
         cancelPlayUrlAutoRefresh("new_media")
@@ -1316,34 +1319,35 @@ class VideoPlayerV3ViewModel(
         }
     }
 
+    // 这个方法当时只适配了移动端逻辑，TV端比较复杂，另外写了一份
     fun playNextVideo() {
         logger.fInfo { "Video finished" }
         when (currentPlayMode) {
             PlayMode.Custom -> {
                 logger.info { "Play mode: $currentPlayMode, using strategy order" }
-                val validOrdinals = dev.aaa1115910.bv.player.entity.NextVideoStrategy.entries.map { it.ordinalValue }.toSet()
-                val strategies = dev.aaa1115910.bv.util.Prefs.playerNextVideoStrategyOrder.split(",")
+                val validOrdinals = NextVideoStrategy.entries.map { it.ordinalValue }.toSet()
+                val strategies = Prefs.playerNextVideoStrategyOrder.split(",")
                     .filter { !it.startsWith("-") }
                     .mapNotNull {
                         val id = it.toIntOrNull() ?: return@mapNotNull null
                         if (id !in validOrdinals) return@mapNotNull null
-                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.fromOrdinal(id)
+                        NextVideoStrategy.fromOrdinal(id)
                     }
                 for (strategy in strategies) {
                     when (strategy) {
-                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.SingleVideo -> {
+                        NextVideoStrategy.SingleVideo -> {
                             logger.info { "Strategy SingleVideo: stop" }
                             return
                         }
-                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.PartAndEpisode,
-                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.PreloadedVideoList -> {
-                            if (hasNextVideoInList()) { playNextVideoInList(); return }
+                        NextVideoStrategy.PartAndEpisode,
+                        NextVideoStrategy.PreloadedVideoList -> {
+                            if (playNextVideoInList()) return
                         }
-                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.PartAndEpisodeReverse,
-                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.PreloadedVideoListReverse -> {
-                            if (hasPrevVideoInList()) { playPrevVideoInList(); return }
+                        NextVideoStrategy.PartAndEpisodeReverse,
+                        NextVideoStrategy.PreloadedVideoListReverse -> {
+                            if (playPrevVideoInList()) return
                         }
-                        dev.aaa1115910.bv.player.entity.NextVideoStrategy.RelatedVideo -> {
+                        NextVideoStrategy.RelatedVideo -> {
                             // handled by screen
                             logger.info { "Strategy RelatedVideo: handled by screen" }
                         }
@@ -1387,21 +1391,7 @@ class VideoPlayerV3ViewModel(
         }
     }
 
-    private fun hasNextVideoInList(): Boolean {
-        val currentIndex = availableVideoList.indexOfFirst {
-            when (it) { is VideoListItemData -> it.cid == currentCid; else -> false }
-        }
-        return currentIndex >= 0 && currentIndex + 1 < availableVideoList.size
-    }
-
-    private fun hasPrevVideoInList(): Boolean {
-        val currentIndex = availableVideoList.indexOfFirst {
-            when (it) { is VideoListItemData -> it.cid == currentCid; else -> false }
-        }
-        return currentIndex > 0
-    }
-
-    private fun playNextVideoInList(loop: Boolean = false) {
+    private fun playNextVideoInList(loop: Boolean = false): Boolean {
         val currentIndex = availableVideoList
             .indexOfFirst {
                 when (it) {
@@ -1425,6 +1415,7 @@ class VideoPlayerV3ViewModel(
                 seasonId = nextVideo.seasonId,
                 continuePlayNext = true
             )
+            return true
         } else if (loop) {
             //loop to first
             val firstVideo =
@@ -1438,10 +1429,12 @@ class VideoPlayerV3ViewModel(
                 seasonId = firstVideo.seasonId,
                 continuePlayNext = true
             )
+            return true
         }
+        return false
     }
 
-    private fun playPrevVideoInList() {
+    private fun playPrevVideoInList(): Boolean {
         val currentIndex = availableVideoList
             .indexOfFirst {
                 when (it) {
@@ -1463,8 +1456,10 @@ class VideoPlayerV3ViewModel(
                     seasonId = prevVideo.seasonId,
                     continuePlayNext = true
                 )
+                return true
             }
         }
+        return false
     }
 
     /**

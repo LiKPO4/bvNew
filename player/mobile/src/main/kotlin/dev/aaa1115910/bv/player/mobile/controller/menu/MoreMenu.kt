@@ -27,7 +27,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.PlayMode
+import dev.aaa1115910.bv.player.entity.PlayMode.ListOrder
+import dev.aaa1115910.bv.player.entity.PlayMode.ListOrderReverse
+import dev.aaa1115910.bv.player.entity.PlayMode.SingleLoop
+import dev.aaa1115910.bv.player.entity.PlayMode.SingleVideo
 import dev.aaa1115910.bv.player.mobile.MaterialDarkTheme
+
+private val MobileSupportedPlayModes = listOf(
+    SingleVideo,
+    SingleLoop,
+    ListOrder,
+    ListOrderReverse
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +104,7 @@ fun PlayModeContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            PlayMode.entries.forEach {
+            MobileSupportedPlayModes.forEach {
                 FilterChip(
                     modifier = modifier,
                     label = { Text(text = it.getDisplayName(context)) },

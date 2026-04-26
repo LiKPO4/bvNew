@@ -152,4 +152,41 @@ class ToViewViewModel(
             }
         }
     }
+
+    fun clearToView() {
+        if (deleting) return
+        deleting = true
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val success = ToViewRepository.clearToView(
+                    preferApiType = Prefs.apiType
+                )
+                if (success) {
+                    withContext(Dispatchers.Main) {
+                        clearData()
+                        noMore = true
+                    }
+                    logger.fInfo { "Clear toview success" }
+                    withContext(Dispatchers.Main) {
+                        BVApp.context.getString(R.string.toview_clear_success)
+                            .toast(BVApp.context)
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        BVApp.context.getString(R.string.toview_clear_failed)
+                            .toast(BVApp.context)
+                    }
+                }
+            }.onFailure {
+                logger.fWarn { "Clear toview failed: ${it.stackTraceToString()}" }
+                withContext(Dispatchers.Main) {
+                    BVApp.context.getString(R.string.toview_clear_failed)
+                        .toast(BVApp.context)
+                }
+            }
+            withContext(Dispatchers.Main) {
+                deleting = false
+            }
+        }
+    }
 }

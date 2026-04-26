@@ -211,7 +211,7 @@ private fun VideoListCardItem(
     Surface(
         modifier = modifier.onFocusChanged { hasFocus = it.hasFocus },
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.075f),
+            containerColor = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.09f),
             focusedContainerColor = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.1f)
         ),
         scale = ClickableSurfaceDefaults.scale(scale = 1f, focusedScale = 1f),
@@ -252,7 +252,7 @@ private fun VideoListCardItem(
                     modifier = Modifier
                         .fillMaxHeight()
                         .weight(1f)
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(

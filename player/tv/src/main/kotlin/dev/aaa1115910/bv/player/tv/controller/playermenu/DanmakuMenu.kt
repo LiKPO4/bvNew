@@ -71,7 +71,7 @@ fun DanmakuMenuList(
                     modifier = menuItemsModifier,
                     value = videoPlayerConfigData.currentDanmakuRollingDurationFactor,
                     step = 0.1f,
-                    range = 0.5f..1.5f,
+                    range = 0.2f..1.8f,
                     text = "${(videoPlayerConfigData.currentDanmakuRollingDurationFactor * 100).roundToInt() / 100f}x",
                     onValueChange = onDanmakuRollingDurationFactorChange,
                     onFocusBackToParent = { onFocusStateChange(MenuFocusState.Menu) }

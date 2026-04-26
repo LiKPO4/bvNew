@@ -614,7 +614,7 @@ object PrefKeys {
     val prefUgcVideoPlayerHistoryCountKey = intPreferencesKey("ugc_video_player_history_count")
     val prefDefaultDanmakuFilterLevelKey = intPreferencesKey("default_danmaku_filter_level")
     val prefDefaultLiveDanmakuFilterLevelKey = intPreferencesKey("default_live_danmaku_filter_level")
-    val prefPlayerNextVideoStrategyOrderKey = stringPreferencesKey("player_next_video_strategy_order")
+    val prefPlayerNextVideoStrategyOrderKey = stringPreferencesKey("player_next_video_strategy_order_v2")
     val prefPlayerLongPressActionKey = intPreferencesKey("player_long_press_action")
     val prefPlayerLongPressSpeedKey = floatPreferencesKey("player_long_press_speed")
 
@@ -680,7 +680,7 @@ object PrefKeys {
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
     val prefInterfaceModeRequest = PreferenceRequest(prefInterfaceModeKey, InterfaceMode.Auto.ordinal)
     val prefNavSwitchModeRequest = PreferenceRequest(prefNavSwitchModeKey, NavSwitchMode.Auto.ordinal)
-    val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.SingleVideo.ordinal)
+    val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.PartAndEpisode.ordinal)
     val prefDefaultHomeTabRequest = PreferenceRequest(prefDefaultHomeTabKey, 0)
     val prefPortraitVideoFixModeRequest = PreferenceRequest(prefPortraitVideoFixModeKey, 0)
     val prefPlayerShowDebugInfoRequest = PreferenceRequest(prefPlayerShowDebugInfoKey, false)
@@ -713,7 +713,7 @@ object PrefKeys {
     val prefDefaultLiveDanmakuFilterLevelRequest = PreferenceRequest(prefDefaultLiveDanmakuFilterLevelKey, 0)
     val prefPlayerNextVideoStrategyOrderRequest = PreferenceRequest(
         key = prefPlayerNextVideoStrategyOrderKey,
-        defaultValue = "3"
+        defaultValue = "2,-3,4,-5,6"
     )
     val prefPlayerLongPressActionRequest = PreferenceRequest(prefPlayerLongPressActionKey, 1)
     val prefPlayerLongPressSpeedRequest = PreferenceRequest(prefPlayerLongPressSpeedKey, 2f)

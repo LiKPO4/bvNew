@@ -51,6 +51,7 @@
 
     <string name="like_button_text">点赞</string>
     <string name="coin_button_text">投币</string>
+    <string name="toview_button_text">稍后再看</string>
 
     <string name="favorite_button_text">收藏</string>
     <string name="favorite_dialog_title">选择收藏夹</string>
@@ -98,7 +99,7 @@
     <string name="logout_dialog_text">是否登出账号 %1$s</string>
     <string name="logout_dialog_title">登出确认</string>
 
-    <string name="no_data">无可用数据</string>
+    <string name="no_data">暂无数据</string>
 
     <string name="pgc_home_button_unknown">占位</string>
     <string name="pgc_index_filter_area">地区</string>
@@ -321,12 +322,20 @@
     <string name="toview_delete_confirm_dialog_dismiss">取消</string>
     <string name="toview_delete_success">删除成功</string>
     <string name="toview_delete_failed">删除失败</string>
+    <string name="toview_clear_confirm_dialog_title">清空稍后再看</string>
+    <string name="toview_clear_confirm_dialog_text">确认要清空列表吗？</string>
+    <string name="toview_clear_success">清空成功</string>
+    <string name="toview_clear_failed">清空失败</string>
     <string name="history_delete_confirm_dialog_title">删除历史记录</string>
     <string name="history_delete_confirm_dialog_text">确认删除「%1$s」吗？</string>
     <string name="history_delete_confirm_dialog_confirm">确认</string>
     <string name="history_delete_confirm_dialog_dismiss">取消</string>
     <string name="history_delete_success">删除成功</string>
     <string name="history_delete_failed">删除失败</string>
+    <string name="history_clear_confirm_dialog_title">清空历史记录</string>
+    <string name="history_clear_confirm_dialog_text">确认要清空列表吗？</string>
+    <string name="history_clear_success">清空成功</string>
+    <string name="history_clear_failed">清空失败</string>
     <string name="favorite_delete_confirm_dialog_title">取消收藏</string>
     <string name="favorite_delete_confirm_dialog_text">确认取消收藏「%1$s」吗？</string>
     <string name="favorite_delete_confirm_dialog_confirm">确认</string>
