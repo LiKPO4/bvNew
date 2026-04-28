@@ -7,6 +7,13 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 
 data class UgcItem(
     val aid: Long,
@@ -20,6 +27,7 @@ data class UgcItem(
     val danmaku: Int,
     val duration: Int,
     val idx: Int = -1,
+    val isInteractive: Boolean = false,
     val pubTime: String? = null,
 ) {
     companion object {
@@ -66,6 +74,7 @@ data class UgcItem(
                 play = rcmdItem.stat?.view ?: -1L,
                 danmaku = rcmdItem.stat?.danmaku ?: -1,
                 duration = rcmdItem.duration,
+                isInteractive = rcmdItem.avFeature.resolveInteractiveFlag(),
                 pubTime = rcmdItem.pubdate.smartDate
             )
 
@@ -80,6 +89,7 @@ data class UgcItem(
                 cover = videoInfo.pic,
                 play = videoInfo.stat.view,
                 danmaku = videoInfo.stat.danmaku,
+                isInteractive = videoInfo.isStory || videoInfo.rights.isSteinGate == 1,
                 pubTime = videoInfo.pubdate.smartDate
             )
 
@@ -204,3 +214,34 @@ fun Long.toSmartDate(timeZone: TimeZone = TimeZone.getDefault()): String? {
 
 val Int.smartDate: String?
     get() = this.toLong().toSmartDate()
+
+private fun JsonElement?.resolveInteractiveFlag(): Boolean {
+    return when (this) {
+        is JsonObject -> this.any { (key, value) ->
+            if (key in interactiveFlagKeys) {
+                value.isTruthy()
+            } else {
+                value.resolveInteractiveFlag()
+            }
+        }
+
+        is JsonArray -> this.any { it.resolveInteractiveFlag() }
+        else -> false
+    }
+}
+
+private fun JsonElement.isTruthy(): Boolean {
+    return when (this) {
+        is JsonPrimitive -> booleanOrNull == true || intOrNull == 1 || contentOrNull == "1"
+        else -> false
+    }
+}
+
+private val interactiveFlagKeys = setOf(
+    "is_story",
+    "is_steins",
+    "is_steins_gate",
+    "isStory",
+    "isSteins",
+    "isSteinGate"
+)

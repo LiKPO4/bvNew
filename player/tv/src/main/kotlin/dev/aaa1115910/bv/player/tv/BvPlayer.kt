@@ -126,6 +126,7 @@ fun BvPlayer(
     onPlayModeChange: (PlayMode) -> Unit,
     onDebugInfoChange: (Boolean) -> Unit = {},
     onToggleRelatedVideos: (Boolean) -> Unit = {},
+    autoOpenPlayListOnVideoEnd: Boolean = false,
     onOpenUpSpace: () -> Unit = {},
     onShowDanmakuChange: (Boolean) -> Unit = {},
     onRefreshVideo: () -> Unit = {},
@@ -174,6 +175,7 @@ fun BvPlayer(
     var currentPlaySpeed by remember { mutableFloatStateOf(videoPlayerConfigData.currentVideoSpeed) }
     var aspectRatioValue by remember { mutableFloatStateOf(16f / 9f) }
     var lastPlayed by remember { mutableLongStateOf(0L) }
+    var openPlayListRequestToken by remember { mutableLongStateOf(0L) }
     var defaultAspectRatio by remember { mutableFloatStateOf(16 / 9f) }
     var showInfoProvider: () -> Boolean by remember { mutableStateOf({ false }) }
     val lastHeartbeatReportAtMs = remember { java.util.concurrent.atomic.AtomicLong(0L) }
@@ -452,7 +454,11 @@ fun BvPlayer(
                 isPlaying = false
                 if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat(scope, true)
                 if (!showInfoProvider()) {
-                    onLoadNextVideo(false)
+                    if (autoOpenPlayListOnVideoEnd) {
+                        openPlayListRequestToken = System.currentTimeMillis()
+                    } else {
+                        onLoadNextVideo(false)
+                    }
                 } else {
                     logger.info { "Skip auto next because info panel visible" }
                 }
@@ -670,6 +676,18 @@ fun BvPlayer(
                 videoPlayer.seekTo(it)
                 danmakuView.notifySeek(it)
             },
+            onSeekToVideoEnd = {
+                videoPlayer.pause()
+                scope.launch(Dispatchers.Main) {
+                    isPlaying = false
+                    if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat(scope, true)
+                    if (autoOpenPlayListOnVideoEnd) {
+                        openPlayListRequestToken = System.currentTimeMillis()
+                    } else {
+                        onLoadNextVideo(true)
+                    }
+                }
+            },
             onBackToHistory = {
                 val time = if (videoPlayerConfigData.defaultStartPosition == DefaultStartPosition.History) {
                     0L
@@ -840,6 +858,7 @@ fun BvPlayer(
             },
             userActionContent = userActionContent,
             onLoadNextVideo = onLoadNextVideo,
+            openPlayListRequestToken = openPlayListRequestToken,
             onShowComment = onShowComment,
             onShowDescription = onShowDescription
         ) {

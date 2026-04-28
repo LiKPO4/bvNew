@@ -58,6 +58,7 @@ import dev.aaa1115910.bv.player.entity.LocalVideoPlayerVideoShotData
 import dev.aaa1115910.bv.player.entity.PortraitVideoFixMode
 import dev.aaa1115910.bv.player.entity.PlayMode
 import dev.aaa1115910.bv.player.entity.Resolution
+import dev.aaa1115910.bv.player.entity.VideoListInteractiveNode
 import dev.aaa1115910.bv.player.entity.VideoListItemData
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.player.entity.VideoPlayerConfigData
@@ -79,6 +80,7 @@ import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.component.buttons.CoinButton
 import dev.aaa1115910.bv.tv.component.CommentPanel
 import dev.aaa1115910.bv.tv.component.DescriptionPanel
+import dev.aaa1115910.bv.tv.component.InteractiveOptionDialog
 import dev.aaa1115910.bv.tv.component.buttons.FavoriteButton
 import dev.aaa1115910.bv.tv.component.buttons.LikeButton
 import dev.aaa1115910.bv.tv.component.buttons.ToViewButton
@@ -254,6 +256,13 @@ fun VideoPlayerV3Screen(
         playerViewModel.showRelatedVideos = false
     }
 
+    val exitPlayer = {
+        playerViewModel.dismissInteractiveOptionDialog()
+        Prefs.currentPlaySpeed = Prefs.defaultPlaySpeed
+        PlayedAidsCache.clear()
+        (context as Activity).finish()
+    }
+
     CompositionLocalProvider(
         LocalVideoPlayerSeekThumbData provides VideoPlayerSeekThumbData(
             idleIcon = playerViewModel.playerIconIdle,
@@ -389,6 +398,7 @@ fun VideoPlayerV3Screen(
                 onToggleRelatedVideos = { state ->
                     playerViewModel.showRelatedVideos = if (playerViewModel.relatedVideos.isNotEmpty() || playerViewModel.preloadedVideoList.isNotEmpty()) state else false
                 },
+                autoOpenPlayListOnVideoEnd = false,
                 onSendHeartbeat = playerViewModel::uploadHistory,
                 onClearBackToHistoryData = { playerViewModel.lastPlayed = 0 },
                 onLoadNextVideo = { immediate ->
@@ -399,6 +409,11 @@ fun VideoPlayerV3Screen(
 
                     if (showCommentPanel) {
                         logger.info { "Comment panel is shown, skip auto action" }
+                        return@BvPlayer
+                    }
+
+                    if (playerViewModel.isInteractivePlayback) {
+                        playerViewModel.requestInteractiveOptionDialog()
                         return@BvPlayer
                     }
 
@@ -582,20 +597,17 @@ fun VideoPlayerV3Screen(
                     }
                     // 什么都不做
                 },
-                onExit = {
-                    Prefs.currentPlaySpeed = Prefs.defaultPlaySpeed
-                    // 退出时清空播放缓存
-                    PlayedAidsCache.clear()
-                    (context as Activity).finish()
-                },
+                onExit = exitPlayer,
                 onLoadNewVideo = { videoListItem ->
                     when (videoListItem) {
                         is VideoListItemData -> {
                             // 手动选择新视频时也标记播放
                             PlayedAidsCache.markPlayed(videoListItem.aid)
-                            playerViewModel.title = videoListItem.title
-                            playerViewModel.partTitle = videoListItem.partTitle
-                            if (videoListItem.seasonId == null && playerViewModel.currentAid != videoListItem.aid) {
+                            if (videoListItem is VideoListInteractiveNode) {
+                                playerViewModel.playInteractiveOption(videoListItem)
+                            } else if (videoListItem.seasonId == null && playerViewModel.currentAid != videoListItem.aid) {
+                                playerViewModel.title = videoListItem.title
+                                playerViewModel.partTitle = videoListItem.partTitle
                                 VideoInfoActivity.actionStart(
                                     context = context,
                                     aid = videoListItem.aid,
@@ -603,6 +615,8 @@ fun VideoPlayerV3Screen(
                                     fromPlayer = true
                                 )
                             } else {
+                                playerViewModel.title = videoListItem.title
+                                playerViewModel.partTitle = videoListItem.partTitle
                                 playerViewModel.loadPlayUrl(
                                     avid = videoListItem.aid,
                                     cid = videoListItem.cid!!,
@@ -950,6 +964,12 @@ fun VideoPlayerV3Screen(
                     align = Alignment.BottomEnd
                 )
             }
+
+            InteractivePlaybackDialogHost(
+                playerViewModel = playerViewModel,
+                onExit = exitPlayer
+            )
+
             // 推荐视频 / 视频列表
             AnimatedVisibility(
                 modifier = Modifier
@@ -1044,4 +1064,29 @@ fun VideoPlayerV3Screen(
             }
         }
     }
+}
+
+@Composable
+private fun InteractivePlaybackDialogHost(
+    playerViewModel: VideoPlayerV3ViewModel,
+    onExit: () -> Unit,
+) {
+    val showInteractiveOptionDialog = playerViewModel.showInteractiveOptionDialog
+    val interactiveOptions = playerViewModel.interactiveOptions
+    val dismissDialog = playerViewModel::dismissInteractiveOptionDialog
+
+    BackHandler(enabled = showInteractiveOptionDialog) {
+        dismissDialog()
+    }
+
+    InteractiveOptionDialog(
+        show = showInteractiveOptionDialog,
+        options = interactiveOptions,
+        onSelectOption = { option ->
+            PlayedAidsCache.markPlayed(option.aid)
+            playerViewModel.playInteractiveOption(option)
+        },
+        onDismiss = dismissDialog,
+        onExit = onExit
+    )
 }

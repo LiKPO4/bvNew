@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -108,7 +111,7 @@ fun SmallVideoCard(
                 play = data.playString,
                 danmaku = data.danmakuString,
                 time = data.timeString,
-                badge = "${if(data.isChargingArc) "⚡" else ""}${if(data.badgeText.isEmpty() && data.isChargingArc) "充电专属" else data.badgeText}"
+                badges = data.coverBadges
             )
             Spacer(modifier = Modifier.height(8.dp))
             CardInfo(
@@ -183,7 +186,7 @@ fun CardCover(
     play: String,
     danmaku: String,
     time: String,
-    badge: String = ""
+    badges: List<String> = emptyList()
 ) {
     BoxWithConstraints(
         modifier = modifier,
@@ -199,21 +202,54 @@ fun CardCover(
             contentDescription = null,
             contentScale = ContentScale.Crop
         )
-        // 封面与徽章叠放，徽章绝对定位在右上角
-        if (badge.isNotEmpty()) {
-            Text(
+        if (badges.isNotEmpty()) {
+            Column(
                 modifier = Modifier
                     .padding(5.dp)
-                    .align(Alignment.TopEnd)
-                    .background(
-                        color = Color.Black.copy(0.3f),
-                        shape = MaterialTheme.shapes.extraSmall
-                    )
-                    .padding(vertical = 1.dp, horizontal = 2.dp),
-                text = badge,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White
-            )
+                    .align(Alignment.TopEnd),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                badges.forEach { badge ->
+                    if (badge == "互动视频") {
+                        Row(
+                            modifier = Modifier
+                                .background(
+                                    color = Color.Black.copy(0.3f),
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                                .padding(vertical = 1.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.PlayCircle,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                            Text(
+                                text = badge,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                        }
+                    } else {
+                        Text(
+                            modifier = Modifier
+                                .background(
+                                    color = Color.Black.copy(0.3f),
+                                    shape = MaterialTheme.shapes.extraSmall
+                                )
+                                .padding(vertical = 1.dp, horizontal = 2.dp),
+                            text = badge,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
         }
         // 只有需要显示时才创建阴影和信息组件
         if (showInfo) {
@@ -301,6 +337,7 @@ fun SmallVideoCardWithoutFocusPreview() {
         danmaku = 666,
         time = 2333 * 1000,
         pubTime = "3小时前",
+        isInteractive = true,
         isChargingArc = true
     )
     BVTheme {

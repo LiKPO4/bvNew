@@ -40,6 +40,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Done
+import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.SliderDefaults
@@ -869,6 +870,68 @@ fun VideoInfoScreen(
                             commentButtonFocusRequester = commentButtonFocusRequester
                         )
                     }
+                    if (videoDetailViewModel.videoDetail?.interactiveNodes?.isNotEmpty() == true) {
+                        item {
+                            val interactivePages = remember(
+                                videoDetailViewModel.videoDetail?.interactiveNodes,
+                                videoDetailViewModel.videoDetail?.pages
+                            ) {
+                                val fallbackDimension = videoDetailViewModel.videoDetail?.pages?.firstOrNull()?.dimension
+                                    ?: Dimension(0, 0)
+                                videoDetailViewModel.videoDetail?.interactiveNodes
+                                    ?.mapIndexed { index, node ->
+                                        VideoPage(
+                                            cid = node.cid,
+                                            index = index + 1,
+                                            title = node.title.ifBlank { "未命名分支" },
+                                            duration = 0,
+                                            dimension = fallbackDimension
+                                        )
+                                    }
+                                    ?: emptyList()
+                            }
+                            VideoPartRow(
+                                pages = interactivePages,
+                                lastPlayedCid = lastPlayedCid,
+                                lastPlayedTime = lastPlayedTime,
+                                enablePartListDialog = interactivePages.size > 5,
+                                titleText = "互动分支",
+                                dialogTitle = "互动分支列表",
+                                onClick = { cid ->
+                                    val videoDetail = videoDetailViewModel.videoDetail ?: return@VideoPartRow
+                                    val selectedNode = videoDetail.interactiveNodes.firstOrNull { it.cid == cid }
+                                    logger.fInfo { "Click interactive branch: [av:${videoDetail.aid}, bv:${videoDetail.bvid}, cid:$cid]" }
+                                    launchPlayerActivity(
+                                        context = context,
+                                        avid = videoDetail.aid,
+                                        cid = cid,
+                                        title = videoDetail.title,
+                                        partTitle = interactivePages.find { it.cid == cid }?.title.orEmpty(),
+                                        played = if (cid == lastPlayedCid) {
+                                            lastPlayedTime * 1000
+                                        } else {
+                                            selectedNode?.startPos?.times(1000) ?: 0
+                                        },
+                                        fromSeason = false,
+                                        isVerticalVideo = videoDetail.pages.firstOrNull { it.cid == cid }?.dimension?.isVertical
+                                            ?: videoDetail.pages.firstOrNull()?.dimension?.isVertical
+                                            ?: false,
+                                        playerIconIdle = videoDetail.playerIcon?.idle ?: "",
+                                        playerIconMoving = videoDetail.playerIcon?.moving ?: "",
+                                        play = videoDetail.stat.view,
+                                        danmaku = videoDetail.stat.danmaku,
+                                        like = videoDetail.stat.like,
+                                        coin = videoDetail.stat.coin,
+                                        favorite = videoDetail.stat.favorite,
+                                        upName = videoDetail.author.name,
+                                        upId = videoDetail.author.mid,
+                                        upFace = videoDetail.author.face,
+                                        pubTime = videoDetail.publishDate.formatPubTimeString()
+                                    )
+                                }
+                            )
+                        }
+                    }
                     if (videoDetailViewModel.videoDetail?.ugcSeason == null) {
                         item {
                             VideoPartRow(
@@ -1154,20 +1217,62 @@ fun VideoInfoData(
                 contentDescription = null,
                 contentScale = ContentScale.Crop
             )
-            if (videoDetail.isChargingArc) {
-                Text(
+            val coverBadges = listOfNotNull(
+                "互动视频".takeIf { videoDetail.isInteractive },
+                when {
+                    videoDetail.isChargingArc && videoDetail.chargingArcBadge.isNotBlank() -> "⚡${videoDetail.chargingArcBadge}"
+                    videoDetail.isChargingArc -> "⚡充电专属"
+                    else -> null
+                }
+            )
+            if (coverBadges.isNotEmpty()) {
+                Column(
                     modifier = Modifier
                         .padding(6.dp)
-                        .align(Alignment.TopEnd)
-                        .background(
-                            color = Color.Black.copy(0.3f),
-                            shape = MaterialTheme.shapes.extraSmall
-                        )
-                        .padding(all = 2.dp),
-                    text = "⚡${videoDetail.chargingArcBadge}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White
-                )
+                        .align(Alignment.TopEnd),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    coverBadges.forEach { badge ->
+                        if (badge == "互动视频") {
+                            Row(
+                                modifier = Modifier
+                                    .background(
+                                        color = Color.Black.copy(0.3f),
+                                        shape = RoundedCornerShape(4.dp)
+                                    )
+                                    .padding(vertical = 1.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.PlayCircle,
+                                    contentDescription = null,
+                                    tint = Color.White
+                                )
+                                Text(
+                                    text = badge,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White,
+                                    maxLines = 1
+                                )
+                            }
+                        } else {
+                            Text(
+                                modifier = Modifier
+                                    .background(
+                                        color = Color.Black.copy(0.3f),
+                                        shape = MaterialTheme.shapes.extraSmall
+                                    )
+                                    .padding(all = 2.dp),
+                                text = badge,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
             }
             Box(
                 modifier = Modifier
@@ -1697,6 +1802,8 @@ fun VideoPartRow(
     lastPlayedTime: Int = 0,
     enablePartListDialog: Boolean = false,
     nested: Boolean = false,
+    titleText: String = "",
+    dialogTitle: String = "分 P 列表",
     subtitle: String = "",
     onClick: (cid: Long) -> Unit
 ) {
@@ -1734,8 +1841,10 @@ fun VideoPartRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = stringResource(R.string.video_info_part_row_title)
-                        + (" - $subtitle".takeIf { subtitle.isNotBlank() } ?: ""),
+                text = titleText.ifBlank {
+                    stringResource(R.string.video_info_part_row_title) +
+                        (" - $subtitle".takeIf { subtitle.isNotBlank() } ?: "")
+                },
                 fontSize = titleFontSize.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -1777,7 +1886,7 @@ fun VideoPartRow(
         pages = pages,
         lastPlayedCid = lastPlayedCid,
         lastPlayedTime = lastPlayedTime,
-        title = "分 P 列表",
+        title = dialogTitle,
         onClick = onClick
     )
 }

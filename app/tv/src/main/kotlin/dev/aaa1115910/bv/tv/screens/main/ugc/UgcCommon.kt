@@ -164,7 +164,8 @@ fun UgcRegionScaffold(
                             danmaku = item.danmaku,
                             upName = item.author,
                             time = item.duration * 1000L,
-                            pubTime = item.pubTime
+                            pubTime = item.pubTime,
+                            isInteractive = item.isInteractive
                         )
                     },
                     onClick = {
@@ -180,7 +181,8 @@ fun UgcRegionScaffold(
                                     play = ugcItem.play,
                                     danmaku = ugcItem.danmaku,
                                     time = ugcItem.duration * 1000L,
-                                    pubTime = ugcItem.pubTime
+                                    pubTime = ugcItem.pubTime,
+                                    isInteractive = ugcItem.isInteractive
                                 )
                             }
                         )

@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.DenseListItem
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -53,6 +54,7 @@ import dev.aaa1115910.bv.util.resizedImageUrl
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.VideoListItem
 import dev.aaa1115910.bv.player.entity.VideoListItemData
+import dev.aaa1115910.bv.player.entity.VideoListInteractiveNode
 import dev.aaa1115910.bv.player.entity.VideoListPart
 import dev.aaa1115910.bv.player.entity.VideoListPgcEpisode
 import dev.aaa1115910.bv.player.entity.VideoListUgcEpisode
@@ -71,10 +73,20 @@ fun VideoListController(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val videoPlayerConfigData = LocalVideoPlayerConfigData.current
+    val availableVideoList = videoPlayerConfigData.availableVideoList
+    val currentVideoCid = videoPlayerConfigData.currentVideoCid
     val focusRequester = remember { FocusRequester() }
-    val videoListContainsUgcEpisode by remember {
-        derivedStateOf {
-            videoPlayerConfigData.availableVideoList.any { it is VideoListUgcEpisode }
+    val videoListContainsUgcEpisode = availableVideoList.any { it is VideoListUgcEpisode }
+    val hasCurrentInteractiveNode = availableVideoList.any {
+        it is VideoListInteractiveNode && it.isCurrent
+    }
+    val currentIndex = availableVideoList.indexOfFirst {
+        when (it) {
+            is VideoListInteractiveNode -> it.isCurrent || (
+                it.cid == currentVideoCid && !hasCurrentInteractiveNode
+            )
+            is VideoListItemData -> it.cid == currentVideoCid
+            else -> false
         }
     }
 
@@ -85,15 +97,8 @@ fun VideoListController(
             exit = shrinkHorizontally()
         ) {
             // 在动画内容中处理滚动和焦点请求
-            LaunchedEffect(Unit) {
-                val currentIndex = videoPlayerConfigData.availableVideoList
-                    .indexOfFirst {
-                        when (it) {
-                            is VideoListItemData -> it.cid == videoPlayerConfigData.currentVideoCid
-                            else -> false
-                        }
-                    }
-                if (currentIndex >= 0 && currentIndex < videoPlayerConfigData.availableVideoList.size) {
+            LaunchedEffect(currentIndex, availableVideoList.size) {
+                if (currentIndex >= 0 && currentIndex < availableVideoList.size) {
                     listState.scrollToItem(currentIndex)
                 }
                 focusRequester.requestFocus(scope)
@@ -116,11 +121,10 @@ fun VideoListController(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(vertical = 80.dp)
                     ) {
-                        items(items = videoPlayerConfigData.availableVideoList) { video ->
+                        items(items = availableVideoList) { video ->
                             when (video) {
                                 is VideoListPart -> {
-                                    val isSelected =
-                                        video.cid == videoPlayerConfigData.currentVideoCid
+                                    val isSelected = video.cid == currentVideoCid
                                     val itemModifier = if (isSelected) {
                                         Modifier.focusRequester(focusRequester)
                                     } else {
@@ -139,8 +143,7 @@ fun VideoListController(
                                 }
 
                                 is VideoListUgcEpisode -> {
-                                    val isSelected =
-                                        video.cid == videoPlayerConfigData.currentVideoCid
+                                    val isSelected = video.cid == currentVideoCid
                                     val itemModifier = if (isSelected) {
                                         Modifier.focusRequester(focusRequester)
                                     } else {
@@ -158,8 +161,7 @@ fun VideoListController(
                                 }
 
                                 is VideoListPgcEpisode -> {
-                                    val isSelected =
-                                        video.cid == videoPlayerConfigData.currentVideoCid
+                                    val isSelected = video.cid == currentVideoCid
                                     val itemModifier = if (isSelected) {
                                         Modifier.focusRequester(focusRequester)
                                     } else {
@@ -173,6 +175,27 @@ fun VideoListController(
                                         pubDate = video.pubDate,
                                         isSelected = isSelected,
                                         onClick = { if (!isSelected) onPlayNewVideo(video) }
+                                    )
+                                }
+
+                                is VideoListInteractiveNode -> {
+                                    val isSelected = video.isCurrent || (
+                                        video.cid == currentVideoCid && !hasCurrentInteractiveNode
+                                    )
+                                    val itemModifier = if (isSelected) {
+                                        Modifier.fillMaxWidth().focusRequester(focusRequester)
+                                    } else {
+                                        Modifier.fillMaxWidth()
+                                    }
+                                    DenseListItem(
+                                        modifier = itemModifier,
+                                        headlineContent = {
+                                            Text(
+                                                text = "分支${video.index + 1} ${if (video.partTitle.isNotEmpty()) video.partTitle else video.title}"
+                                            )
+                                        },
+                                        onClick = { if (!isSelected) onPlayNewVideo(video) },
+                                        selected = isSelected
                                     )
                                 }
 

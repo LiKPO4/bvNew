@@ -15,6 +15,7 @@ import dev.aaa1115910.bv.player.danmaku.model.Danmaku
 import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.biliapi.entity.PlayData
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMaskSegment
+import dev.aaa1115910.biliapi.entity.video.InteractiveNode
 import dev.aaa1115910.biliapi.http.entity.video.ClipInfo
 import dev.aaa1115910.biliapi.entity.video.HeartbeatVideoType
 import dev.aaa1115910.biliapi.entity.video.Subtitle
@@ -46,6 +47,7 @@ import dev.aaa1115910.bv.player.entity.RequestState
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoAspectRatio
 import dev.aaa1115910.bv.player.entity.VideoCodec
+import dev.aaa1115910.bv.player.entity.VideoListInteractiveNode
 import dev.aaa1115910.bv.player.entity.VideoListItemData
 import dev.aaa1115910.bv.player.entity.VideoRotation
 import dev.aaa1115910.bv.repository.VideoInfoRepository
@@ -159,6 +161,11 @@ class VideoPlayerV3ViewModel(
     val relatedVideos get() =  videoInfoRepository.relatedVideos
     val videoDescription get() = videoInfoRepository.description
     val videoTags get() = videoInfoRepository.tags
+    val isInteractivePlayback get() = videoInfoRepository.interactivePlaybackContext != null
+    val interactiveOptions get() = availableVideoList.filterIsInstance<VideoListInteractiveNode>()
+    var showInteractiveOptionDialog by mutableStateOf(false)
+    var interactiveOptionsFromQuestions by mutableStateOf(false)
+    private var pendingInteractiveOptionDialogRequest by mutableStateOf(false)
 
     fun resolveLastPreloadedVideoIndex(avid: Long = currentAid): Int {
         return videoInfoRepository.resolveLastPreloadedVideoIndex(avid)
@@ -312,7 +319,10 @@ class VideoPlayerV3ViewModel(
 
     var currentAid = 0L
     var currentCid by mutableLongStateOf(0L)
+    var currentInteractiveNodeId by mutableLongStateOf(0L)
+    var currentInteractiveEdgeId by mutableLongStateOf(0L)
     private var currentEpid = 0
+    private var pendingInitialSeekPositionMs: Long? = null
 
     private suspend fun ensureDanmakuView() {
         // DanmakuView is created by the UI layer, nothing to do here.
@@ -411,11 +421,22 @@ class VideoPlayerV3ViewModel(
         cid: Long,
         epid: Int? = null,
         seasonId: Int? = null,
-        continuePlayNext: Boolean = false
+        continuePlayNext: Boolean = false,
+        initialSeekPositionMs: Long? = null,
     ) {
+        showInteractiveOptionDialog = false
+        pendingInitialSeekPositionMs = initialSeekPositionMs
+        if (continuePlayNext) {
+            lastPlayed = 0
+        }
         currentAid = avid
         currentCid = cid
         currentEpid = epid ?: 0
+        syncCurrentInteractivePointersFromList()
+        if (!isInteractivePlayback && videoInfoRepository.videoList.none { it is VideoListInteractiveNode }) {
+            currentInteractiveNodeId = 0L
+            currentInteractiveEdgeId = 0L
+        }
         epid?.let { this.epid = it }
         seasonId?.let { this.seasonId = it }
         if (fromSeason && currentPlayMode in listOf(PlayMode.ListOrder, PlayMode.ListOrderReverse, PlayMode.RelatedVideo)) {
@@ -447,7 +468,17 @@ class VideoPlayerV3ViewModel(
             }
 
             updateSubtitle()
-            loadPlayUrl(avid, cid, epid ?: 0, preferApi = Prefs.apiType, proxyArea = proxyArea)
+            loadPlayUrl(
+                avid,
+                cid,
+                epid ?: 0,
+                preferApi = Prefs.apiType,
+                proxyArea = proxyArea,
+                initialSeekPositionMs = initialSeekPositionMs,
+            )
+            if (isInteractivePlayback && (!interactiveOptionsFromQuestions || interactiveOptions.isEmpty())) {
+                refreshInteractiveBranches(currentInteractiveEdgeId.takeIf { it > 0L })
+            }
             // addLogs("加载弹幕中")
             loadDanmaku(cid)
             updateDanmakuMask()
@@ -469,8 +500,12 @@ class VideoPlayerV3ViewModel(
         cid: Long,
         epid: Int = 0,
         preferApi: ApiType = Prefs.apiType,
-        proxyArea: ProxyArea = ProxyArea.MainLand
+        proxyArea: ProxyArea = ProxyArea.MainLand,
+        initialSeekPositionMs: Long? = null,
     ) {
+        if (initialSeekPositionMs != null) {
+            pendingInitialSeekPositionMs = initialSeekPositionMs
+        }
         logger.fInfo { "Load play url: [av=$avid, cid=$cid, preferApi=$preferApi, proxyArea=$proxyArea]" }
         withContext(Dispatchers.Main) { loadState = RequestState.Ready }
         logger.fInfo { "Set request state: ready" }
@@ -609,6 +644,137 @@ class VideoPlayerV3ViewModel(
             loadState = RequestState.Success
             logger.fInfo { "Load play url success" }
         }
+    }
+
+    fun refreshInteractiveBranches(edgeId: Long? = null) {
+        val interactiveContext = videoInfoRepository.interactivePlaybackContext ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                BiliHttpApi.getInteractiveEdgeInfo(
+                    bvid = interactiveContext.bvid,
+                    graphVersion = interactiveContext.graphVersion,
+                    edgeId = edgeId,
+                ).getResponseData().let { response ->
+                    val questionNodes = response.edges?.questions
+                        ?.flatMap { question -> question.choices }
+                        ?.mapIndexed { index, choice ->
+                            InteractiveNode.fromChoice(choice, "选项 ${index + 1}")
+                        }
+                        .orEmpty()
+                    Triple(
+                        response.edgeId,
+                        if (questionNodes.isNotEmpty()) {
+                            questionNodes
+                        } else {
+                            response.storyList.map(InteractiveNode::fromStoryNode)
+                        },
+                        questionNodes.isNotEmpty(),
+                    )
+                }
+            }.onSuccess { (responseEdgeId, nodes, fromQuestionChoices) ->
+                if (nodes.isEmpty()) {
+                    logger.fWarn { "Refresh interactive branches returned empty nodes, edgeId=$edgeId" }
+                    withContext(Dispatchers.Main) {
+                        pendingInteractiveOptionDialogRequest = false
+                    }
+                    return@onSuccess
+                }
+
+                val interactiveVideoList = nodes.mapIndexed { index, node ->
+                    VideoListInteractiveNode(
+                        aid = currentAid,
+                        cid = node.cid,
+                        title = title,
+                        partTitle = node.title,
+                        index = index,
+                        nodeId = node.nodeId,
+                        edgeId = node.edgeId,
+                        startPos = node.startPos,
+                        isCurrent = node.isCurrent,
+                    )
+                }
+
+                withContext(Dispatchers.Main) {
+                    interactiveOptionsFromQuestions = fromQuestionChoices
+                    videoInfoRepository.videoList.clear()
+                    videoInfoRepository.videoList.addAll(interactiveVideoList)
+                    currentInteractiveNodeId = nodes.firstOrNull { it.isCurrent }?.nodeId
+                        ?: currentInteractiveNodeId
+                    currentInteractiveEdgeId = responseEdgeId
+                        ?: nodes.firstOrNull { it.isCurrent }?.edgeId
+                        ?: edgeId
+                        ?: currentInteractiveEdgeId
+
+                    if (pendingInteractiveOptionDialogRequest && fromQuestionChoices) {
+                        showInteractiveOptionDialog = true
+                    } else if (pendingInteractiveOptionDialogRequest) {
+                        showInteractiveOptionDialog = false
+                    }
+                    pendingInteractiveOptionDialogRequest = false
+                }
+            }.onFailure {
+                pendingInteractiveOptionDialogRequest = false
+                logger.fWarn { "Refresh interactive branches failed: ${it.stackTraceToString()}" }
+            }
+        }
+    }
+
+    fun requestInteractiveOptionDialog(): Boolean {
+        if (!isInteractivePlayback) return false
+
+        pendingInteractiveOptionDialogRequest = true
+        syncCurrentInteractivePointersFromList()
+        val hasQuestionOptions = interactiveOptionsFromQuestions && interactiveOptions.isNotEmpty()
+        if (hasQuestionOptions) {
+            showInteractiveOptionDialog = true
+            pendingInteractiveOptionDialogRequest = false
+            return true
+        }
+
+        refreshInteractiveBranches(currentInteractiveEdgeId.takeIf { it > 0L })
+        return false
+    }
+
+    fun dismissInteractiveOptionDialog() {
+        showInteractiveOptionDialog = false
+        pendingInteractiveOptionDialogRequest = false
+    }
+
+    fun selectInteractiveNode(nodeId: Long) {
+        currentInteractiveNodeId = nodeId
+    }
+
+    fun playInteractiveOption(option: VideoListInteractiveNode) {
+        showInteractiveOptionDialog = false
+        pendingInteractiveOptionDialogRequest = false
+        interactiveOptionsFromQuestions = false
+        title = option.title
+        partTitle = option.partTitle
+        currentInteractiveEdgeId = option.edgeId ?: currentInteractiveEdgeId
+        selectInteractiveNode(option.nodeId)
+        loadPlayUrl(
+            avid = option.aid,
+            cid = option.cid,
+            epid = option.epid,
+            seasonId = option.seasonId,
+            continuePlayNext = true,
+            initialSeekPositionMs = option.startPos?.times(1000L),
+        )
+    }
+
+    private fun syncCurrentInteractivePointersFromList() {
+        val currentInteractiveOption = interactiveOptions.firstOrNull {
+            it.isCurrent || it.cid == currentCid || it.nodeId == currentInteractiveNodeId
+        } ?: return
+        currentInteractiveNodeId = currentInteractiveOption.nodeId
+        currentInteractiveEdgeId = currentInteractiveOption.edgeId ?: currentInteractiveEdgeId
+    }
+
+    private fun resolveInitialPlaybackPositionMs(): Long? {
+        return pendingInitialSeekPositionMs?.takeIf { it >= 0L }
+            ?: lastPlayed.takeIf {
+                it > 0 && Prefs.playerDefaultStartPosition == PlayerDefaultStartPosition.History
+            }?.toLong()
     }
 
     private suspend fun handleVVoucher(vVoucher: String) {
@@ -841,10 +1007,10 @@ class VideoPlayerV3ViewModel(
             logger.info { "Video url: $videoUrl" }
             logger.info { "Audio url: $audioUrl" }
             videoPlayer!!.playUrl(videoUrl, audioUrl)
-            // 根据 DefaultStartPosition 设置初始跳转位置，避免在 onReady 中 seekTo 导致的状态抖动
-            if (lastPlayed > 0 && Prefs.playerDefaultStartPosition == PlayerDefaultStartPosition.History) {
-                logger.info { "Set initial seek position to history: ${lastPlayed}ms" }
-                videoPlayer!!.setInitialSeekPosition(lastPlayed.toLong())
+            val initialSeekPosition = resolveInitialPlaybackPositionMs()
+            if (initialSeekPosition != null) {
+                logger.info { "Set initial seek position: ${initialSeekPosition}ms" }
+                videoPlayer!!.setInitialSeekPosition(initialSeekPosition)
             }
             videoPlayer!!.prepare()
             showBuffering = true
@@ -1066,12 +1232,7 @@ class VideoPlayerV3ViewModel(
     suspend fun loadDanmaku(cid: Long) {
         stopDanmakuSegmentLoading()
 
-        val initialPosition = if (
-            lastPlayed > 0 &&
-            Prefs.playerDefaultStartPosition == PlayerDefaultStartPosition.History
-        ) {
-            lastPlayed.toLong()
-        } else {
+        val initialPosition = resolveInitialPlaybackPositionMs() ?: run {
             withContext(Dispatchers.Main) {
                 videoPlayer?.currentPosition?.coerceAtLeast(0L) ?: 0L
             }
@@ -1079,6 +1240,7 @@ class VideoPlayerV3ViewModel(
 
         loadDanmakuSegment(cid, initialPosition, force = true)
         startDanmakuSegmentWatcher(cid)
+        pendingInitialSeekPositionMs = null
     }
 
     private suspend fun updateSubtitle() {
@@ -1392,6 +1554,11 @@ class VideoPlayerV3ViewModel(
     }
 
     private fun playNextVideoInList(loop: Boolean = false): Boolean {
+        if (isInteractivePlayback || availableVideoList.any { it is VideoListInteractiveNode }) {
+            logger.info { "Interactive branches detected, skip auto playing next branch" }
+            return false
+        }
+
         val currentIndex = availableVideoList
             .indexOfFirst {
                 when (it) {
