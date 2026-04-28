@@ -96,7 +96,7 @@ fun LiveContent(
     val focusedIndex = liveViewModel.lastFocusedRoomIndex
     val totalItems = liveViewModel.roomList.size
     LaunchedEffect(focusedIndex, totalItems, liveViewModel.loading) {
-        if ((totalItems < 10 || focusedIndex >= totalItems - 8) && liveViewModel.hasMore && !liveViewModel.loading) {
+        if (totalItems > 0 && (totalItems < 10 || focusedIndex >= totalItems - 8) && liveViewModel.hasMore && !liveViewModel.loading) {
             logger.info { "Trigger load more, focusedIndex: $focusedIndex, totalItems: $totalItems" }
             liveViewModel.loadMore()
         }
@@ -152,13 +152,28 @@ fun LiveContent(
                     }
                 }
 
+                val currentParentVisible = remember(
+                    parentNavItems,
+                    liveViewModel.areaGroupsLoadCompleted,
+                    liveViewModel.currentMode,
+                    liveViewModel.currentParentGroup?.id
+                ) {
+                    liveViewModel.areaGroupsLoadCompleted && parentNavItems.any {
+                        it.matchesLiveMode(liveViewModel.currentMode, liveViewModel.currentParentGroup?.id)
+                    }
+                }
+
                 // 首次加载或配置变化时，确保 ViewModel 模式与导航列表一致
                 var initialSynced by remember { mutableStateOf(false) }
-                LaunchedEffect(parentNavItems) {
-                    if (parentNavItems.isEmpty()) return@LaunchedEffect
-
-                    // 分区数据未加载完成前不执行切换逻辑，避免在中间状态发起不必要的请求
-                    if (!initialSynced && liveViewModel.parentAreaGroups.isEmpty()) return@LaunchedEffect
+                LaunchedEffect(
+                    parentNavItems,
+                    liveViewModel.areaGroupsLoadCompleted,
+                    liveViewModel.currentMode,
+                    liveViewModel.currentParentGroup?.id
+                ) {
+                    if (parentNavItems.isEmpty() || !liveViewModel.areaGroupsLoadCompleted) {
+                        return@LaunchedEffect
+                    }
 
                     val shouldSwitch = if (!initialSynced) {
                         initialSynced = true
@@ -166,15 +181,18 @@ fun LiveContent(
                         !parentNavItems.first().matchesLiveMode(liveViewModel.currentMode, liveViewModel.currentParentGroup?.id)
                     } else {
                         // 后续：当前选中项被隐藏时切换
-                        !parentNavItems.any {
-                            it.matchesLiveMode(liveViewModel.currentMode, liveViewModel.currentParentGroup?.id)
-                        }
+                        !currentParentVisible
                     }
 
                     if (shouldSwitch) {
                         liveViewModel.lastFocusedRoomIndex = 0
                         parentNavItems.first().applyToLiveViewModel(liveViewModel)
                         gridState.scrollToItem(0)
+                        return@LaunchedEffect
+                    }
+
+                    if (currentParentVisible) {
+                        liveViewModel.ensureRoomsLoaded()
                     }
                 }
 

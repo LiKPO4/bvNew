@@ -3,8 +3,6 @@ package dev.aaa1115910.bv.tv.component.pgc
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,18 +11,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -40,28 +34,17 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.FilterChip
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.pgc.PgcType
-import dev.aaa1115910.biliapi.entity.pgc.index.Area
-import dev.aaa1115910.biliapi.entity.pgc.index.Copyright
-import dev.aaa1115910.biliapi.entity.pgc.index.IndexOrder
-import dev.aaa1115910.biliapi.entity.pgc.index.IndexOrderType
-import dev.aaa1115910.biliapi.entity.pgc.index.IsFinish
-import dev.aaa1115910.biliapi.entity.pgc.index.PgcIndexParam
-import dev.aaa1115910.biliapi.entity.pgc.index.Producer
-import dev.aaa1115910.biliapi.entity.pgc.index.ReleaseDate
-import dev.aaa1115910.biliapi.entity.pgc.index.SeasonMonth
-import dev.aaa1115910.biliapi.entity.pgc.index.SeasonStatus
-import dev.aaa1115910.biliapi.entity.pgc.index.SeasonVersion
-import dev.aaa1115910.biliapi.entity.pgc.index.SpokenLanguage
-import dev.aaa1115910.biliapi.entity.pgc.index.Style
-import dev.aaa1115910.biliapi.entity.pgc.index.Year
+import dev.aaa1115910.biliapi.entity.pgc.index.PGC_INDEX_ORDER_FIELD
+import dev.aaa1115910.biliapi.entity.pgc.index.PgcIndexOption
+import dev.aaa1115910.biliapi.entity.pgc.index.PgcIndexSection
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.tv.component.TvAlertDialog
 import dev.aaa1115910.bv.ui.theme.BVTheme
 import dev.aaa1115910.bv.util.getDisplayName
-import dev.aaa1115910.bv.util.ifElse
 
 @Composable
 fun IndexFilter(
@@ -69,32 +52,10 @@ fun IndexFilter(
     type: PgcType,
     show: Boolean,
     onDismissRequest: () -> Unit,
-    order: IndexOrder,
-    orderType: IndexOrderType,
-    seasonVersion: SeasonVersion,
-    spokenLanguage: SpokenLanguage,
-    area: Area,
-    isFinish: IsFinish,
-    copyright: Copyright,
-    seasonStatus: SeasonStatus,
-    seasonMonth: SeasonMonth,
-    producer: Producer,
-    year: Year,
-    releaseDate: ReleaseDate,
-    style: Style,
-    onOrderChange: (IndexOrder) -> Unit,
-    onOrderTypeChange: (IndexOrderType) -> Unit,
-    onSeasonVersionChange: (SeasonVersion) -> Unit,
-    onSpokenLanguageChange: (SpokenLanguage) -> Unit,
-    onAreaChange: (Area) -> Unit,
-    onIsFinishChange: (IsFinish) -> Unit,
-    onCopyrightChange: (Copyright) -> Unit,
-    onSeasonStatusChange: (SeasonStatus) -> Unit,
-    onSeasonMonthChange: (SeasonMonth) -> Unit,
-    onProducerChange: (Producer) -> Unit,
-    onYearChange: (Year) -> Unit,
-    onReleaseDateChange: (ReleaseDate) -> Unit,
-    onStyleChange: (Style) -> Unit
+    sections: List<PgcIndexSection>,
+    selectedFilters: Map<String, PgcIndexOption>,
+    onFilterChange: (PgcIndexOption) -> Unit,
+    onResetFilters: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -103,91 +64,10 @@ fun IndexFilter(
         title = stringResource(R.string.pgc_index_filter_title_prefix) + type.getDisplayName(context),
         show = show,
         onDismissRequest = onDismissRequest,
-        content = {
-            IndexFilterChipRow(
-                title = stringResource(R.string.pgc_index_filter_order),
-                filters = IndexOrder.getList(type),
-                selectedFilter = order,
-                onFilterChange = onOrderChange
-            )
-            IndexFilterChipRow(
-                title = stringResource(R.string.pgc_index_filter_order_type),
-                filters = IndexOrderType.entries,
-                selectedFilter = orderType,
-                onFilterChange = onOrderTypeChange
-            )
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-            LazyColumn {
-                indexFilterChipRow(
-                    title = context.getString(R.string.pgc_index_filter_season_version),
-                    filters = SeasonVersion.getList(type),
-                    selectedFilter = seasonVersion,
-                    onFilterChange = onSeasonVersionChange
-                )
-                indexFilterChipRow(
-                    title = context.getString(R.string.pgc_index_filter_spoken_language),
-                    filters = SpokenLanguage.getList(type),
-                    selectedFilter = spokenLanguage,
-                    onFilterChange = onSpokenLanguageChange
-                )
-                indexFilterChipRow(
-                    title = context.getString(R.string.pgc_index_filter_is_finish),
-                    filters = IsFinish.getList(type),
-                    selectedFilter = isFinish,
-                    onFilterChange = onIsFinishChange
-                )
-                indexFilterChipRow(
-                    title = context.getString(R.string.pgc_index_filter_season_status),
-                    filters = SeasonStatus.getList(type),
-                    selectedFilter = seasonStatus,
-                    onFilterChange = onSeasonStatusChange
-                )
-                indexFilterChipRow(
-                    title = context.getString(R.string.pgc_index_filter_area),
-                    filters = Area.getList(type),
-                    selectedFilter = area,
-                    onFilterChange = onAreaChange
-                )
-                indexFilterChipRow(
-                    title = context.getString(R.string.pgc_index_filter_copyright),
-                    filters = Copyright.getList(type),
-                    selectedFilter = copyright,
-                    onFilterChange = onCopyrightChange
-                )
-                indexFilterChipRow(
-                    title = context.getString(R.string.pgc_index_filter_season_month),
-                    filters = SeasonMonth.getList(type),
-                    selectedFilter = seasonMonth,
-                    onFilterChange = onSeasonMonthChange
-                )
-                indexFilterChipRow(
-                    title = context.getString(R.string.pgc_index_filter_producer),
-                    filters = Producer.getList(type),
-                    selectedFilter = producer,
-                    onFilterChange = onProducerChange
-                )
-                indexFilterChipRow(
-                    title = context.getString(R.string.pgc_index_filter_year),
-                    filters = Year.getList(type),
-                    selectedFilter = year,
-                    onFilterChange = onYearChange
-                )
-                indexFilterChipRow(
-                    title = context.getString(R.string.pgc_index_filter_release_date),
-                    filters = ReleaseDate.getList(type),
-                    selectedFilter = releaseDate,
-                    onFilterChange = onReleaseDateChange
-                )
-                indexFilterChipRow(
-                    title = context.getString(R.string.pgc_index_filter_style),
-                    filters = Style.getList(type),
-                    selectedFilter = style,
-                    onFilterChange = onStyleChange
-                )
-            }
-        }
+        sections = sections,
+        selectedFilters = selectedFilters,
+        onFilterChange = onFilterChange,
+        onResetFilters = onResetFilters
     )
 }
 
@@ -197,23 +77,42 @@ private fun IndexFilterContent(
     title: String,
     show: Boolean,
     onDismissRequest: () -> Unit,
-    content: @Composable ColumnScope.() -> Unit
+    sections: List<PgcIndexSection>,
+    selectedFilters: Map<String, PgcIndexOption>,
+    onFilterChange: (PgcIndexOption) -> Unit,
+    onResetFilters: () -> Unit
 ) {
     if (show) {
         TvAlertDialog(
             modifier = modifier
                 .fillMaxWidth(0.8f),
             onDismissRequest = onDismissRequest,
-            confirmButton = { },
+            confirmButton = {
+                if (sections.isNotEmpty()) {
+                    OutlinedButton(onClick = onResetFilters) {
+                        Text(text = stringResource(R.string.filter_dialog_reset))
+                    }
+                }
+            },
             title = {
                 Text(text = title)
             },
             text = {
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 300.dp)
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 300.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    content()
+                    items(
+                        items = sections.filter { it.options.isNotEmpty() },
+                        key = { section -> section.field }
+                    ) { section ->
+                        IndexFilterChipRow(
+                            title = section.title,
+                            options = section.options,
+                            selectedFilter = selectedFilters[section.field],
+                            onFilterChange = onFilterChange
+                        )
+                    }
                 }
             },
             properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -250,34 +149,14 @@ private fun IndexFilterChip(
     }
 }
 
-private fun <T> LazyListScope.indexFilterChipRow(
-    modifier: Modifier = Modifier,
-    title: String,
-    filters: List<T>,
-    selectedFilter: T,
-    onFilterChange: (T) -> Unit
-) {
-    if (filters.isEmpty()) return
-    item {
-        IndexFilterChipRow(
-            modifier = modifier,
-            title = title,
-            filters = filters,
-            selectedFilter = selectedFilter,
-            onFilterChange = onFilterChange
-        )
-    }
-}
-
 @Composable
-private fun <T> IndexFilterChipRow(
+private fun IndexFilterChipRow(
     modifier: Modifier = Modifier,
     title: String,
-    filters: List<T>,
-    selectedFilter: T,
-    onFilterChange: (T) -> Unit
+    options: List<PgcIndexOption>,
+    selectedFilter: PgcIndexOption?,
+    onFilterChange: (PgcIndexOption) -> Unit
 ) {
-    val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
 
     Row(
@@ -294,19 +173,15 @@ private fun <T> IndexFilterChipRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
         ) {
-            itemsIndexed(
-                items = filters,
-                key = { index, filter -> "$index-${(filter as PgcIndexParam).getDisplayName(context)}" }
-            ) { _, filter ->
+            items(
+                items = options,
+                key = { option -> "${option.field}:${option.keyword}:${option.sort.orEmpty()}" }
+            ) { option ->
                 IndexFilterChip(
-                    modifier = Modifier
-                        .ifElse(
-                            selectedFilter == filter,
-                            Modifier.focusRequester(focusRequester)
-                        ),
-                    selected = selectedFilter == filter,
-                    onClick = { onFilterChange(filter) },
-                    label = (filter as PgcIndexParam).getDisplayName(context)
+                    modifier = if (selectedFilter == option) Modifier.focusRequester(focusRequester) else Modifier,
+                    selected = selectedFilter == option,
+                    onClick = { onFilterChange(option) },
+                    label = option.name
                 )
             }
         }
@@ -323,19 +198,48 @@ private class PgcTypeProvider : PreviewParameterProvider<PgcType> {
 private fun IndexFilterPreview(
     @PreviewParameter(PgcTypeProvider::class) pgcType: PgcType
 ) {
-    var order by remember { mutableStateOf(IndexOrder.PlayCount) }
-    var orderType by remember { mutableStateOf(IndexOrderType.Desc) }
-    var seasonVersion by remember { mutableStateOf(SeasonVersion.All) }
-    var spokenLanguage by remember { mutableStateOf(SpokenLanguage.All) }
-    var area by remember { mutableStateOf(Area.All) }
-    var isFinish by remember { mutableStateOf(IsFinish.All) }
-    var copyright by remember { mutableStateOf(Copyright.All) }
-    var seasonStatus by remember { mutableStateOf(SeasonStatus.All) }
-    var seasonMonth by remember { mutableStateOf(SeasonMonth.All) }
-    var producer by remember { mutableStateOf(Producer.All) }
-    var year by remember { mutableStateOf(Year.All) }
-    var releaseDate by remember { mutableStateOf(ReleaseDate.All) }
-    var style by remember { mutableStateOf(Style.All) }
+    val sections = remember {
+        listOf(
+            PgcIndexSection(
+                field = PGC_INDEX_ORDER_FIELD,
+                title = "排序",
+                options = listOf(
+                    PgcIndexOption(PGC_INDEX_ORDER_FIELD, "8", "综合排序", sort = "0"),
+                    PgcIndexOption(PGC_INDEX_ORDER_FIELD, "3", "最多追番", sort = "0"),
+                    PgcIndexOption(PGC_INDEX_ORDER_FIELD, "0", "最近更新", sort = "0")
+                )
+            ),
+            PgcIndexSection(
+                field = "area",
+                title = "地区",
+                options = listOf(
+                    PgcIndexOption("area", "-1", "全部地区"),
+                    PgcIndexOption("area", "1,6,7", "国产"),
+                    PgcIndexOption("area", "2", "日本"),
+                    PgcIndexOption("area", "3", "美国")
+                )
+            ),
+            PgcIndexSection(
+                field = "season_status",
+                title = "付费类型",
+                options = listOf(
+                    PgcIndexOption("season_status", "-1", "全部付费"),
+                    PgcIndexOption("season_status", "1", "免费"),
+                    PgcIndexOption("season_status", "2,6", "付费"),
+                    PgcIndexOption("season_status", "4,6", "大会员")
+                )
+            )
+        )
+    }
+    val selectedFilters = remember {
+        mutableStateMapOf<String, PgcIndexOption>().apply {
+            sections.forEach { section ->
+                section.options.firstOrNull()?.let { option ->
+                    put(section.field, option)
+                }
+            }
+        }
+    }
 
     BVTheme {
         Surface(
@@ -345,32 +249,17 @@ private fun IndexFilterPreview(
                 type = pgcType,
                 show = true,
                 onDismissRequest = { },
-                order = order,
-                orderType = orderType,
-                seasonVersion = seasonVersion,
-                spokenLanguage = spokenLanguage,
-                area = area,
-                isFinish = isFinish,
-                copyright = copyright,
-                seasonStatus = seasonStatus,
-                seasonMonth = seasonMonth,
-                producer = producer,
-                year = year,
-                releaseDate = releaseDate,
-                style = style,
-                onOrderChange = { order = it },
-                onOrderTypeChange = { orderType = it },
-                onSeasonVersionChange = { seasonVersion = it },
-                onSpokenLanguageChange = { spokenLanguage = it },
-                onAreaChange = { area = it },
-                onIsFinishChange = { isFinish = it },
-                onCopyrightChange = { copyright = it },
-                onSeasonStatusChange = { seasonStatus = it },
-                onSeasonMonthChange = { seasonMonth = it },
-                onProducerChange = { producer = it },
-                onYearChange = { year = it },
-                onReleaseDateChange = { releaseDate = it },
-                onStyleChange = { style = it }
+                sections = sections,
+                selectedFilters = selectedFilters,
+                onFilterChange = { option -> selectedFilters[option.field] = option },
+                onResetFilters = {
+                    selectedFilters.clear()
+                    sections.forEach { section ->
+                        section.options.firstOrNull()?.let { option ->
+                            selectedFilters[section.field] = option
+                        }
+                    }
+                }
             )
         }
     }

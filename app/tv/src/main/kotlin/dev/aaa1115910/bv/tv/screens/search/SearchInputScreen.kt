@@ -44,7 +44,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -203,6 +205,24 @@ private fun SearchInput(
     enableProxy: Boolean,
     onEnableProxyChange: (Boolean) -> Unit
 ) {
+    var textFieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = searchKeyword,
+                selection = TextRange(searchKeyword.length)
+            )
+        )
+    }
+
+    LaunchedEffect(searchKeyword) {
+        if (searchKeyword != textFieldValue.text) {
+            textFieldValue = textFieldValue.copy(
+                text = searchKeyword,
+                selection = TextRange(searchKeyword.length)
+            )
+        }
+    }
+
     Box(
         modifier = modifier
             .width(280.dp)
@@ -215,9 +235,20 @@ private fun SearchInput(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             OutlinedTextField(
-                modifier = Modifier.width(258.dp),
-                value = searchKeyword,
-                onValueChange = onSearchKeywordChange,
+                modifier = Modifier
+                    .width(258.dp)
+                    .onFocusChanged {
+                        if (it.isFocused && textFieldValue.selection.end != textFieldValue.text.length) {
+                            textFieldValue = textFieldValue.copy(
+                                selection = TextRange(textFieldValue.text.length)
+                            )
+                        }
+                    },
+                value = textFieldValue,
+                onValueChange = {
+                    textFieldValue = it
+                    onSearchKeywordChange(it.text)
+                },
                 maxLines = 1,
                 shape = MaterialTheme.shapes.medium,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),

@@ -13,7 +13,10 @@ import dev.aaa1115910.bv.BVApp
 import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.toast
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.annotation.KoinViewModel
@@ -35,6 +38,7 @@ class LiveViewModel(
     private val liveRepository: LiveRepository
 ) : ViewModel() {
     private val logger = KotlinLogging.logger("LiveViewModel")
+    private var roomLoadJob: Job? = null
 
     /**
      * 当前直播模式
@@ -46,6 +50,12 @@ class LiveViewModel(
      * 主分区列表（父分区组）
      */
     val parentAreaGroups = mutableStateListOf<dev.aaa1115910.biliapi.entity.live.LiveAreaGroup>()
+
+    /**
+     * 主分区数据是否已完成加载（无论成功或失败）
+     */
+    var areaGroupsLoadCompleted by mutableStateOf(false)
+        private set
 
     /**
      * 当前选中的主分区组
@@ -93,8 +103,13 @@ class LiveViewModel(
 
     init {
         loadAreas()
-        // 默认加载推荐
-        loadRooms(refresh = true)
+    }
+
+    /** 当前模式已就绪但列表为空时，触发一次首次加载。 */
+    fun ensureRoomsLoaded() {
+        if (roomList.isEmpty() && !loading) {
+            loadRooms(refresh = true)
+        }
     }
 
     /**
@@ -125,6 +140,7 @@ class LiveViewModel(
      * 加载所有分区
      */
     fun loadAreas() {
+        areaGroupsLoadCompleted = false
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 val response = liveRepository.getLiveAreaList()
@@ -147,6 +163,9 @@ class LiveViewModel(
                 withContext(Dispatchers.Main) {
                     "加载直播分区失败: ${e.message}".toast(BVApp.context)
                 }
+            }
+            withContext(Dispatchers.Main) {
+                areaGroupsLoadCompleted = true
             }
         }
     }
@@ -183,99 +202,94 @@ class LiveViewModel(
      * @param refresh 是否刷新（清空现有数据）
      */
     fun loadRooms(refresh: Boolean = false) {
-        if (loading) return
+        val request = buildRoomLoadRequest(refresh) ?: return
+        val currentJob = roomLoadJob
+        if (currentJob?.isActive == true) {
+            if (!refresh) return
+            currentJob.cancel()
+        }
 
-        viewModelScope.launch(Dispatchers.IO) {
-            loading = true
+        loading = true
+        val loadJob = viewModelScope.launch(start = CoroutineStart.LAZY) {
+            val activeJob = coroutineContext[Job]
             if (refresh) {
                 currentPage = 1
-                withContext(Dispatchers.Main) {
-                    roomList.clear()
-                    hasMore = true
-                }
+                roomList.clear()
+                hasMore = true
             }
 
-            runCatching {
-                when (currentMode) {
-                    LiveMode.RECOMMEND -> loadRecommendRooms()
-                    LiveMode.FOLLOWING -> loadFollowingRooms()
-                    LiveMode.AREA -> loadAreaRooms()
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    when (request.mode) {
+                        LiveMode.RECOMMEND -> loadRecommendRooms(request.page)
+                        LiveMode.FOLLOWING -> loadFollowingRooms(request.page)
+                        LiveMode.AREA -> loadAreaRooms(
+                            area = request.area ?: return@withContext null,
+                            page = request.page
+                        )
+                    }
                 }
-            }.onFailure { e ->
+
+                if (roomLoadJob === activeJob && result != null) {
+                    applyRoomLoadResult(request, result)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
                 logger.error(e) { "Failed to load live rooms" }
-                withContext(Dispatchers.Main) {
+                if (roomLoadJob === activeJob) {
                     "加载直播间列表失败: ${e.message}".toast(BVApp.context)
                 }
+            } finally {
+                if (roomLoadJob === activeJob) {
+                    loading = false
+                    roomLoadJob = null
+                }
             }
-            loading = false
         }
+        roomLoadJob = loadJob
+        loadJob.start()
     }
 
-    private suspend fun loadRecommendRooms() {
-        val response = liveRepository.getLiveRecommendList(page = currentPage)
+    private suspend fun loadRecommendRooms(page: Int): RoomLoadResult {
+        val response = liveRepository.getLiveRecommendList(page = page)
         if (response.code == 0) {
-            val newItems = response.data?.recommendRoomList?.map { it.toLiveRoomItem() } ?: emptyList()
-            withContext(Dispatchers.Main) {
-                val existingIds = roomList.map { it.roomId }.toHashSet()
-                val filtered = newItems.filter { it.roomId !in existingIds }
-                roomList.addAll(filtered)
-                hasMore = filtered.isNotEmpty()
-                if (hasMore) currentPage++
-            }
-            logger.info { "Loaded ${newItems.size} recommend rooms, page $currentPage" }
+            return RoomLoadResult(
+                rooms = response.data?.recommendRoomList?.map { it.toLiveRoomItem() } ?: emptyList(),
+                canAdvancePage = true
+            )
         } else {
-            withContext(Dispatchers.Main) {
-                "加载推荐直播失败: ${response.message}".toast(BVApp.context)
-            }
+            error("加载推荐直播失败: ${response.message}")
         }
     }
 
-    private suspend fun loadFollowingRooms() {
-        val response = liveRepository.getLiveFollowingList(page = currentPage, pageSize = 10)
+    private suspend fun loadFollowingRooms(page: Int): RoomLoadResult {
+        val response = liveRepository.getLiveFollowingList(page = page, pageSize = 10)
         if (response.code == 0) {
             val data = response.data
-            val newItems = data?.list
-                ?.map { it.toLiveRoomItem() }
-                ?: emptyList()
-            withContext(Dispatchers.Main) {
-                val existingIds = roomList.map { it.roomId }.toHashSet()
-                val filtered = newItems.filter { it.roomId !in existingIds }
-                roomList.addAll(filtered)
-                // 如果本页数据全部重复，即使还有下一页也停止加载
-                hasMore = filtered.isNotEmpty() && data != null && currentPage < data.totalPage
-                if (hasMore) currentPage++
-            }
-            logger.info { "Loaded ${newItems.size} following rooms, page $currentPage" }
+            return RoomLoadResult(
+                rooms = data?.list?.map { it.toLiveRoomItem() } ?: emptyList(),
+                canAdvancePage = data != null && page < data.totalPage
+            )
         } else {
-            withContext(Dispatchers.Main) {
-                "加载关注直播失败: ${response.message}".toast(BVApp.context)
-            }
+            error("加载关注直播失败: ${response.message}")
         }
     }
 
-    private suspend fun loadAreaRooms() {
-        val area = currentSubArea ?: return
+    private suspend fun loadAreaRooms(area: LiveAreaItem, page: Int): RoomLoadResult {
         val response = liveRepository.getLiveRoomList(
             parentAreaId = area.parentId,
             areaId = area.id,
-            page = currentPage,
+            page = page,
             pageSize = 30
         )
         if (response.code == 0) {
-            withContext(Dispatchers.Main) {
-                val existingIds = roomList.map { it.roomId }.toHashSet()
-                val newRooms = response.data.list.filter { it.roomId !in existingIds }
-                roomList.addAll(newRooms)
-                hasMore = newRooms.isNotEmpty()
-                if (hasMore) {
-                    currentPage++
-                }
-            }
-            logger.info { "Loaded ${response.data.list.size} rooms for area ${area.name}, page $currentPage" }
+            return RoomLoadResult(
+                rooms = response.data.list,
+                canAdvancePage = true
+            )
         } else {
-            withContext(Dispatchers.Main) {
-                "加载直播间列表失败: ${response.message}".toast(BVApp.context)
-            }
+            error("加载直播间列表失败: ${response.message}")
         }
     }
 
@@ -294,4 +308,43 @@ class LiveViewModel(
             loadRooms(refresh = false)
         }
     }
+
+    private fun buildRoomLoadRequest(refresh: Boolean): RoomLoadRequest? {
+        if (!areaGroupsLoadCompleted) return null
+        val page = if (refresh) 1 else currentPage
+        return when (currentMode) {
+            LiveMode.RECOMMEND -> RoomLoadRequest(mode = LiveMode.RECOMMEND, page = page)
+            LiveMode.FOLLOWING -> RoomLoadRequest(mode = LiveMode.FOLLOWING, page = page)
+            LiveMode.AREA -> currentSubArea?.let {
+                RoomLoadRequest(mode = LiveMode.AREA, area = it, page = page)
+            }
+        }
+    }
+
+    private fun applyRoomLoadResult(request: RoomLoadRequest, result: RoomLoadResult) {
+        val existingIds = roomList.map { it.roomId }.toHashSet()
+        val filteredRooms = result.rooms.filter { it.roomId !in existingIds }
+        roomList.addAll(filteredRooms)
+        hasMore = filteredRooms.isNotEmpty() && result.canAdvancePage
+        if (hasMore) {
+            currentPage = request.page + 1
+        }
+
+        when (request.mode) {
+            LiveMode.RECOMMEND -> logger.info { "Loaded ${result.rooms.size} recommend rooms, page ${request.page}" }
+            LiveMode.FOLLOWING -> logger.info { "Loaded ${result.rooms.size} following rooms, page ${request.page}" }
+            LiveMode.AREA -> logger.info { "Loaded ${result.rooms.size} rooms for area ${request.area?.name}, page ${request.page}" }
+        }
+    }
 }
+
+private data class RoomLoadRequest(
+    val mode: LiveMode,
+    val area: LiveAreaItem? = null,
+    val page: Int
+)
+
+private data class RoomLoadResult(
+    val rooms: List<LiveRoomItem>,
+    val canAdvancePage: Boolean
+)

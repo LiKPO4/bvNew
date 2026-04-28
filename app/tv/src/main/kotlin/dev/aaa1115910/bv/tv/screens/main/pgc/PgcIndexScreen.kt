@@ -75,9 +75,15 @@ fun PgcIndexScreen(
     val pgcItems = pgcIndexViewModel.indexResultItems
     val noMore = pgcIndexViewModel.noMore
     var showFilter by remember { mutableStateOf(false) }
+    val filterReady by remember { derivedStateOf { pgcIndexViewModel.isFilterReady } }
+    val filterSignature by remember { derivedStateOf { pgcIndexViewModel.filterSignature } }
+    val filterSections = pgcIndexViewModel.filterSections
+    val selectedFilters = pgcIndexViewModel.selectedFilters
 
     val onLongClickSeason = {
-        showFilter = true
+        if (filterReady) {
+            showFilter = true
+        }
     }
 
     val reloadData = {
@@ -96,24 +102,10 @@ fun PgcIndexScreen(
         }.getOrDefault(PgcType.Anime)
         logger.fInfo { "index pgcType: $pgcType" }
         pgcIndexViewModel.changePgcType(pgcType)
-        reloadData()
     }
 
-    LaunchedEffect(
-        pgcIndexViewModel.indexOrder,
-        pgcIndexViewModel.indexOrderType,
-        pgcIndexViewModel.seasonVersion,
-        pgcIndexViewModel.spokenLanguage,
-        pgcIndexViewModel.area,
-        pgcIndexViewModel.isFinish,
-        pgcIndexViewModel.copyright,
-        pgcIndexViewModel.seasonStatus,
-        pgcIndexViewModel.seasonMonth,
-        pgcIndexViewModel.producer,
-        pgcIndexViewModel.year,
-        pgcIndexViewModel.releaseDate,
-        pgcIndexViewModel.style,
-    ) {
+    LaunchedEffect(filterReady, filterSignature) {
+        if (!filterReady) return@LaunchedEffect
         reloadData()
     }
 
@@ -194,7 +186,10 @@ fun PgcIndexScreen(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Text(text = stringResource(R.string.no_data))
-                                OutlinedButton(onClick = { showFilter = true }) {
+                                OutlinedButton(
+                                    enabled = filterReady,
+                                    onClick = onLongClickSeason
+                                ) {
                                     Text(text = stringResource(R.string.filter_dialog_open_tip_click))
                                 }
                             }
@@ -207,33 +202,11 @@ fun PgcIndexScreen(
 
     IndexFilter(
         type = pgcIndexViewModel.pgcType,
-        show = showFilter,
+        show = showFilter && filterReady,
         onDismissRequest = { showFilter = false },
-        order = pgcIndexViewModel.indexOrder,
-        orderType = pgcIndexViewModel.indexOrderType,
-        seasonVersion = pgcIndexViewModel.seasonVersion,
-        spokenLanguage = pgcIndexViewModel.spokenLanguage,
-        area = pgcIndexViewModel.area,
-        isFinish = pgcIndexViewModel.isFinish,
-        copyright = pgcIndexViewModel.copyright,
-        seasonStatus = pgcIndexViewModel.seasonStatus,
-        seasonMonth = pgcIndexViewModel.seasonMonth,
-        producer = pgcIndexViewModel.producer,
-        year = pgcIndexViewModel.year,
-        releaseDate = pgcIndexViewModel.releaseDate,
-        style = pgcIndexViewModel.style,
-        onOrderChange = { pgcIndexViewModel.indexOrder = it },
-        onOrderTypeChange = { pgcIndexViewModel.indexOrderType = it },
-        onSeasonVersionChange = { pgcIndexViewModel.seasonVersion = it },
-        onSpokenLanguageChange = { pgcIndexViewModel.spokenLanguage = it },
-        onAreaChange = { pgcIndexViewModel.area = it },
-        onIsFinishChange = { pgcIndexViewModel.isFinish = it },
-        onCopyrightChange = { pgcIndexViewModel.copyright = it },
-        onSeasonStatusChange = { pgcIndexViewModel.seasonStatus = it },
-        onSeasonMonthChange = { pgcIndexViewModel.seasonMonth = it },
-        onProducerChange = { pgcIndexViewModel.producer = it },
-        onYearChange = { pgcIndexViewModel.year = it },
-        onReleaseDateChange = { pgcIndexViewModel.releaseDate = it },
-        onStyleChange = { pgcIndexViewModel.style = it }
+        sections = filterSections,
+        selectedFilters = selectedFilters,
+        onFilterChange = { pgcIndexViewModel.updateFilter(it) },
+        onResetFilters = { pgcIndexViewModel.resetFilters() }
     )
 }
