@@ -8,17 +8,25 @@ import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
+import android.os.Handler
+import android.os.HandlerThread
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
 import com.caverock.androidsvg.SVG
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMaskFrame
+import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMaskSegment
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMobMaskFrame
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuWebMaskFrame
 import dev.aaa1115910.bv.player.entity.VideoAspectRatio
 import dev.aaa1115910.bv.player.danmaku.model.Danmaku
+import dev.aaa1115910.bv.player.util.DanmakuMaskFinder
 
+/**
+ * 弹幕渲染 View（普通 View，兼容 TextureView）。
+ * 渲染在 onDraw 中完成，通过 invalidate() 持续调度帧。
+ */
 class DanmakuView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -41,9 +49,19 @@ class DanmakuView @JvmOverloads constructor(
     private var lastViewportTopInset: Int = 0
     private var lastViewportBottomInset: Int = 0
 
+    @Volatile private var maskEnabled: Boolean = false
+    @Volatile private var maskSegments: List<DanmakuMaskSegment> = emptyList()
+    @Volatile private var targetMaskFrame: DanmakuMaskFrame? = null
     @Volatile private var maskFrame: DanmakuMaskFrame? = null
     private var cachedMaskFrame: DanmakuMaskFrame? = null
     private var cachedMaskBitmap: Bitmap? = null
+    private var failedMaskFrame: DanmakuMaskFrame? = null
+    private var pendingMaskFrame: DanmakuMaskFrame? = null
+    private var maskDecodeRequestId: Int = 0
+
+    private val maskDecodeThread = HandlerThread("DanmakuMask-Decode").apply { start() }
+    private val maskDecodeHandler = Handler(maskDecodeThread.looper)
+
     @Volatile private var videoAspectRatio: Float = 0f
     @Volatile private var videoAspectRatioType: VideoAspectRatio = VideoAspectRatio.Default
 
@@ -52,6 +70,11 @@ class DanmakuView @JvmOverloads constructor(
     }
     private val maskDstRect = Rect()
 
+    init {
+        setLayerType(currentLayerType, null)
+    }
+
+    // ---- 公共 API ----
     fun setPositionProvider(provider: () -> Long) { positionProvider = provider }
     fun setIsPlayingProvider(provider: () -> Boolean) { isPlayingProvider = provider }
     fun setPlaybackSpeedProvider(provider: () -> Float) { playbackSpeedProvider = provider }
@@ -59,7 +82,7 @@ class DanmakuView @JvmOverloads constructor(
         if (this.config == config) return
         this.config = config
         player.updateConfig(config)
-        postInvalidateOnAnimation()
+        invalidate()
     }
 
     fun setDanmakus(list: List<Danmaku>) { player.setDanmakus(list); invalidate() }
@@ -82,91 +105,145 @@ class DanmakuView @JvmOverloads constructor(
     /** 显式释放资源。可多次调用，幂等。 */
     fun release() {
         player.release()
-        cachedMaskBitmap?.recycle()
-        cachedMaskBitmap = null
-        cachedMaskFrame = null
+        clearMaskBitmapCache()
+        maskDecodeHandler.removeCallbacksAndMessages(null)
+        maskDecodeThread.quitSafely()
     }
 
-    fun setMaskFrame(frame: DanmakuMaskFrame?) { maskFrame = frame }
+    fun setMaskEnabled(enabled: Boolean) {
+        if (maskEnabled == enabled) return
+        maskEnabled = enabled
+        if (!enabled) {
+            clearMaskFrame(requestRedraw = false)
+        }
+        invalidate()
+    }
+
+    fun setMaskSegments(segments: List<DanmakuMaskSegment>) {
+        if (maskSegments == segments) return
+        maskSegments = segments
+        clearMaskFrame(requestRedraw = false)
+        invalidate()
+    }
+
     fun setVideoAspectRatio(ratio: Float) { videoAspectRatio = ratio }
     fun setVideoAspectRatioType(type: VideoAspectRatio) { videoAspectRatioType = type }
 
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        updateViewportIfNeeded()
+    // ---- Mask 内部逻辑 ----
+
+    private fun clearMaskFrame(requestRedraw: Boolean) {
+        targetMaskFrame = null
+        pendingMaskFrame = null
+        maskDecodeRequestId++
+        if (maskFrame != null) {
+            maskFrame = null
+            if (requestRedraw) invalidate()
+        }
     }
 
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        player.release()
+    private fun updateTargetMaskFrame(frame: DanmakuMaskFrame?, requestRedraw: Boolean) {
+        if (frame == null) {
+            clearMaskFrame(requestRedraw)
+            return
+        }
+        if (targetMaskFrame == frame) return
+        targetMaskFrame = frame
+        if (frame == cachedMaskFrame && cachedMaskBitmap != null) {
+            if (maskFrame != frame && requestRedraw) {
+                maskFrame = frame
+                invalidate()
+            }
+            return
+        }
+        requestMaskBitmapBuild(frame)
+    }
+
+    private fun promoteCachedMaskFrame(frame: DanmakuMaskFrame?, requestRedraw: Boolean) {
+        if (maskFrame == frame) return
+        maskFrame = frame
+        if (requestRedraw) invalidate()
+    }
+
+    private fun resolveMaskFrame(positionMs: Long): DanmakuMaskFrame? {
+        if (!maskEnabled) {
+            clearMaskFrame(requestRedraw = false)
+            return null
+        }
+
+        val currentTargetFrame = targetMaskFrame
+        if (currentTargetFrame != null && positionMs in currentTargetFrame.range) {
+            if (currentTargetFrame == cachedMaskFrame && cachedMaskBitmap != null) {
+                promoteCachedMaskFrame(currentTargetFrame, requestRedraw = false)
+                return currentTargetFrame
+            }
+            return maskFrame
+        }
+
+        val segments = maskSegments
+        val resolvedFrame = if (segments.isEmpty()) {
+            null
+        } else {
+            DanmakuMaskFinder.findMaskFrame(segments, positionMs)
+        }
+        updateTargetMaskFrame(resolvedFrame, requestRedraw = false)
+        return if (resolvedFrame != null && resolvedFrame == cachedMaskFrame && cachedMaskBitmap != null) {
+            promoteCachedMaskFrame(resolvedFrame, requestRedraw = false)
+            resolvedFrame
+        } else {
+            maskFrame
+        }
+    }
+
+    private fun getCachedMaskBitmap(frame: DanmakuMaskFrame): Bitmap? {
+        if (frame == cachedMaskFrame) return cachedMaskBitmap
+        if (frame != failedMaskFrame && frame != pendingMaskFrame) {
+            requestMaskBitmapBuild(frame)
+        }
+        return null
+    }
+
+    private fun requestMaskBitmapBuild(frame: DanmakuMaskFrame) {
+        if (frame == cachedMaskFrame || frame == pendingMaskFrame) return
+        pendingMaskFrame = frame
+        val requestId = ++maskDecodeRequestId
+        maskDecodeHandler.removeCallbacksAndMessages(null)
+        maskDecodeHandler.post {
+            val bitmap = buildMaskBitmap(frame)
+            post {
+                if (requestId != maskDecodeRequestId || targetMaskFrame != frame) {
+                    bitmap?.recycle()
+                    return@post
+                }
+                pendingMaskFrame = null
+                failedMaskFrame = frame.takeIf { bitmap == null }
+                cachedMaskBitmap?.recycle()
+                cachedMaskFrame = frame
+                cachedMaskBitmap = bitmap
+                maskFrame = frame.takeIf { bitmap != null }
+                invalidate()
+            }
+        }
+    }
+
+    private fun clearMaskBitmapCache() {
+        targetMaskFrame = null
+        maskFrame = null
+        pendingMaskFrame = null
+        failedMaskFrame = null
         cachedMaskBitmap?.recycle()
         cachedMaskBitmap = null
         cachedMaskFrame = null
     }
 
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        updateViewportIfNeeded()
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-
-        updateViewportIfNeeded()
-        if (!config.enabled) {
-            player.draw(canvas, 0L, false, 1f, config); return
-        }
-
-        val posProvider = positionProvider ?: return
-        val rawPos = posProvider()
-        val now = SystemClock.uptimeMillis()
-        if (lastPositionChangeUptimeMs == 0L) lastPositionChangeUptimeMs = now
-        if (rawPos != lastRawPositionMs) lastPositionChangeUptimeMs = now
-        lastRawPositionMs = rawPos
-
-        val fallbackPlaying = now - lastPositionChangeUptimeMs < STOP_WHEN_IDLE_MS
-        val playingProvider = isPlayingProvider
-        val isPlaying = if (playingProvider != null) {
-            try { playingProvider() } catch (_: Exception) { fallbackPlaying }
-        } else {
-            fallbackPlaying
-        }
-        val speedProvider = playbackSpeedProvider
-        val speed = if (speedProvider != null) {
-            val candidate = try { speedProvider() } catch (_: Exception) { Float.NaN }
-            if (candidate.isFinite() && candidate > 0f) candidate else 1f
-        } else {
-            1f
-        }
-
-        // DstIn blending for mask requires an offscreen buffer — use hardware layer only when needed.
-        val mask = maskFrame
-        val needsHwLayer = mask != null
-        val desiredLayerType = if (needsHwLayer) LAYER_TYPE_HARDWARE else LAYER_TYPE_NONE
-        if (desiredLayerType != currentLayerType) {
-            setLayerType(desiredLayerType, null)
-            currentLayerType = desiredLayerType
-        }
-
-        player.draw(canvas, rawPos, isPlaying, speed, config)
-
-        if (mask != null) {
-            val maskBitmap = getOrBuildMaskBitmap(mask)
-            if (maskBitmap != null) drawMaskBitmap(canvas, maskBitmap, videoAspectRatio, videoAspectRatioType)
-        }
-    }
-
-    private fun getOrBuildMaskBitmap(frame: DanmakuMaskFrame): Bitmap? {
-        if (frame == cachedMaskFrame && cachedMaskBitmap != null) return cachedMaskBitmap
-        cachedMaskBitmap?.recycle()
-        cachedMaskFrame = frame
-        cachedMaskBitmap = try {
+    private fun buildMaskBitmap(frame: DanmakuMaskFrame): Bitmap? {
+        return try {
             when (frame) {
                 is DanmakuWebMaskFrame -> buildWebMaskBitmap(frame)
                 is DanmakuMobMaskFrame -> buildMobMaskBitmap(frame)
             }
-        } catch (_: Exception) { null }
-        return cachedMaskBitmap
+        } catch (_: Exception) {
+            null
+        }
     }
 
     /** Web 蒙版：使用 androidsvg 库解析完整 SVG，渲染到 Bitmap */
@@ -177,7 +254,7 @@ class DanmakuView @JvmOverloads constructor(
         val svgW = svgObj.documentWidth.toInt()
         val svgH = svgObj.documentHeight.toInt()
         if (svgW <= 0 || svgH <= 0) return null
-        val bitmap = Bitmap.createBitmap(svgW, svgH, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(svgW, svgH, Bitmap.Config.ARGB_4444)
         svgObj.renderToCanvas(Canvas(bitmap))
         return bitmap
     }
@@ -187,7 +264,7 @@ class DanmakuView @JvmOverloads constructor(
         val w = frame.width
         val h = frame.height
         if (w <= 0 || h <= 0) return null
-        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_4444)
         val pixels = IntArray(w * h) { i ->
             val byteIndex = i / 8
             val bitOffset = 7 - (i % 8)
@@ -200,7 +277,6 @@ class DanmakuView @JvmOverloads constructor(
 
     /**
      * 将蒙版 Bitmap 以 DstIn 模式绘制到 canvas 上，正确处理视频 letterbox/pillarbox。
-     * 逻辑与 DanmakuMaskModifiers.bitmapMask 一致。
      */
     private fun drawMaskBitmap(
         canvas: Canvas,
@@ -260,6 +336,74 @@ class DanmakuView @JvmOverloads constructor(
         canvas.drawBitmap(bitmap, null, maskDstRect, maskPaint)
     }
 
+    // ---- 生命周期 ----
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        updateViewportIfNeeded()
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        release()
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        updateViewportIfNeeded()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+
+        updateViewportIfNeeded()
+        if (!config.enabled) {
+            player.draw(canvas, 0L, false, 1f, config)
+            return
+        }
+
+        val posProvider = positionProvider ?: return
+        val rawPos = posProvider()
+        val now = SystemClock.uptimeMillis()
+        if (lastPositionChangeUptimeMs == 0L) lastPositionChangeUptimeMs = now
+        if (rawPos != lastRawPositionMs) lastPositionChangeUptimeMs = now
+        lastRawPositionMs = rawPos
+
+        val fallbackPlaying = now - lastPositionChangeUptimeMs < STOP_WHEN_IDLE_MS
+        val playingProvider = isPlayingProvider
+        val isPlaying = if (playingProvider != null) {
+            try { playingProvider() } catch (_: Exception) { fallbackPlaying }
+        } else {
+            fallbackPlaying
+        }
+        val speedProvider = playbackSpeedProvider
+        val speed = if (speedProvider != null) {
+            val candidate = try { speedProvider() } catch (_: Exception) { Float.NaN }
+            if (candidate.isFinite() && candidate > 0f) candidate else 1f
+        } else {
+            1f
+        }
+
+        // DstIn blending for mask requires an offscreen buffer — use hardware layer only when needed.
+        val mask = resolveMaskFrame(rawPos)
+        val desiredLayerType = if (mask != null) LAYER_TYPE_HARDWARE else LAYER_TYPE_NONE
+        if (desiredLayerType != currentLayerType) {
+            setLayerType(desiredLayerType, null)
+            currentLayerType = desiredLayerType
+        }
+
+        player.draw(canvas, rawPos, isPlaying, speed, config)
+
+        if (mask != null) {
+            val maskBitmap = getCachedMaskBitmap(mask)
+            if (maskBitmap != null) {
+                drawMaskBitmap(canvas, maskBitmap, videoAspectRatio, videoAspectRatioType)
+            }
+        }
+    }
+
+    // ---- Viewport ----
+
     private fun updateViewportIfNeeded() {
         val w = width.coerceAtLeast(0); val h = height.coerceAtLeast(0)
         val top = viewportTopInsetPx; val bottom = viewportBottomInsetPx
@@ -272,6 +416,6 @@ class DanmakuView @JvmOverloads constructor(
 
     private companion object {
         private val DEFAULT_CONFIG = DanmakuConfig()
-        const val STOP_WHEN_IDLE_MS = 700L
+        const val STOP_WHEN_IDLE_MS = 500L
     }
 }

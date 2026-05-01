@@ -17,7 +17,7 @@ data class ControllerButtonConfig(
  */
 val ALL_CONTROLLER_BUTTON_IDS = listOf(
     "nextVideo", "refresh", "speed", "resolution", "upSpace", "rotation",
-    "subtitle", "comment", "danmaku", "playlist", "related", "description",
+    "comment", "subtitle", "danmaku", "playlist", "related", "description",
     "playMode", "settings"
 )
 
@@ -114,8 +114,8 @@ fun getControllerButtonDisplayName(id: String): String {
         "resolution" -> "画质"
         "upSpace" -> "UP主空间"
         "rotation" -> "画面旋转"
-        "subtitle" -> "字幕"
         "comment" -> "评论"
+        "subtitle" -> "字幕"
         "danmaku" -> "弹幕"
         "playMode" -> "播放模式"
         "playlist" -> "播放列表"

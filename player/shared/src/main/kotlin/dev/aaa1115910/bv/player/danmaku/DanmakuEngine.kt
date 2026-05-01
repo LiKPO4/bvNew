@@ -19,6 +19,7 @@ import kotlin.math.roundToInt
 internal class DanmakuEngine(
     private val displayMetrics: DisplayMetrics,
     private val cacheManager: CacheManager,
+    private val frameIntervalNanos: Long = 16_666_667L,
 ) {
     // Data (action thread)
     private val actionStateLock = Any()
@@ -55,7 +56,7 @@ internal class DanmakuEngine(
     private var actDroppedFrames: Int = 0
     private var actLastLogNanos: Long = System.nanoTime()
     private var actLastFrameNanos: Long = 0L
-    private val actFrameDeadlineNanos: Long = 16_666_667L // ~60fps
+    private val actFrameDeadlineNanos: Long = frameIntervalNanos
     private var actStartNanos: Long = 0L
     private var actDurationTotalNanos: Long = 0L
     private var actDurationMaxNanos: Long = 0L
@@ -84,8 +85,8 @@ internal class DanmakuEngine(
     private var cachedTopInset: Int = 0
     private var cachedMarginPx: Float = 12f
 
-    // Draw paint (main thread)
-    private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { isFilterBitmap = true }
+    // Draw paint (main thread) — only used for opacity alpha
+    private val bitmapPaint = Paint()
 
     fun updateViewport(width: Int, height: Int, topInsetPx: Int, bottomInsetPx: Int) {
         viewportWidth = width.coerceAtLeast(0)
@@ -288,8 +289,8 @@ internal class DanmakuEngine(
         // act 耗时的平均值、中位数、95 分位和最大值。单位是毫秒
         // 如果 actMs 的 p95/max 明显高于 avg，说明 action 线程存在长尾抖动。
         val avgMs = actDurationTotalNanos.toDouble() / actDurationSampleCount / 1_000_000.0
-        val p50Ms = percentileNanos(samples, 0.50).toDouble() / 1_000_000.0 // 50% 的样本都不超过这个值，也就是中位数。它表示“典型情况下有多快” 
-        val p95Ms = percentileNanos(samples, 0.95).toDouble() / 1_000_000.0 // 95% 的样本都不超过这个值，只有最慢的 5% 会比它更大。它表示“尾部延迟”，也就是偶发慢帧、抖动、卡顿尖峰。
+        val p50Ms = percentileNanos(samples, 0.50).toDouble() / 1_000_000.0 // 50% 的样本都不超过这个值，也就是中位数。它表示"典型情况下有多快" 
+        val p95Ms = percentileNanos(samples, 0.95).toDouble() / 1_000_000.0 // 95% 的样本都不超过这个值，只有最慢的 5% 会比它更大。它表示"尾部延迟"，也就是偶发慢帧、抖动、卡顿尖峰。
         val maxMs = actDurationMaxNanos.toDouble() / 1_000_000.0
         return "actMs(avg/p50/p95/max)=%.2f/%.2f/%.2f/%.2f".format(avgMs, p50Ms, p95Ms, maxMs)
     }
@@ -409,6 +410,11 @@ internal class DanmakuEngine(
             }
             allItems = mutableListOf()
             items = mutableListOf()
+            // 清理轨道状态，释放 DanmakuItem 引用
+            for (queue in scrollLaneQueues) { queue.clear() }
+            scrollLaneQueues = emptyArray()
+            topLaneBusyUntilMs = DoubleArray(0)
+            bottomLaneBusyUntilMs = DoubleArray(0)
         }
     }
 
@@ -622,7 +628,7 @@ internal class DanmakuEngine(
                 DanmakuKind.BOTTOM -> (bottomFixedBaseYTop - laneHeight * a.lane).coerceAtLeast(bottomFixedMinYTop)
             }
             out.items[iOut] = a
-            out.yTop[iOut] = yTop
+            out.yTop[iOut] = yTop.roundToInt().toFloat()
             out.count = iOut + 1
         }
         latestSnapshot = out
@@ -670,7 +676,7 @@ internal class DanmakuEngine(
         // 长弹幕允许比短弹幕更快，但最多只放大到短弹幕基准速度的这个倍数。
         const val MAX_LONG_SCROLL_SPEED_RATIO = 1.5f
         // 单帧最多尝试生成多少条到时弹幕，防止瞬时高峰拖垮 action 线程。
-        const val MAX_SPAWN_PER_FRAME = 48
+        const val MAX_SPAWN_PER_FRAME = 32
         // 单帧最多探测多少个 active 项来补缓存，避免每帧全量扫描 active。
         const val MAX_CACHE_SCAN_PER_FRAME = 16
         // 播放时间落后太多时，直接跳过更早的弹幕，优先追上当前播放进度。

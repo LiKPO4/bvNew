@@ -19,3 +19,4 @@ keystore.jks
 signing.properties
 *.log
 /app/default/
+.opencode

@@ -91,8 +91,20 @@ internal class CacheManager(
 
     fun release() {
         released = true
+        // 移除 mainHandler 上所有待处理的 renderSignRunnable，
+        // 避免其闭包引用阻止 DanmakuView 的 GC。
+        mainHandler.removeCallbacksAndMessages(null)
         handler.removeCallbacksAndMessages(null)
         handler.sendEmptyMessage(MSG_RELEASE)
+    }
+
+    /** 排空 releaseQueue 并 recycle 其中的所有 Bitmap */
+    private fun drainReleaseQueue() {
+        while (true) {
+            val head = releaseQueue.poll() ?: break
+            val bmp = head.bitmap
+            if (!bmp.isRecycled) try { bmp.recycle() } catch (_: Exception) {}
+        }
     }
 
     private inner class CacheHandler(looper: Looper) : Handler(looper) {
@@ -106,13 +118,13 @@ internal class CacheManager(
                 MSG_CLEAR -> {
                     queueDepth.set(0)
                     pool.clear()
-                    releaseQueue.clear()
+                    drainReleaseQueue()
                 }
                 MSG_RELEASE -> {
                     removeCallbacksAndMessages(null)
                     queueDepth.set(0)
                     pool.clear()
-                    releaseQueue.clear()
+                    drainReleaseQueue()
                     try { thread.quitSafely() } catch (_: Exception) {}
                 }
             }
@@ -162,7 +174,7 @@ internal class CacheManager(
         val boxWidth = ceil(req.textWidthPx.coerceAtLeast(outlinePad * 2f)).toInt().coerceAtLeast(1)
 
         val bmp = pool.acquire(boxWidth, boxHeight)
-            ?: try { Bitmap.createBitmap(boxWidth, boxHeight, Bitmap.Config.ARGB_8888) } catch (_: Exception) { null }
+            ?: try { Bitmap.createBitmap(boxWidth, boxHeight, Bitmap.Config.ARGB_4444) } catch (_: Exception) { null }
             ?: return
         bmp.eraseColor(0x00000000)
 
@@ -201,7 +213,7 @@ internal class CacheManager(
             while (it.hasNext()) {
                 val b = it.next()
                 if (b.isRecycled) { it.remove(); continue }
-                if (b.width >= minWidth && b.height >= minHeight && b.width - minWidth <= 48 && b.height - minHeight <= 24 && b.config == Bitmap.Config.ARGB_8888) {
+                if (b.width >= minWidth && b.height >= minHeight && b.width - minWidth <= 48 && b.height - minHeight <= 24 && b.config == Bitmap.Config.ARGB_4444) {
                     it.remove()
                     pooledBytes -= b.allocationByteCount.toLong().coerceAtLeast(0L)
                     return b

@@ -89,7 +89,7 @@ data class UgcItem(
                 cover = videoInfo.pic,
                 play = videoInfo.stat.view,
                 danmaku = videoInfo.stat.danmaku,
-                isInteractive = videoInfo.isStory || videoInfo.rights.isSteinGate == 1,
+                isInteractive = videoInfo.rights.isSteinGate == 1,
                 pubTime = videoInfo.pubdate.smartDate
             )
 

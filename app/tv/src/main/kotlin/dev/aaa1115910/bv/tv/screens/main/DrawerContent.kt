@@ -241,9 +241,9 @@ fun DrawerContent(
                         colors = NavigationRailItemDefaults.colors(
                             indicatorColor = when {
                                 focusOnContent -> MaterialTheme.colorScheme.surfaceVariant
-                                isFocused && isSelected -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.75f)
+                                isFocused && isSelected -> MaterialTheme.colorScheme.inverseSurface
                                 isFocused && !isSelected -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.3f)
-                                isSelected -> MaterialTheme.colorScheme.inverseSurface
+                                !isFocused && isSelected -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.75f)
                                 else -> MaterialTheme.colorScheme.surfaceVariant
                             }
                         ),
@@ -289,9 +289,9 @@ fun DrawerContent(
                 NavigationRailItemDefaults.colors(
                     indicatorColor = when {
                         focusOnContent -> MaterialTheme.colorScheme.surfaceVariant
-                        f && s -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.75f)
+                        f && s -> MaterialTheme.colorScheme.inverseSurface
                         f && !s -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.3f)
-                        s -> MaterialTheme.colorScheme.inverseSurface
+                        !f && s -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.75f)
                         else -> MaterialTheme.colorScheme.surfaceVariant
                     }
                 )

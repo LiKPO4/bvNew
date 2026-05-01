@@ -220,9 +220,12 @@ fun TopNav(
                             focusedTabIndex = index
                             if (!isSameTab) {
                                 tabMoved = false
+                            } else {
+                                onClick(tab)
                             }
+                        } else {
+                            onClick(tab)
                         }
-                        onClick(tab)
                     }
                 )
             }
@@ -270,7 +273,7 @@ private fun TabRowScope.NavItemTab(
                 .ifElse(
                     !actualFocused && selected,
                     Modifier.background(
-                        color = MaterialTheme.colorScheme.inverseSurface,
+                        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.75f),
                         shape = RoundedCornerShape(tabCornerRadius)
                     )
                 )
@@ -284,7 +287,7 @@ private fun TabRowScope.NavItemTab(
                 .ifElse(
                     actualFocused && selected,
                     Modifier.background(
-                        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.75f),
+                        color = MaterialTheme.colorScheme.inverseSurface,
                         shape = RoundedCornerShape(tabCornerRadius)
                     )
                 )

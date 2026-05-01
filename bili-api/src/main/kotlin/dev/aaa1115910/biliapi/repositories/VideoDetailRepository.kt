@@ -51,7 +51,7 @@ class VideoDetailRepository(
                 bv = videoDetail.bvid,
                 sessData = sessData.ifBlank { null }
             ).getResponseData().let {
-                it.isStory || it.rights.isSteinGate == 1
+                it.rights.isSteinGate == 1
             }
         }.onFailure {
             println("Get interactive flag failed: $it")

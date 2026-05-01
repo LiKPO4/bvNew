@@ -1,6 +1,10 @@
 package dev.aaa1115910.bv.player.danmaku
 
+import android.content.Context
 import android.graphics.Canvas
+import android.os.Build
+import android.view.Display
+import android.view.WindowManager
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
@@ -14,16 +18,45 @@ import java.util.concurrent.atomic.AtomicInteger
 
 internal class DanmakuPlayer(private val view: DanmakuView) {
 
+    // Dynamic frame interval based on display refresh rate
+    private val frameIntervalNanos: Long = run {
+        val display = getDisplay(view.context)
+        if (display != null) {
+            (1_000_000_000.0 / display.refreshRate).toLong()
+        } else {
+            16_666_667L // fallback to 60Hz
+        }
+    }
+
+    private var skipNextFrame = false
+    private var lastDrawTimeNanos = 0L
+
+    private fun postInvalidateIfAllowed() {
+        if (skipNextFrame) {
+            skipNextFrame = false
+            return
+        }
+        val now = System.nanoTime()
+        if (lastDrawTimeNanos > 0) {
+            val elapsed = now - lastDrawTimeNanos
+            if (elapsed > frameIntervalNanos * 1.3) {
+                skipNextFrame = true
+                return
+            }
+        }
+        view.postInvalidateOnAnimation()
+    }
+
     private val cacheManager = CacheManager(
         mainLooper = Looper.getMainLooper(),
-        onRenderSign = { view.postInvalidateOnAnimation() },
+        onRenderSign = this::postInvalidateIfAllowed,
     )
-    private val engine = DanmakuEngine(view.resources.displayMetrics, cacheManager)
+    private val engine = DanmakuEngine(view.resources.displayMetrics, cacheManager, frameIntervalNanos)
     private val timer = DanmakuTimer()
     private val drawSemaphore = Semaphore(0)
     private val actionThread = HandlerThread("Danmaku-Action").apply { start() }
     private val actionHandler = ActionHandler(actionThread.looper)
-    private val frameCallback = FrameCallback(actionHandler)
+    private val frameCallback = FrameCallback()
     private val seekSerial = AtomicInteger(0)
     private val uiFrameId = AtomicInteger(0)
 
@@ -52,7 +85,9 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
     fun startIfNeeded() {
         if (released || started) return
         started = true
-        actionHandler.post { postFrameCallback() }
+        actionHandler.post {
+            postFrameCallback()
+        }
         view.postInvalidateOnAnimation()
     }
 
@@ -157,6 +192,7 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
             }
         }
         engine.draw(canvas, snapshot, config)
+        lastDrawTimeNanos = System.nanoTime()
     }
 
     private fun sampleDrawSnapshotStats(snapshotPositionMs: Double, smoothPos: Double) {
@@ -278,21 +314,23 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
             val pos = positionMs ?: engine.currentPositionMs()
             engine.stepTime(pos, uiFrameId.get())
             try { engine.act() } catch (_: Exception) {}
-            view.postInvalidateOnAnimation()
+            postInvalidateIfAllowed()
         }
     }
 
-    private class FrameCallback(private val handler: Handler) : Choreographer.FrameCallback {
+    private inner class FrameCallback : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
-            handler.removeMessages(MSG_FRAME_UPDATE)
-            handler.sendEmptyMessage(MSG_FRAME_UPDATE)
+            if (released || !started) return
+
+            actionHandler.removeMessages(MSG_FRAME_UPDATE)
+            actionHandler.sendEmptyMessage(MSG_FRAME_UPDATE)
         }
     }
 
     private class AppendPayload(val list: List<Danmaku>, val maxItems: Int, val alreadySorted: Boolean)
     private class TrimRangePayload(val minTimeMs: Long, val maxTimeMs: Long)
 
-    companion object {
+    private companion object {
         private const val TAG = "DanmakuPlayer"
         private const val MSG_FRAME_UPDATE = 2101
         private const val MSG_OP_SET = 3101
@@ -303,5 +341,14 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
         private const val MSG_OP_VIEWPORT = 3201
         private const val MSG_OP_CONFIG = 3202
         private const val MSG_OP_RELEASE = 3999
+
+        @Suppress("DEPRECATION")
+        private fun getDisplay(context: Context): Display? {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                context.display
+            } else {
+                (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.defaultDisplay
+            }
+        }
     }
 }

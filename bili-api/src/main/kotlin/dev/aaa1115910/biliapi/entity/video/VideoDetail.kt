@@ -116,7 +116,7 @@ data class VideoDetail(
                 epid = videoDetail.view.redirectUrl?.split("ep", "?")?.get(1)?.toInt(),
                 argueTip = videoDetail.view.stat.argueMsg.takeIf { it.isNotEmpty() },
                 tags = videoDetail.tags.map { Tag.fromTag(it) },
-                isInteractive = videoDetail.view.isStory || videoDetail.view.rights.isSteinGate == 1,
+                isInteractive = videoDetail.view.rights.isSteinGate == 1,
                 userActions = UserActions(),
                 history = History(0, 0),
                 playerIcon = null,
