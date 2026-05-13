@@ -8,7 +8,6 @@ internal class DanmakuTimer {
     private var lastSeekSerial: Int = 0
     private var lastPlaying: Boolean = false
     private var lastPlaybackSpeed: Double = 1.0
-    private var pauseStartNanos: Long = 0L
     private var isCorrecting: Boolean = false
 
     fun reset(positionMs: Long, nowNanos: Long, seekSerial: Int, isPlaying: Boolean, playbackSpeed: Float) {
@@ -17,7 +16,6 @@ internal class DanmakuTimer {
         lastSeekSerial = seekSerial
         lastPlaying = isPlaying
         lastPlaybackSpeed = normalizeSpeed(playbackSpeed)
-        pauseStartNanos = 0L
         // 任何重置都退出校正状态
         isCorrecting = false
     }
@@ -37,13 +35,7 @@ internal class DanmakuTimer {
 
         // ---------- 暂停处理 ----------
         if (!isPlaying) {
-            if (lastPlaying) {
-                pauseStartNanos = nowNanos
-            }
-            val pausedDurationNanos = nowNanos - pauseStartNanos
-            if (pausedDurationNanos >= PAUSE_REANCHOR_DELAY_NANOS &&
-                abs(raw - smoothPositionMs) >= IDLE_REANCHOR_THRESHOLD_MS
-            ) {
+            if (abs(raw - smoothPositionMs) >= EXTREME_DRIFT_REANCHOR_THRESHOLD_MS) {
                 smoothPositionMs = raw
             }
             lastPlaying = false
@@ -56,7 +48,6 @@ internal class DanmakuTimer {
             smoothPositionMs = raw
             lastPlaying = true
             lastPlaybackSpeed = speed
-            pauseStartNanos = 0L
             isCorrecting = false
             return smoothPositionMs
         }
@@ -84,8 +75,8 @@ internal class DanmakuTimer {
             val correction = drift * CORRECTION_FACTOR
             smoothPositionMs += correction.coerceIn(-MAX_CORRECTION_MS, MAX_CORRECTION_MS)
 
-            // 退出校正：偏差已收敛到一半阈值以下
-            if (abs(raw - smoothPositionMs) <= IDLE_REANCHOR_THRESHOLD_MS) {
+            // 退出校正：偏差已收敛到阈值以下
+            if (abs(raw - smoothPositionMs) <= MAX_CORRECTION_MS) {
                 isCorrecting = false
             }
         }
@@ -99,11 +90,9 @@ internal class DanmakuTimer {
         if (playbackSpeed.isFinite() && playbackSpeed > 0f) playbackSpeed.toDouble() else 1.0
 
     private companion object {
-        const val IDLE_REANCHOR_THRESHOLD_MS = 120.0
         const val EXTREME_DRIFT_REANCHOR_THRESHOLD_MS = 500.0
         const val CORRECTION_FACTOR = 0.1
         const val MAX_CORRECTION_MS = 80.0
         const val SPEED_CHANGE_EPSILON = 0.0001
-        const val PAUSE_REANCHOR_DELAY_NANOS = 500_000_000L
     }
 }

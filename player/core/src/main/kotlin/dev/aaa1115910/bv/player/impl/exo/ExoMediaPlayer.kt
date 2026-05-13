@@ -13,10 +13,10 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
-import androidx.media3.exoplayer.hls.HlsMediaSource
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.OkHttpUtil
 import dev.aaa1115910.bv.player.VideoPlayerOptions
@@ -98,6 +98,7 @@ class ExoMediaPlayer(
             .setLoadControl(loadControl)
             .setSeekForwardIncrementMs(1000 * 10)
             .setSeekBackIncrementMs(1000 * 10)
+            .setVideoChangeFrameRateStrategy(C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_OFF) // 优化 滚动弹幕流畅度
             .build()
 
         initListener()

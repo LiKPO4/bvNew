@@ -9,10 +9,10 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
 import android.os.Message
+import android.os.SystemClock
 import android.util.Log
 import android.view.Choreographer
 import dev.aaa1115910.bv.player.danmaku.model.Danmaku
-import dev.aaa1115910.bv.player.danmaku.model.RenderSnapshot
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -28,22 +28,7 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
         }
     }
 
-    private var skipNextFrame = false
-    private var lastDrawTimeNanos = 0L
-
     private fun postInvalidateIfAllowed() {
-        if (skipNextFrame) {
-            skipNextFrame = false
-            return
-        }
-        val now = System.nanoTime()
-        if (lastDrawTimeNanos > 0) {
-            val elapsed = now - lastDrawTimeNanos
-            if (elapsed > frameIntervalNanos * 1.3) {
-                skipNextFrame = true
-                return
-            }
-        }
         view.postInvalidateOnAnimation()
     }
 
@@ -150,7 +135,7 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
 
         val frameId = uiFrameId.incrementAndGet()
         engine.drainReleasedBitmaps(frameId)
-        val smoothPos = timer.step(System.nanoTime(), rawPositionMs, isPlaying, playbackSpeed, seekSerial.get())
+        val smoothPos = timer.step(SystemClock.elapsedRealtimeNanos(), rawPositionMs, isPlaying, playbackSpeed, seekSerial.get())
         engine.stepTime(smoothPos, frameId)
         drawSemaphore.tryAcquire()
         val snapshot = engine.renderSnapshot()
@@ -192,7 +177,6 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
             }
         }
         engine.draw(canvas, snapshot, config)
-        lastDrawTimeNanos = System.nanoTime()
     }
 
     private fun sampleDrawSnapshotStats(snapshotPositionMs: Double, smoothPos: Double) {

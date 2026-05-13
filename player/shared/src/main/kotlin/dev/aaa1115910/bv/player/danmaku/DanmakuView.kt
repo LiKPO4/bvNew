@@ -254,7 +254,7 @@ class DanmakuView @JvmOverloads constructor(
         val svgW = svgObj.documentWidth.toInt()
         val svgH = svgObj.documentHeight.toInt()
         if (svgW <= 0 || svgH <= 0) return null
-        val bitmap = Bitmap.createBitmap(svgW, svgH, Bitmap.Config.ARGB_4444)
+        val bitmap = Bitmap.createBitmap(svgW, svgH, Bitmap.Config.ARGB_8888)
         svgObj.renderToCanvas(Canvas(bitmap))
         return bitmap
     }
@@ -264,7 +264,7 @@ class DanmakuView @JvmOverloads constructor(
         val w = frame.width
         val h = frame.height
         if (w <= 0 || h <= 0) return null
-        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_4444)
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val pixels = IntArray(w * h) { i ->
             val byteIndex = i / 8
             val bitOffset = 7 - (i % 8)

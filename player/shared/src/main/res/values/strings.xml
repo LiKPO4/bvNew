@@ -3,7 +3,7 @@
     <string name="audio_132k">132K</string>
     <string name="audio_192k">192K</string>
     <string name="audio_64k">64K</string>
-    <string name="audio_dolby_atoms">Dolby Atoms</string>
+    <string name="audio_dolby_atmos">Dolby Atmos</string>
     <string name="audio_hi_res">Hi-Res</string>
 
     <string name="play_mode_single_video">单视频</string>

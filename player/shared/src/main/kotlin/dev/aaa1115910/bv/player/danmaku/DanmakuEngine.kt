@@ -71,6 +71,8 @@ internal class DanmakuEngine(
     private var bottomLaneBusyUntilMs = DoubleArray(0)
     private var cacheProbeCursor: Int = 0
     private var cachedCacheStyle: CacheStyle? = null
+    // 缓存上次测量的字号，避免频繁触发 Paint.setTextSize() 的 native 重算
+    private var lastMeasuredTextSizePx: Float = Float.NaN
 
     // Cached layout results (action thread, recomputed only when viewport/config changes)
     @Volatile private var layoutDirty: Boolean = true
@@ -86,7 +88,8 @@ internal class DanmakuEngine(
     private var cachedMarginPx: Float = 12f
 
     // Draw paint (main thread) — only used for opacity alpha
-    private val bitmapPaint = Paint()
+    private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var lastDrawAlpha: Int = -1
 
     fun updateViewport(width: Int, height: Int, topInsetPx: Int, bottomInsetPx: Int) {
         viewportWidth = width.coerceAtLeast(0)
@@ -194,30 +197,17 @@ internal class DanmakuEngine(
                     cachedBottomFixedLaneCount = max(1, (cachedBottomFixedUsableHeight / cachedLaneHeight).toInt())
 
                     cachedMarginPx = max(12f, (layoutTextSizePx + outlinePad * 2f) * 0.6f)
+                    ensureLaneStateBuffers(cachedLaneCount, cachedTopFixedLaneCount, cachedBottomFixedLaneCount)
                     layoutDirty = false
                     snapshotDirty = true
                 }
-                val topInset = cachedTopInset
-                val textBoxHeight = cachedTextBoxHeight
-                val laneHeight = cachedLaneHeight
-                val usableHeight = cachedUsableHeight
-                val laneCount = cachedLaneCount
-                val topFixedLaneCount = cachedTopFixedLaneCount
-                val topFixedUsableHeight = cachedTopFixedUsableHeight
-                val bottomFixedLaneCount = cachedBottomFixedLaneCount
-                val bottomFixedUsableHeight = cachedBottomFixedUsableHeight
 
                 val durationMul = cfg.durationMultiplier.coerceIn(0.2f, 5f)
                 val rollingDurationMs = (DEFAULT_ROLLING_DURATION_MS * durationMul).toInt().coerceIn(MIN_ROLLING_DURATION_MS, MAX_ROLLING_DURATION_MS)
-                val fixedDurationMs = (FIXED_DURATION_MS * durationMul).toInt().coerceIn(MIN_ROLLING_DURATION_MS, MAX_ROLLING_DURATION_MS)
 
                 pruneExpired(width, nowMs)
-                skipOld(nowMs, rollingDurationMs)
                 dropIfLagging(nowMs)
-                ensureLaneStateBuffers(laneCount, topFixedLaneCount, bottomFixedLaneCount)
-                for (lane in 0 until laneCount) cleanupScrollLaneQueue(scrollLaneQueues[lane], width, nowMs)
-
-                val marginPx = cachedMarginPx
+                for (lane in 0 until cachedLaneCount) cleanupScrollLaneQueue(scrollLaneQueues[lane], width, nowMs)
 
                 // Spawn new
                 var spawnAttempts = 0
@@ -227,9 +217,9 @@ internal class DanmakuEngine(
                     if (item.data.text.isBlank()) continue
                     val textWidth = measureTextWidth(item, outlinePad, cfg)
                     when (item.data.mode) {
-                        Danmaku.MODE_TOP -> trySpawnFixed(DanmakuKind.TOP, item, textWidth, topFixedLaneCount, fixedDurationMs, nowMs)
-                        Danmaku.MODE_BOTTOM -> trySpawnFixed(DanmakuKind.BOTTOM, item, textWidth, bottomFixedLaneCount, fixedDurationMs, nowMs)
-                        else -> trySpawnScroll(item, textWidth, width, laneCount, rollingDurationMs, marginPx, nowMs)
+                        Danmaku.MODE_TOP -> trySpawnFixed(DanmakuKind.TOP, item, textWidth, cachedTopFixedLaneCount, computeFixedDurationMs(textWidth, durationMul, item.data.textSize / item.textSizeScaled), nowMs)
+                        Danmaku.MODE_BOTTOM -> trySpawnFixed(DanmakuKind.BOTTOM, item, textWidth, cachedBottomFixedLaneCount, computeFixedDurationMs(textWidth, durationMul, item.data.textSize / item.textSizeScaled), nowMs)
+                        else -> trySpawnScroll(item, textWidth, width, cachedLaneCount, rollingDurationMs, cachedMarginPx, nowMs)
                     }
                 }
 
@@ -240,7 +230,7 @@ internal class DanmakuEngine(
                 }
                 val releaseAtFrameId = currentUiFrameId + 1
                 requestCacheBuilds(style, releaseAtFrameId)
-                publishSnapshotIfDirty(nowMs, height, topInset, usableHeight, textBoxHeight, laneHeight, topFixedUsableHeight, bottomFixedUsableHeight)
+                publishSnapshotIfDirty(nowMs, height, cachedTopInset, cachedUsableHeight, cachedTextBoxHeight, cachedLaneHeight, cachedTopFixedUsableHeight, cachedBottomFixedUsableHeight)
             }
         } finally {
             if (DanmakuLogStats.logEnabled) {
@@ -270,6 +260,13 @@ internal class DanmakuEngine(
                 }
             }
         }
+    }
+
+    private fun computeFixedDurationMs(textWidth: Float, durationMul: Float, fontSizeMul: Float = 1f): Int {
+        // 线性插值：1 + (ratio - 1) * 2/3，让增长幅度逐渐减小，避免过长的弹幕占用过多时间。
+        val ratio = min(textWidth, viewportWidth.toFloat()) / 400f
+        val baseRatio = 1f + (ratio - 1f) * if(ratio > 1f) 0.65f else 1f
+        return (FIXED_DURATION_MS * baseRatio * durationMul * fontSizeMul).roundToInt().coerceIn(MIN_ROLLING_DURATION_MS, MAX_ROLLING_DURATION_MS)
     }
 
     private fun recordActDuration(durationNanos: Long) {
@@ -313,10 +310,13 @@ internal class DanmakuEngine(
     fun draw(canvas: Canvas, snapshot: RenderSnapshot, config: DanmakuConfig) {
         if (!config.enabled) return
         val opacityAlpha = (config.opacity * 255f).roundToInt().coerceIn(0, 255)
-        bitmapPaint.alpha = opacityAlpha
+        if (opacityAlpha != lastDrawAlpha) {
+            bitmapPaint.alpha = opacityAlpha
+            lastDrawAlpha = opacityAlpha
+        }
         val styleGen = cacheStyleGeneration
         val width = viewportWidth
-        val nowMs = currentPositionMs
+        val nowMs = snapshot.positionMs
 
         for (i in 0 until snapshot.count) {
             val item = snapshot.items[i] ?: continue
@@ -425,6 +425,14 @@ internal class DanmakuEngine(
         items = allItems.filterTo(ArrayList(allItems.size)) { item ->
             val d = item.data
             if (d.level < cfg.minLevel) return@filterTo false
+            // 转换被禁用模式的弹幕
+            d.convertedType = when (d.type) {
+                Danmaku.MODE_BOTTOM -> if (!cfg.allowBottom) {
+                    if (cfg.allowTop) Danmaku.MODE_TOP else Danmaku.MODE_SCROLL
+                } else 0
+                Danmaku.MODE_TOP -> if (!cfg.allowTop) Danmaku.MODE_SCROLL else 0
+                else -> 0
+            }
             when (d.mode) {
                 Danmaku.MODE_SCROLL -> cfg.allowScroll
                 Danmaku.MODE_TOP -> cfg.allowTop
@@ -522,11 +530,6 @@ internal class DanmakuEngine(
         if (cacheProbeCursor >= active.size) cacheProbeCursor = 0
     }
 
-    private fun skipOld(nowMs: Double, rollingDurationMs: Int) {
-        val ignoreBefore = nowMs - rollingDurationMs
-        while (index < items.size && items[index].timeMs() < ignoreBefore) index++
-    }
-
     private fun dropIfLagging(nowMs: Double) {
         val dropBefore = nowMs - MAX_CATCH_UP_LAG_MS
         while (index < items.size && items[index].timeMs() < dropBefore) index++
@@ -569,8 +572,14 @@ internal class DanmakuEngine(
         // Compute effective text size for measurement
         val clampedSize = min(item.data.textSize, 25)
         val scaleFactor = cfg.textSizeScale.coerceIn(25, 200) / 100f
+        item.textSizeScaled = clampedSize * scaleFactor
+
         val effectiveTextSizePx = (textSizePx * clampedSize / 25f * scaleFactor).coerceAtLeast(1f)
-        actionPaint.textSize = effectiveTextSizePx
+        // Paint.setTextSize() 会触发 native 层布局重算，跳过相同值的写操作
+        if (effectiveTextSizePx != lastMeasuredTextSizePx) {
+            actionPaint.textSize = effectiveTextSizePx
+            lastMeasuredTextSizePx = effectiveTextSizePx
+        }
         return actionPaint.measureText(text) + outlinePad * 2f
     }
 
@@ -652,7 +661,6 @@ internal class DanmakuEngine(
 
     private fun cleanupScrollLaneQueue(queue: ArrayDeque<DanmakuItem>, width: Int, nowMs: Double) {
         while (queue.isNotEmpty()) { val f = queue.first(); if (!f.isActive || isExpired(width, nowMs, f)) queue.removeFirst() else break }
-        while (queue.isNotEmpty()) { val l = queue.last(); if (!l.isActive || isExpired(width, nowMs, l)) queue.removeLast() else break }
     }
 
     private fun isExpired(width: Int, nowMs: Double, item: DanmakuItem): Boolean {
@@ -666,13 +674,13 @@ internal class DanmakuEngine(
     private companion object {
         private const val TAG = "DanmakuEngine"
         // 滚动弹幕的基础穿屏时长（durationMultiplier = 1.0 时）。
-        const val DEFAULT_ROLLING_DURATION_MS = 7_800f
+        const val DEFAULT_ROLLING_DURATION_MS = 8_000f
         // 弹幕显示时长下限，避免过快难以阅读。
         const val MIN_ROLLING_DURATION_MS = 2_500
         // 弹幕显示时长上限，避免长时间占轨。
         const val MAX_ROLLING_DURATION_MS = 20_000
         // 固定弹幕的基础停留时长（durationMultiplier = 1.0 时）。
-        const val FIXED_DURATION_MS = 4_000
+        const val FIXED_DURATION_MS = 5_000
         // 长弹幕允许比短弹幕更快，但最多只放大到短弹幕基准速度的这个倍数。
         const val MAX_LONG_SCROLL_SPEED_RATIO = 1.5f
         // 单帧最多尝试生成多少条到时弹幕，防止瞬时高峰拖垮 action 线程。

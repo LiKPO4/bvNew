@@ -365,7 +365,7 @@ class VideoPlayerV3ViewModel(
                     dmid = it.dmid,
                     positionMs = (it.time * 1000).toInt(),
                     text = it.text,
-                    mode = it.type,
+                    type = it.type,
                     textSize = it.size,
                     color = 0xFF000000.toInt() or (it.color and 0xFFFFFF),
                     level = it.level
@@ -606,8 +606,8 @@ class VideoPlayerV3ViewModel(
             val existDefaultAudio = availableAudio.contains(Prefs.defaultAudio)
             if (!existDefaultAudio && availableAudio.isNotEmpty()) {
                 val currentAudio = when {
-                    Prefs.defaultAudio == Audio.ADolbyAtoms && availableAudio.contains(Audio.ADolbyAtoms) -> Audio.ADolbyAtoms
-                    (Prefs.defaultAudio == Audio.ADolbyAtoms || Prefs.defaultAudio == Audio.AHiRes) && availableAudio.contains(Audio.AHiRes) -> Audio.AHiRes
+                    Prefs.defaultAudio == Audio.ADolbyAtmos && availableAudio.contains(Audio.ADolbyAtmos) -> Audio.ADolbyAtmos
+                    (Prefs.defaultAudio == Audio.ADolbyAtmos || Prefs.defaultAudio == Audio.AHiRes) && availableAudio.contains(Audio.AHiRes) -> Audio.AHiRes
                     availableAudio.contains(Audio.A192K) -> Audio.A192K
                     availableAudio.contains(Audio.A132K) -> Audio.A132K
                     availableAudio.contains(Audio.A64K) -> Audio.A64K
@@ -873,7 +873,7 @@ class VideoPlayerV3ViewModel(
 
         val supportedCodec = playData!!.codec
         val codecList =
-            supportedCodec[currentQuality.code]?.mapNotNull { VideoCodec.fromCodecString(it) } ?: emptyList()
+            (supportedCodec[currentQuality.code]?.mapNotNull { VideoCodec.fromCodecString(it) } ?: emptyList()).sortedBy { it.ordinal }
 
         availableVideoCodec.swapListWithMainContext(codecList)
         logger.fInfo { "Video available codec: ${availableVideoCodec.toList()}" }
@@ -884,7 +884,7 @@ class VideoPlayerV3ViewModel(
         } else if (codecList.contains(Prefs.defaultVideoCodec)) {
             Prefs.defaultVideoCodec
         } else {
-            codecList.minByOrNull { it.ordinal }!!
+            codecList.maxByOrNull { it.ordinal }!!
         }
         withContext(Dispatchers.Main) {
             this@VideoPlayerV3ViewModel.currentVideoCodec = currentVideoCodec
@@ -2029,7 +2029,7 @@ class VideoPlayerV3ViewModel(
             dmid = System.currentTimeMillis(),
             positionMs = 0,
             text = event.content,
-            mode = event.mode,
+            type = event.mode,
             textSize = event.fontSize,
             color = 0xFF000000.toInt() or (event.color and 0xFFFFFF)
         )
@@ -2069,7 +2069,7 @@ class VideoPlayerV3ViewModel(
         val view = danmakuView ?: return
 
         // positionMs 必须与 positionProvider 使用同一时钟（SystemClock.elapsedRealtime），
-        // 否则 DanmakuEngine 的 skipOld/dropIfLagging 会丢弃"过时"弹幕
+        // 否则 DanmakuEngine 的 dropIfLagging 会丢弃"过时"弹幕
         val nowMs = android.os.SystemClock.elapsedRealtime().toInt()
         val updatedItems = itemsToSend.map {
             it.copy(positionMs = nowMs)

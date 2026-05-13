@@ -8,7 +8,7 @@ enum class Audio(val code: Int, private val strRes: Int) {
     A132K(30232, R.string.audio_132k),
     A192K(30280, R.string.audio_192k),
     AHiRes(30251, R.string.audio_hi_res),
-    ADolbyAtoms(30250, R.string.audio_dolby_atoms);
+    ADolbyAtmos(30250, R.string.audio_dolby_atmos);
 
     companion object {
         fun fromCode(code: Int) = runCatching {
