@@ -130,7 +130,8 @@ fun DescriptionPanel(
                     // 标签行（固定不滚动，可横向滚动）
                     if (tags.isNotEmpty()) {
                         LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth(),
                             contentPadding = PaddingValues(horizontal = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
@@ -158,21 +159,34 @@ fun DescriptionPanel(
                             .onPreviewKeyEvent { event ->
                                 when {
                                     event.isKeyDown() && event.isDpadDown() -> {
-                                        scope.launch {
-                                            val scrollAmount =
-                                                with(density) { 100.dp.toPx() }
-                                            scrollState.animateScrollBy(scrollAmount)
+                                        // 仅在还有可向下滚动空间时拦截事件，
+                                        // 否则让事件继续冒泡到焦点系统（焦点会移出内容区）
+                                        if (scrollState.value < scrollState.maxValue) {
+                                            scope.launch {
+                                                val scrollAmount =
+                                                    with(density) { 100.dp.toPx() }
+                                                scrollState.animateScrollBy(scrollAmount)
+                                            }
+                                            true
+                                        } else {
+                                            false
                                         }
-                                        true
                                     }
 
                                     event.isKeyDown() && event.isDpadUp() -> {
-                                        scope.launch {
-                                            val scrollAmount =
-                                                with(density) { 100.dp.toPx() }
-                                            scrollState.animateScrollBy(-scrollAmount)
+                                        // 仅在还有可向上滚动空间时拦截事件，
+                                        // 否则让事件继续冒泡到焦点系统，由 focusProperties.up
+                                        // 跳回第一个标签
+                                        if (scrollState.value > 0) {
+                                            scope.launch {
+                                                val scrollAmount =
+                                                    with(density) { 100.dp.toPx() }
+                                                scrollState.animateScrollBy(-scrollAmount)
+                                            }
+                                            true
+                                        } else {
+                                            false
                                         }
-                                        true
                                     }
 
                                     else -> false

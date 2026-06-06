@@ -20,9 +20,10 @@ data class CommentRepliesData(
         }
 
         fun fromCommentReplyList(detailListReply: bilibili.main.community.reply.v1.DetailListReply): CommentRepliesData {
+            val rootComment = Comment.fromReplyInfo(detailListReply.root)
             return CommentRepliesData(
-                rootComment = Comment.fromReplyInfo(detailListReply.root),
-                replies = detailListReply.root.repliesList.map { Comment.fromReplyInfo(it) },
+                rootComment = rootComment,
+                replies = rootComment.replies,
                 nextPage = CommentReplyPage(
                     nextAppPage = detailListReply.paginationReply.nextOffset
                 ),

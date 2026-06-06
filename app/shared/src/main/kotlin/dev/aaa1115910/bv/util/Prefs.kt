@@ -494,6 +494,10 @@ object Prefs {
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefEnableAsyncQueueingRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefEnableAsyncQueueing, value) }
 
+    var enableScreenRefreshRateMatching: Boolean
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefEnableScreenRefreshRateMatchingRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefEnableScreenRefreshRateMatching, value) }
+
     var skipPgcIntroOutro: Boolean
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefSkipPgcIntroOutroRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefSkipPgcIntroOutroKey, value) }
@@ -607,6 +611,7 @@ object PrefKeys {
     val prefDrawerNavItemsOrderKey = stringPreferencesKey("drawer_nav_items_order")
     val prefCachedLiveAreaGroupsKey = stringPreferencesKey("cached_live_area_groups")
     val prefEnableAsyncQueueing = booleanPreferencesKey("enable_async_queueing")
+    val prefEnableScreenRefreshRateMatching = booleanPreferencesKey("enable_screen_refresh_rate_matching")
     val prefSkipPgcIntroOutroKey = booleanPreferencesKey("skip_pgc_intro_outro")
     val prefPlayerControllerButtonsOrderKey = stringPreferencesKey("player_controller_buttons_order")
     val prefUgcVideoInfoHistoryCountKey = intPreferencesKey("ugc_video_info_history_count")
@@ -678,8 +683,8 @@ object PrefKeys {
     val prefEnableFfmpegEndererRequest = PreferenceRequest(prefEnableFfmpegAudioRenderer, true)
     val prefBlacklistUserRequest = PreferenceRequest(prefBlacklistUserKey, false)
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
-    val prefInterfaceModeRequest = PreferenceRequest(prefInterfaceModeKey, InterfaceMode.Auto.ordinal)
-    val prefNavSwitchModeRequest = PreferenceRequest(prefNavSwitchModeKey, NavSwitchMode.Auto.ordinal)
+    val prefInterfaceModeRequest = PreferenceRequest(prefInterfaceModeKey, InterfaceMode.TV.ordinal)
+    val prefNavSwitchModeRequest = PreferenceRequest(prefNavSwitchModeKey, NavSwitchMode.Confirm.ordinal)
     val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.PartAndEpisode.ordinal)
     val prefDefaultHomeTabRequest = PreferenceRequest(prefDefaultHomeTabKey, 0)
     val prefPortraitVideoFixModeRequest = PreferenceRequest(prefPortraitVideoFixModeKey, 0)
@@ -704,6 +709,7 @@ object PrefKeys {
     val prefDrawerNavItemsOrderRequest = PreferenceRequest(prefDrawerNavItemsOrderKey, "")
     val prefCachedLiveAreaGroupsRequest = PreferenceRequest(prefCachedLiveAreaGroupsKey, "")
     val prefEnableAsyncQueueingRequest = PreferenceRequest(prefEnableAsyncQueueing, false)
+    val prefEnableScreenRefreshRateMatchingRequest = PreferenceRequest(prefEnableScreenRefreshRateMatching, false)
     val prefSkipPgcIntroOutroRequest = PreferenceRequest(prefSkipPgcIntroOutroKey, false)
     val prefPlayerControllerButtonsOrderRequest = PreferenceRequest(prefPlayerControllerButtonsOrderKey, "")
     val prefUgcVideoInfoHistoryCountRequest = PreferenceRequest(prefUgcVideoInfoHistoryCountKey, 2)

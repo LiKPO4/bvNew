@@ -80,6 +80,10 @@ class CommentViewModel(
             )
             nextCommentPage = commentsData.nextPage
             hasMoreComments = commentsData.hasNext
+            // 首次加载时在列表顶部插入置顶评论
+            if (comments.isEmpty()) {
+                comments.addAll(commentsData.topReplies)
+            }
             comments.addAll(commentsData.comments)
         }.onFailure {
             logger.fException(it) { "Load more comments failed" }

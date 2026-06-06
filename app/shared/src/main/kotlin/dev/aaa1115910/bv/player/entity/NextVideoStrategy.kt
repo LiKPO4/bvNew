@@ -12,10 +12,10 @@ enum class NextVideoStrategy(val ordinalValue: Int) {
 
     fun displayName(context: Context): String = when (this) {
         SingleVideo -> "单视频"
-        PartAndEpisode -> "合集/分P"
-        PartAndEpisodeReverse -> "合集/分P-逆序"
-        PreloadedVideoList -> "UGC列表"
-        PreloadedVideoListReverse -> "UGC列表-逆序"
+        PartAndEpisode -> "合集/分P(顺)"
+        PartAndEpisodeReverse -> "合集/分P(逆)"
+        PreloadedVideoList -> "列表视频(顺)"
+        PreloadedVideoListReverse -> "列表视频(逆)"
         RelatedVideo -> "UGC推荐-随机"
     }
 

@@ -8,11 +8,11 @@
 
     <string name="play_mode_single_video">单视频</string>
     <string name="play_mode_single_loop">单视频循环</string>
-    <string name="play_mode_part_episode">合集/分P</string>
-    <string name="play_mode_part_episode_reverse">合集/分P-逆序</string>
-    <string name="play_mode_list_order">UGC列表</string>
-    <string name="play_mode_list_order_reverse">UGC列表-逆序</string>
-    <string name="play_mode_related_video">UGC推荐-随机</string>
+    <string name="play_mode_part_episode">合集/分P(顺)</string>
+    <string name="play_mode_part_episode_reverse">合集/分P(逆)</string>
+    <string name="play_mode_list_order">列表视频(顺)</string>
+    <string name="play_mode_list_order_reverse">列表视频(逆)</string>
+    <string name="play_mode_related_video">UGC推荐(随机)</string>
     <string name="play_mode_custom">自定义</string>
 
     <string name="resolution_1080p">1080P 高清</string>
@@ -83,7 +83,7 @@
     <string name="video_rotation_original">原始</string>
     <string name="video_rotation_90">+90° ↱</string>
     <string name="video_rotation_negative_90">-90° ↰</string>
-    <string name="video_rotation_180">+180° ⇵</string>
+    <string name="video_rotation_180">+180° ↷</string>
     <string name="video_player_menu_subtitle_background_opacity">背景不透明度</string>
     <string name="video_player_menu_subtitle_bottom_padding">底部间距</string>
     <string name="video_player_menu_subtitle_size">字体大小</string>

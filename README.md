@@ -19,15 +19,7 @@
 BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三方应用，适配 `Android 移动端`
 和 `Android TV`，使用 `Jetpack Compose` 开发
 
-**都是随心乱写的代码，能跑就行。**
-
 ---
-
-<div align="center">
-
-# 学废了
-
-</div>
 
 ## 声明
 
@@ -57,14 +49,14 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
 - 合集/分P 自动滚动到最后播放的视频并高亮显示
 
   ![UGC详情](https://github.com/user-attachments/assets/bdd6bfe7-b434-4f59-819d-49c2d002ff34)
-- **播放器页面增加“推荐视频”、“视频列表”**
+- **播放器页面增加“推荐视频”、“列表视频”**
   - 操作方式： 1）双击下方向键; 2）按下键显示视频信息，移动焦点在底部那排按钮后再按下方向键
 
   ![视频播放-推荐视频](https://github.com/user-attachments/assets/b62d1c6e-0a4f-4e39-a0c9-d3f06462d3e5)
 - **新增视频画面旋转功能**
 - 播放器控制条，**增加点赞、收藏、投币、稍后再看**
   - 仅UGC视频且要登录才会显示
-- 播放器控制条，增加功能按钮（播放速度、画质、up空间、画面旋转、字幕开关、重新加载当前视频、弹幕开关、循环播放、播放清单、推荐视频、视频简介、播放器设置）
+- 播放器控制条，增加功能按钮（播放速度、画质、音频编码、up空间、画面旋转、字幕开关、重新加载当前视频、弹幕开关、播放模式、播放列表、推荐视频、视频简介、播放器设置）
 - 播放器控制条，默认聚焦在进度条
   - 此时，按确认键会触发“播放/暂停”、按左右键回触发“快进/快退”
 - 新增识别字幕类型，添加AI标识
@@ -74,6 +66,7 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
 - 换成新版弹幕接口
 - 支持播放**互动视频**
 - 播放器设置-画面比例，新增画面比例：等宽、等高、拉伸
+- 增加播放模式，支持 单视频（播完即停）、单视频循环、合集/分P的顺序或逆序播放、UGC列表视频的顺序或逆序播放、推荐视频随机播放、自定义（按用户自己设置的策略顺序播放）
 
   ![视频播放](https://github.com/user-attachments/assets/1b11199a-63ca-4c42-9c50-f61049fd221f)
 - 调整设置，增加分类“播放设置”
@@ -119,7 +112,6 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
 - 解决一些bug等等
 
 ## 构建
-自己动手丰衣足食
 - 安装开发环境
   - Android studio、Android SDK、JAVA等等
 
@@ -128,18 +120,18 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
     ```sh
     keytool -genkey -v -keystore keystore.jks -alias 别名 -keyalg RSA -keysize 2048 -validity 10000
     ```
-  命令说明：
-  - genkey: 生成密钥对
-  - -v: 详细输出
-  - -keystore keystore.jks: 指定生成的密钥库文件名
-  - -alias 别名: 指定密钥的别名（可以根据需要修改）
-  - -keyalg RSA: 使用 RSA 算法
-  - -keysize 2048: 密钥长度为 2048 位
-  - -validity 10000: 密钥的有效期为 10000 天（约 27 年）
-    执行此命令后，会提示你输入：
-    - 密钥库密码（keystore.pwd）
-    - 密钥密码（keystore.alias_pwd），可以与密钥库密码相同
-    - 姓名、组织单位、城市等信息，可空
+    命令说明：
+    - genkey: 生成密钥对
+    - -v: 详细输出
+    - -keystore keystore.jks: 指定生成的密钥库文件名
+    - -alias 别名: 指定密钥的别名（可以根据需要修改）
+    - -keyalg RSA: 使用 RSA 算法
+    - -keysize 2048: 密钥长度为 2048 位
+    - -validity 10000: 密钥的有效期为 10000 天（约 27 年）
+      执行此命令后，会提示你输入：
+      - 密钥库密码（keystore.pwd）
+      - 密钥密码（keystore.alias_pwd），可以与密钥库密码相同
+      - 姓名、组织单位、城市等信息，可空
 
   - 在项目根目录增加 signing.properties 文件。文件内容如下
     ```properties
@@ -148,24 +140,11 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
     keystore.alias=创建签名文件时设置的别名
     keystore.alias_pwd=创建签名文件时设置的别名密码
     ```
-2. 执行构建命令来生成 apk 文件
+- 执行构建命令来生成 apk 文件
     ```sh
     # release
     ./gradlew clean assembleRelease
     ```
-- 在根目录增加 signing.properties 文件。文件内容如下
-  ```properties
-  keystore.path=./keystore.jks
-  keystore.pwd=创建签名文件时设置的密码
-  keystore.alias=创建签名文件时设置的别名
-  keystore.alias_pwd=创建签名文件时设置的别名密码
-  ```
-- 执行构建命令来生成 apk 文件
-```sh
-# release
-./gradlew clean assembleRelease
-```
-
 
 ## 安装
 

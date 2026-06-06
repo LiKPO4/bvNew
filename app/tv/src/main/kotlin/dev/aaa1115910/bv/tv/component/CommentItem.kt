@@ -111,14 +111,35 @@ private fun CommentMainContent(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // 用户名
-            Text(
-                text = comment.member.name,
-                style = MaterialTheme.typography.titleSmall,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            // 用户名 + 置顶标识
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (comment.isPinned) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = Color(0xfffb7299),
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "置顶",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+                Text(
+                    text = comment.member.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
             // 评论内容（支持表情）
             CommentContent(
@@ -138,7 +159,7 @@ private fun CommentMainContent(
             // 底部信息：时间和点赞数
             Row(
                 modifier = Modifier.padding(top = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // 时间

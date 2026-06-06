@@ -212,6 +212,35 @@ fun Long.toSmartDate(timeZone: TimeZone = TimeZone.getDefault()): String? {
     }
 }
 
+/**
+ * 智能日期格式化 (兼容低版本 Android)
+ * @param timeZone 时区 (默认系统时区)
+ */
+fun Long.toSmartDateTime(timeZone: TimeZone = TimeZone.getDefault()): String? {
+    if (this <= 0) return null
+
+    try {
+        // 自动识别秒级或毫秒级时间戳
+        // 秒级时间戳通常小于等于10位数，目前直到2286年都是10位数
+        // 毫秒级时间戳通常为13位数
+        val timeInMillis = if (this < 10000000000L) this * 1000L else this
+        val temp = System.currentTimeMillis() - timeInMillis
+        return when {
+            temp > 1000L * 60 * 60 * 24 -> SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINESE).apply {
+                this.timeZone = timeZone
+            }.format(
+                timeInMillis
+            )
+
+            temp > 1000L * 60 * 60 -> "${temp / (1000 * 60 * 60)}小时前"
+            temp > 1000L * 60 -> "${temp / (1000 * 60)}分钟前"
+            else -> "刚刚"
+        }
+    } catch (e: Exception) {
+        return null
+    }
+}
+
 val Int.smartDate: String?
     get() = this.toLong().toSmartDate()
 

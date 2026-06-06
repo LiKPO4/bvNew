@@ -79,6 +79,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.video.Subtitle
+import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerClockState
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.PlayMode
@@ -137,6 +138,7 @@ fun ControllerVideoInfo(
     onShowComment: () -> Unit = {},
     onShowDescription: () -> Unit = {},
     onResolutionChange: (Resolution) -> Unit = {},
+    onAudioChange: (Audio) -> Unit = {},
     onLiveQualityChange: (Int) -> Unit = {},
     viewerCountText: String = "",
 ) {
@@ -227,6 +229,9 @@ fun ControllerVideoInfo(
                 availableResolutions = videoPlayerConfigData.availableResolutions,
                 currentResolution = videoPlayerConfigData.currentResolution,
                 onResolutionChange = onResolutionChange,
+                availableAudio = videoPlayerConfigData.availableAudio,
+                currentAudio = videoPlayerConfigData.currentAudio,
+                onAudioChange = onAudioChange,
                 availableLiveQualities = videoPlayerConfigData.availableLiveQualities,
                 currentLiveQn = videoPlayerConfigData.currentLiveQn,
                 currentLiveQualityDescription = videoPlayerConfigData.currentLiveQualityDescription,
@@ -318,6 +323,9 @@ fun ControllerVideoInfoBottom(
     availableResolutions: List<Resolution> = emptyList(),
     currentResolution: Resolution = Resolution.R240P,
     onResolutionChange: (Resolution) -> Unit = {},
+    availableAudio: List<Audio> = emptyList(),
+    currentAudio: Audio = Audio.A192K,
+    onAudioChange: (Audio) -> Unit = {},
     availableLiveQualities: List<Pair<Int, String>> = emptyList(),
     currentLiveQn: Int = 0,
     currentLiveQualityDescription: String = "",
@@ -333,6 +341,7 @@ fun ControllerVideoInfoBottom(
     var showRotationDialog by remember { mutableStateOf(false) }
     var showSubtitleDialog by remember { mutableStateOf(false) }
     var showQualityDialog by remember { mutableStateOf(false) }
+    var showAudioDialog by remember { mutableStateOf(false) }
     var showPlayModeDialog by remember { mutableStateOf(false) }
     var speed by remember { mutableFloatStateOf(playSpeed) }
     val danmakuIconId = if (showDanmaku) R.drawable.ic_danmaku_on else R.drawable.ic_danmaku_hide
@@ -343,6 +352,7 @@ fun ControllerVideoInfoBottom(
     }
 
     val currentQualityText = if (isLive) currentLiveQualityDescription.ifEmpty { "画质" } else currentResolution.getShortDisplayName(context).ifEmpty { "画质" }
+    val currentAudioText = currentAudio.getDisplayName(context).ifEmpty { "音质" }
 
     val playModeIconId = when (currentPlayMode) {
         PlayMode.SingleVideo -> R.drawable.ic_play_mode_single
@@ -355,7 +365,7 @@ fun ControllerVideoInfoBottom(
         PlayMode.Custom -> R.drawable.ic_play_mode_custom
     }
 
-    val buttons = remember(isLive, fromSeason, showDanmaku, currentPlayMode, speed, rotation, currentSubtitleId, isFollowingUp, showNextVideoBtn, currentLiveQualityDescription, currentResolution, availableResolutions, buttonConfigs) {
+    val buttons = remember(isLive, fromSeason, showDanmaku, currentPlayMode, speed, rotation, currentSubtitleId, isFollowingUp, showNextVideoBtn, currentLiveQualityDescription, currentResolution, availableResolutions, currentAudio, availableAudio, buttonConfigs) {
         val rawButtons = listOf(
             ControlButton(
                 id = "nextVideo",
@@ -384,6 +394,13 @@ fun ControllerVideoInfoBottom(
                 visible = (isLive && availableLiveQualities.isNotEmpty()) || (!isLive && availableResolutions.isNotEmpty())
             ),
             ControlButton(
+                id = "audio",
+                text = currentAudioText,
+                onClick = { showAudioDialog = true },
+                width = 56,
+                visible = !isLive && availableAudio.size > 1
+            ),
+            ControlButton(
                 id = "upSpace",
                 painterId = upSpaceIconId,
                 scale = 0.72f,
@@ -407,7 +424,7 @@ fun ControllerVideoInfoBottom(
                 id = "comment",
                 icon = Icons.Outlined.Comment,
                 scale = 0.95f,
-                onClick = onShowComment,
+                onClick = { onHideInfo(); onShowComment() },
                 fontWeight = FontWeight.Bold,
                 visible = !isLive
             ),
@@ -536,7 +553,7 @@ fun ControllerVideoInfoBottom(
 
     fun scheduleHideJob() {
         cancelHideJob()
-        if (show && !showSpeedDialog && !showRotationDialog && !showSubtitleDialog && !showQualityDialog && !showPlayModeDialog && !pauseAutoHide) {
+        if (show && !showSpeedDialog && !showRotationDialog && !showSubtitleDialog && !showQualityDialog && !showAudioDialog && !showPlayModeDialog && !pauseAutoHide) {
             hideVideoInfoJob = scope.launch {
                 delay(5000)
                 withContext(Dispatchers.Main) { onHideInfo() }
@@ -544,7 +561,7 @@ fun ControllerVideoInfoBottom(
         }
     }
 
-    LaunchedEffect(show, showSpeedDialog, showRotationDialog, showSubtitleDialog, showQualityDialog, showPlayModeDialog, pauseAutoHide) {
+    LaunchedEffect(show, showSpeedDialog, showRotationDialog, showSubtitleDialog, showQualityDialog, showAudioDialog, showPlayModeDialog, pauseAutoHide) {
         scheduleHideJob()
     }
 
@@ -790,6 +807,15 @@ fun ControllerVideoInfoBottom(
                 onResolutionChange = onResolutionChange
             )
         }
+    }
+
+    if (showAudioDialog && availableAudio.isNotEmpty()) {
+        AudioDialog(
+            onHideDialog = { showAudioDialog = false },
+            availableAudio = availableAudio,
+            currentAudio = currentAudio,
+            onAudioChange = onAudioChange
+        )
     }
 
     if (showPlayModeDialog) {
@@ -1265,6 +1291,86 @@ private fun ResolutionDialog(
                             Text(
                                 modifier = Modifier.fillMaxWidth(),
                                 text = resolution.getShortDisplayName(context),
+                                textAlign = TextAlign.Center,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AudioDialog(
+    modifier: Modifier = Modifier,
+    availableAudio: List<Audio>,
+    currentAudio: Audio,
+    onHideDialog: () -> Unit,
+    onAudioChange: (Audio) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val audioList = remember(availableAudio) {
+        availableAudio.sortedBy { it.ordinal }
+    }
+    val focusRequesters = remember { audioList.associateWith { FocusRequester() } }
+    val effectiveCurrentAudio = remember(currentAudio, audioList) {
+        if (audioList.contains(currentAudio)) currentAudio else audioList.first()
+    }
+    var lastInteractionTime by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    fun touch() { lastInteractionTime = System.currentTimeMillis() }
+
+    LaunchedEffect(effectiveCurrentAudio) {
+        focusRequesters[effectiveCurrentAudio]?.requestFocus(scope)
+    }
+
+    LaunchedEffect(lastInteractionTime) {
+        val base = lastInteractionTime
+        delay(15000)
+        if (base == lastInteractionTime) onHideDialog()
+    }
+
+    Dialog(onDismissRequest = { onHideDialog() }) {
+        Surface(
+            modifier = modifier
+                .width(240.dp),
+            color = Color.Black.copy(alpha = 0.5f),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(
+                    text = "音频质量",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 18.sp
+                )
+
+                Column {
+                    audioList.forEach { audio ->
+                        val selected = audio == effectiveCurrentAudio
+                        Button(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp, start = 8.dp, end = 8.dp)
+                                .focusRequester(focusRequesters[audio]!!),
+                            shape = ButtonDefaults.shape(MaterialTheme.shapes.medium),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                            colors = ButtonDefaults.colors(
+                                containerColor = if (selected) MaterialTheme.colorScheme.inverseSurface.copy(
+                                    alpha = 0.4f
+                                ) else Color.Transparent,
+                                contentColor = Color.White,
+                                focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
+                                focusedContentColor = Color.Black
+                            ),
+                            onClick = { touch(); onAudioChange(audio) }
+                        ) {
+                            Text(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = audio.getDisplayName(context),
                                 textAlign = TextAlign.Center,
                                 fontSize = 16.sp
                             )

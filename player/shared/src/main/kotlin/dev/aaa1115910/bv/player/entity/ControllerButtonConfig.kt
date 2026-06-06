@@ -16,10 +16,16 @@ data class ControllerButtonConfig(
  * 所有控制栏按钮 ID（默认顺序）
  */
 val ALL_CONTROLLER_BUTTON_IDS = listOf(
-    "nextVideo", "refresh", "speed", "resolution", "upSpace", "rotation",
+    "nextVideo", "refresh", "speed", "resolution", "audio", "upSpace", "rotation",
     "comment", "subtitle", "danmaku", "playlist", "related", "description",
     "playMode", "settings"
 )
+
+/**
+ * 新增按钮的默认隐藏列表：出现在这里的新按钮在用户未保存任何配置时默认隐藏，
+ * 同时在老用户升级后通过 insertMissingButtons 追加时也保持隐藏。
+ */
+val DEFAULT_HIDDEN_CONTROLLER_BUTTON_IDS = setOf("audio")
 
 /**
  * 解析控制栏按钮配置字符串
@@ -70,7 +76,13 @@ private fun insertMissingButtons(configs: List<ControllerButtonConfig>): List<Co
             }
             if (i == 0) insertIndex = 0
         }
-        result.add(insertIndex, ControllerButtonConfig(missingId))
+        result.add(
+            insertIndex,
+            ControllerButtonConfig(
+                id = missingId,
+                hidden = missingId in DEFAULT_HIDDEN_CONTROLLER_BUTTON_IDS
+            )
+        )
     }
     return result
 }
@@ -93,12 +105,14 @@ fun serializeControllerButtonsOrder(configs: List<ControllerButtonConfig>): Stri
 /**
  * 获取用于编辑的完整按钮配置列表
  * 如果存储的配置为空，返回所有按钮的默认配置；
- * 如果有值，复用 parseControllerButtonsOrder（已自动补充缺失按钮）。
+* 如果有值，复用 parseControllerButtonsOrder（已自动补充缺失按钮）。
  */
 fun getControllerButtonConfigsForEditing(orderString: String): List<ControllerButtonConfig> {
     val configs = parseControllerButtonsOrder(orderString)
     if (configs.isEmpty()) {
-        return ALL_CONTROLLER_BUTTON_IDS.map { ControllerButtonConfig(it) }
+        return ALL_CONTROLLER_BUTTON_IDS.map { id ->
+            ControllerButtonConfig(id, hidden = id in DEFAULT_HIDDEN_CONTROLLER_BUTTON_IDS)
+        }
     }
     return configs
 }
@@ -112,6 +126,7 @@ fun getControllerButtonDisplayName(id: String): String {
         "refresh" -> "刷新"
         "speed" -> "播放速度"
         "resolution" -> "画质"
+        "audio" -> "音频编码"
         "upSpace" -> "UP主空间"
         "rotation" -> "画面旋转"
         "comment" -> "评论"

@@ -98,7 +98,14 @@ class ExoMediaPlayer(
             .setLoadControl(loadControl)
             .setSeekForwardIncrementMs(1000 * 10)
             .setSeekBackIncrementMs(1000 * 10)
-            .setVideoChangeFrameRateStrategy(C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_OFF) // 优化 滚动弹幕流畅度
+            .setVideoChangeFrameRateStrategy(
+                // 启用时切换屏幕刷新率匹配视频帧率；关闭时保持默认以优化滚动弹幕流畅度
+                if (options.enableScreenRefreshRateMatching) {
+                    C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_ONLY_IF_SEAMLESS
+                } else {
+                    C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_OFF
+                }
+            )
             .build()
 
         initListener()

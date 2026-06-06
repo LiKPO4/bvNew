@@ -65,7 +65,7 @@ fun TabbedVideosPanel(
         buildList {
             add("推荐视频" to relatedVideos)
             if (preloadedVideos.isNotEmpty()) {
-                add("UGC视频列表" to preloadedVideos)
+                add("列表视频" to preloadedVideos)
             }
         }
     }

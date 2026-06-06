@@ -130,6 +130,11 @@ internal class DanmakuEngine(
                 old.allowBottom != newConfig.allowBottom || old.minLevel != newConfig.minLevel
             if (filterChanged) {
                 rebuildFilteredItems()
+                // 清除当前 active 弹幕，使 mode 已变更的弹幕在下一帧
+                // 以转换后的 mode 重新生成，避免首帧仍显示旧 mode
+                clearActives()
+                index = lowerBound(lastNowMs.coerceAtLeast(0.0))
+                publishEmptySnapshot()
             }
             layoutDirty = true
         }

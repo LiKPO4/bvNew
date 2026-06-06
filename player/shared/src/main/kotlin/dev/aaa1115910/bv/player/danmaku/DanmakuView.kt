@@ -269,7 +269,7 @@ class DanmakuView @JvmOverloads constructor(
             val byteIndex = i / 8
             val bitOffset = 7 - (i % 8)
             val bit = (frame.image[byteIndex].toInt() shr bitOffset) and 1
-            if (bit == 0) Color.TRANSPARENT else Color.BLACK
+            if (bit == 0) Color.BLACK else Color.TRANSPARENT
         }
         bitmap.setPixels(pixels, 0, w, 0, 0, w, h)
         return bitmap

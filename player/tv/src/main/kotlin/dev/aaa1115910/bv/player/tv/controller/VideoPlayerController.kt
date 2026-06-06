@@ -621,6 +621,7 @@ fun VideoPlayerController(
             onShowComment = onShowComment,
             onShowDescription = onShowDescription,
             onResolutionChange = onResolutionChange,
+            onAudioChange = onAudioChange,
             onLiveQualityChange = onLiveQualityChange,
             viewerCountText = viewerCountText
         )

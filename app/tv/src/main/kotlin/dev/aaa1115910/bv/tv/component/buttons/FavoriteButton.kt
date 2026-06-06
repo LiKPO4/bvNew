@@ -186,7 +186,7 @@ private fun FavoriteDialog(
                                 .onFocusChanged {
                                     if (it.hasFocus) touch()
                                 },
-                            enabled = isDefault || userFavoriteFolder.mediaCount < 1000,
+                            enabled = isDefault || selected || userFavoriteFolder.mediaCount < 1000,
                             selected = selected,
                             onClick = {
                                 if (selectedFavoriteFolderIds.contains(userFavoriteFolder.id)) {

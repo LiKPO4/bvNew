@@ -54,6 +54,7 @@ import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
+import dev.aaa1115910.bv.repository.VideoInfoRepository
 import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
@@ -74,6 +75,7 @@ import dev.aaa1115910.bv.viewmodel.search.SearchResultViewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.getKoin
 
 @Composable
 fun SearchResultScreen(
@@ -83,6 +85,7 @@ fun SearchResultScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger { }
+    val videoInfoRepository: VideoInfoRepository = getKoin().get()
     val navSwitchMode by Prefs.navSwitchModeFlow.collectAsState(Prefs.navSwitchMode)
     val tabRowFocusRequester = remember { FocusRequester() }
     val listFocusRestorer = rememberTvLazyListFocusRestorer()
@@ -116,10 +119,25 @@ fun SearchResultScreen(
     val onClickResult: (SearchTypeResult.SearchTypeResultItem) -> Unit = { resultItem ->
         when (resultItem) {
             is SearchTypeResult.Video -> {
+                videoInfoRepository.preloadedVideoList.clear()
+                videoInfoRepository.preloadedVideoList.addAll(
+                    searchResult.videos.map { video ->
+                        VideoCardData(
+                            avid = video.aid,
+                            title = video.title,
+                            cover = video.cover,
+                            upName = video.author,
+                            play = with(video.play) { if (this == -1L) null else this },
+                            danmaku = with(video.danmaku) { if (this == -1) null else this },
+                            time = video.duration * 1000L
+                        )
+                    }
+                )
                 VideoInfoActivity.actionStart(
                     context = context,
                     aid = resultItem.aid,
-                    fromSeason = false
+                    fromSeason = false,
+                    proxyArea = ProxyArea.checkProxyArea(resultItem.title)
                 )
             }
 

@@ -696,7 +696,7 @@ fun VideoPlayerV3Screen(
                             playerViewModel.videoPlayer?.start()
                             Toast.makeText(
                                 context,
-                                "已刷新\nVideo Host: ${playerViewModel.lastVideoHost}\nAudio Host: ${playerViewModel.lastAudioHost}",
+                                "New video host: ${playerViewModel.lastVideoHost}\nNew audio host: ${playerViewModel.lastAudioHost}",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }

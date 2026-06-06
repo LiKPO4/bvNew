@@ -51,6 +51,9 @@ import dev.aaa1115910.biliapi.entity.FavoriteFolderMetadata
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.entity.NavSwitchMode
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
+import dev.aaa1115910.bv.entity.proxy.ProxyArea
+import dev.aaa1115910.bv.repository.VideoInfoRepository
+import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.component.TvAlertDialog
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
@@ -71,6 +74,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.getKoin
 
 @Composable
 fun FavoriteScreen(
@@ -80,6 +84,7 @@ fun FavoriteScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val videoInfoRepository: VideoInfoRepository = getKoin().get()
     val navSwitchMode by Prefs.navSwitchModeFlow.collectAsState(Prefs.navSwitchMode)
     var currentIndex by remember { mutableIntStateOf(0) }
     val showLargeTitle by remember { derivedStateOf { currentIndex < 4 } }
@@ -285,7 +290,22 @@ fun FavoriteScreen(
                                     selectedIndex = index
                                     showDeleteConfirmDialog = true
                                 } else {
-                                    VideoInfoActivity.actionStart(context, history.avid)
+                                    videoInfoRepository.preloadedVideoList.clear()
+                                    videoInfoRepository.preloadedVideoList.addAll(favoriteViewModel.favorites)
+                                    if (history.jumpToSeason) {
+                                        SeasonInfoActivity.actionStart(
+                                            context = context,
+                                            epId = history.epId,
+                                            seasonId = history.seasonId,
+                                            proxyArea = ProxyArea.checkProxyArea(history.title)
+                                        )
+                                    } else {
+                                        VideoInfoActivity.actionStart(
+                                            context = context,
+                                            aid = history.avid,
+                                            proxyArea = ProxyArea.checkProxyArea(history.title)
+                                        )
+                                    }
                                 }
                             },
                             onLongClick = {

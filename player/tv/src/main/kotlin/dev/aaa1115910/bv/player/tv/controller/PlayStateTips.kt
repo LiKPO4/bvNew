@@ -40,6 +40,7 @@ import androidx.tv.material3.darkColorScheme
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerPaymentData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerStateData
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import qrcode.QRCode
@@ -55,10 +56,31 @@ fun PlayStateTips(
     val videoPlayerStateData = LocalVideoPlayerStateData.current
     val videoPlayerPaymentData = LocalVideoPlayerPaymentData.current
 
+    // 追踪视频是否已经进入稳定播放状态（isPlaying && !isBuffering）。
+    // 当开始缓冲（加载新视频/rebuffer）时重置；当用户暂停时保持，确保 PauseIcon 正常显示。
+    // 配合延迟机制，同时避免 onEnd→onBuffering 间隙和缓冲结束→播放瞬时的 PauseIcon 闪现。
+    var hasEverPlayed by remember { mutableStateOf(false) }
+    LaunchedEffect(videoPlayerStateData.isPlaying, videoPlayerStateData.isBuffering) {
+        if (videoPlayerStateData.isPlaying && !videoPlayerStateData.isBuffering) {
+            hasEverPlayed = true
+        } else if (videoPlayerStateData.isBuffering && !videoPlayerStateData.isError) {
+            hasEverPlayed = false
+        }
+    }
+
+    var showPauseDelayed by remember { mutableStateOf(false) }
+    LaunchedEffect(videoPlayerStateData.isPlaying, videoPlayerStateData.isBuffering) {
+        showPauseDelayed = false
+        if (!videoPlayerStateData.isPlaying && !videoPlayerStateData.isBuffering && !videoPlayerStateData.isError) {
+            delay(200)
+            showPauseDelayed = true
+        }
+    }
+
     Box(
         modifier = modifier.fillMaxSize()
     ) {
-        if (!videoPlayerStateData.isPlaying && !videoPlayerStateData.isBuffering && !videoPlayerStateData.isError && canShowPause) {
+        if (!videoPlayerStateData.isPlaying && !videoPlayerStateData.isBuffering && !videoPlayerStateData.isError && canShowPause && showPauseDelayed && hasEverPlayed) {
             PauseIcon(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)

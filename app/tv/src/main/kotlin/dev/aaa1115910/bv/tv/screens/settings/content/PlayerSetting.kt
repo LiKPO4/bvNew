@@ -91,6 +91,7 @@ fun PlayerSetting(
     var showLiveViewerCountTipDialog by remember { mutableStateOf(false) }
     val showLiveViewerCountTip by Prefs.showLiveViewerCountTipFlow.collectAsState(Prefs.showLiveViewerCountTip)
     var enableAsyncQueueing by remember { mutableStateOf(Prefs.enableAsyncQueueing) }
+    var enableScreenRefreshRateMatching by remember { mutableStateOf(Prefs.enableScreenRefreshRateMatching) }
     var skipPgcIntroOutro by remember { mutableStateOf(Prefs.skipPgcIntroOutro) }
     var showControllerButtonDialog by remember { mutableStateOf(false) }
     var defaultSubtitle by remember { mutableStateOf(Prefs.defaultSubtitle) }
@@ -190,6 +191,17 @@ fun PlayerSetting(
                     onCheckedChange = {
                         enableAsyncQueueing = it
                         Prefs.enableAsyncQueueing = it
+                    }
+                )
+            }
+            item {
+                SettingSwitchListItem(
+                    title = "是否自动切换屏幕刷新率以匹配视频帧率",
+                    supportText = "开启后，视频画面更顺畅，但弹幕变卡。关闭后，视频画面顺畅度轻微下降，但滚动弹幕会更顺畅",
+                    checked = enableScreenRefreshRateMatching,
+                    onCheckedChange = {
+                        enableScreenRefreshRateMatching = it
+                        Prefs.enableScreenRefreshRateMatching = it
                     }
                 )
             }

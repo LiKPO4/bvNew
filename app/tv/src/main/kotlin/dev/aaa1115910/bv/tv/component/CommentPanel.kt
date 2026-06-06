@@ -204,6 +204,7 @@ fun CommentPanel(
 
                 if (reset) {
                     comments.clear()
+                    comments.addAll(data.topReplies)
                     comments.addAll(data.comments)
                 } else {
                     comments.addAll(data.comments)
@@ -301,8 +302,8 @@ fun CommentPanel(
                     .fillMaxHeight()
                     .padding(horizontal = 16.dp, vertical = 16.dp)
                     .widthIn(
-                        min = if (showSidebar) 620.dp else 320.dp,
-                        max = if (showSidebar) 720.dp else 420.dp
+                        min = if (showSidebar) 650.dp else 350.dp,
+                        max = if (showSidebar) 750.dp else 450.dp
                     )
                     .fillMaxWidth(if (showSidebar) 0.5f else 0.3f)
                     .clickable(enabled = true, onClick = {}) // 阻止点击穿透
