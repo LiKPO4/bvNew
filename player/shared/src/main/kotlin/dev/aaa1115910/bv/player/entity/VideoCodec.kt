@@ -8,7 +8,7 @@ enum class VideoCodec(private val strRes: Int, val prefix: String, val codecId: 
     AVC(R.string.video_codec_avc, "avc1", 7),
     HEVC(R.string.video_codec_hevc, "hev1", 12),
     AV1(R.string.video_codec_av1, "av01", 13),
-    DVH1(R.string.video_codec_dvh1, "dvh1", 0),
+    DVH1(R.string.video_codec_dvh1, "dvh1", 5),
     HVC1(R.string.video_codec_hvc1, "hvc", 0);
 
     companion object {

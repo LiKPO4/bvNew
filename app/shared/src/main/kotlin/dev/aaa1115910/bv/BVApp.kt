@@ -22,6 +22,7 @@ import dev.aaa1115910.biliapi.repositories.ChannelRepository
 import dev.aaa1115910.bv.dao.AppDatabase
 import dev.aaa1115910.bv.entity.AuthData
 import dev.aaa1115910.bv.entity.db.UserDB
+import dev.aaa1115910.bv.network.GithubApi
 import dev.aaa1115910.bv.network.HttpServer
 import dev.aaa1115910.bv.util.BlacklistUtil
 import dev.aaa1115910.bv.util.CoilConfig
@@ -32,6 +33,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.KoinApplication
@@ -77,6 +79,7 @@ class BVApp : Application() {
         updateMigration()
         HttpServer.startServer()
         updateBlacklist()
+        checkUpdateAtStartup()
     }
 
     /**
@@ -159,6 +162,21 @@ class BVApp : Application() {
         CoroutineScope(Dispatchers.IO).launch {
             BlacklistUtil.updateBlacklist(context)
             BlacklistUtil.checkUid(Prefs.uid)
+        }
+    }
+
+    /**
+     * 启动时静默检查更新，发现新版本则 Toast 提示
+     */
+    private fun checkUpdateAtStartup() {
+        CoroutineScope(Dispatchers.IO).launch {
+            runCatching {
+                if (GithubApi.checkUpdateAvailable()) {
+                    withContext(Dispatchers.Main) {
+                        "发现新版本，可前往\"设置→关于\"完成更新".toast(context)
+                    }
+                }
+            }
         }
     }
 }

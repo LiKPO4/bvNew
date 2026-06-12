@@ -84,7 +84,7 @@ fun NetworkSetting(
                 item {
                     SettingListItemWithDialog(
                         title = stringResource(R.string.settings_item_api),
-                        supportText = "",
+                        supportText = "建议用web接口，app接口很少维护",
                         options = ApiType.entries,
                         getDisplayName = { apiType, _ -> apiType.name },
                         value = selectedApiType,

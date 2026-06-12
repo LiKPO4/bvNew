@@ -85,10 +85,16 @@ class DanmakuView @JvmOverloads constructor(
         invalidate()
     }
 
-    fun setDanmakus(list: List<Danmaku>) { player.setDanmakus(list); invalidate() }
+    fun setDanmakus(list: List<Danmaku>) {
+        player.updateConfig(config)
+        player.setDanmakus(list)
+        invalidate()
+    }
     fun appendDanmakus(list: List<Danmaku>, maxItems: Int = 0, alreadySorted: Boolean = false) {
         if (list.isEmpty()) return
-        player.appendDanmakus(list, maxItems, alreadySorted); invalidate()
+        player.updateConfig(config)
+        player.appendDanmakus(list, maxItems, alreadySorted)
+        invalidate()
     }
     fun trimToTimeRange(minPositionMs: Long, maxPositionMs: Long) { player.trimToTimeRange(minPositionMs, maxPositionMs); invalidate() }
     fun notifySeek(positionMs: Long) {

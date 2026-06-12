@@ -241,6 +241,9 @@ fun BvPlayer(
 
     }
 
+    // 在组合时立即同步弹幕配置，确保在视频 onReady 之前弹幕引擎已使用正确的模式过滤
+    LaunchedEffect(Unit) { initDanmakuConfig() }
+
     LaunchedEffect(Unit) {
         while (true) {
             updatePosition()

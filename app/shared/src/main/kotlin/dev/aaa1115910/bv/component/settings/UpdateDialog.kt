@@ -104,17 +104,13 @@ fun UpdateDialog(
         scope.launch(Dispatchers.IO) {
             runCatching {
                 latestReleaseBuild = GithubApi.getLatestBuild()
-                val name = latestReleaseBuild!!
-                    .assets.first { it.name.startsWith("BV") }
-                    .name
-                val revision = name.split("_")[1].toInt()
-                updateReleases = GithubApi.getUpdateReleases(
-                    BuildConfig.VERSION_CODE, BuildConfig.VERSION_NAME
-                )
-                if (revision < BuildConfig.VERSION_CODE || name.contains(BuildConfig.VERSION_NAME)) {
+                if (!GithubApi.isNewerRelease(latestReleaseBuild!!)) {
                     updateStatus = UpdateStatus.NoAvailableUpdate
                     return@launch
                 }
+                updateReleases = GithubApi.getUpdateReleases(
+                    BuildConfig.VERSION_CODE, BuildConfig.VERSION_NAME
+                )
             }.onFailure {
                 logger.fException(it) { "Failed to get latest version" }
                 updateStatus = UpdateStatus.CheckError

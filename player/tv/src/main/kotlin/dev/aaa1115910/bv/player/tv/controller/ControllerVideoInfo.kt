@@ -137,6 +137,7 @@ fun ControllerVideoInfo(
     onLoadNextVideo: (Boolean) -> Unit,
     onShowComment: () -> Unit = {},
     onShowDescription: () -> Unit = {},
+    onShowVideoDetail: () -> Unit = {},
     onResolutionChange: (Resolution) -> Unit = {},
     onAudioChange: (Audio) -> Unit = {},
     onLiveQualityChange: (Int) -> Unit = {},
@@ -226,6 +227,7 @@ fun ControllerVideoInfo(
                 onLoadNextVideo = onLoadNextVideo,
                 onShowComment = onShowComment,
                 onShowDescription = onShowDescription,
+                onShowVideoDetail = onShowVideoDetail,
                 availableResolutions = videoPlayerConfigData.availableResolutions,
                 currentResolution = videoPlayerConfigData.currentResolution,
                 onResolutionChange = onResolutionChange,
@@ -320,6 +322,7 @@ fun ControllerVideoInfoBottom(
     onLoadNextVideo: (Boolean) -> Unit,
     onShowComment: () -> Unit = {},
     onShowDescription: () -> Unit = {},
+    onShowVideoDetail: () -> Unit = {},
     availableResolutions: List<Resolution> = emptyList(),
     currentResolution: Resolution = Resolution.R240P,
     onResolutionChange: (Resolution) -> Unit = {},
@@ -397,7 +400,7 @@ fun ControllerVideoInfoBottom(
                 id = "audio",
                 text = currentAudioText,
                 onClick = { showAudioDialog = true },
-                width = 56,
+                width = 50,
                 visible = !isLive && availableAudio.size > 1
             ),
             ControlButton(
@@ -434,6 +437,14 @@ fun ControllerVideoInfoBottom(
                 scale = 0.95f,
                 onClick = { onHideInfo(); onShowDescription() },
                 visible = !isLive
+            ),
+            ControlButton(
+                id = "videoDetail",
+                painterId = R.drawable.ic_video_detail,
+                scale = 0.96f,
+                onClick = { onHideInfo(); onShowVideoDetail() },
+                visible = !isLive && !fromSeason,
+                width = 32
             ),
             ControlButton(
                 id = "danmaku",

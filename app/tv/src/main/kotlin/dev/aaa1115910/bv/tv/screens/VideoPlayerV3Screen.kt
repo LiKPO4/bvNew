@@ -707,6 +707,16 @@ fun VideoPlayerV3Screen(
                 },
                 onShowComment = { showCommentPanel = true },
                 onShowDescription = { showDescriptionPanel = true },
+                onShowVideoDetail = {
+                    if (playerViewModel.currentAid != 0L) {
+                        VideoInfoActivity.actionStart(
+                            context = context,
+                            aid = playerViewModel.currentAid,
+                            fromPlayer = true,
+                            forceShowDetail = true
+                        )
+                    }
+                },
                 onResolutionChange = { resolutionCode, afterChange ->
                     scope.launch(Dispatchers.Default) {
                         playerViewModel.playQuality(resolutionCode)

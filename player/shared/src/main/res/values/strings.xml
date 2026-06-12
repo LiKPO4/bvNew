@@ -51,7 +51,7 @@
     <string name="video_codec_avc">H.264</string>
     <string name="video_codec_dvh1" tools:ignore="Typos">Dolby Vision (DVH1)</string>
     <string name="video_codec_hevc">H.265</string>
-    <string name="video_codec_hvc1" tools:ignore="Typos">Dolby Vision (HVC1)</string>
+    <string name="video_codec_hvc1" tools:ignore="Typos">H.265</string>
     <!-- 直播编码格式选项 -->
     <string name="live_codec_hls">HLS（自动）</string>
     <string name="live_codec_flv">FLV</string>

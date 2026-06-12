@@ -23,6 +23,7 @@ class VideoInfoActivity : ComponentActivity() {
             cid: Long? = null,
             fromSeason: Boolean = false,
             fromPlayer: Boolean = false,
+            forceShowDetail: Boolean = false,
             proxyArea: ProxyArea = ProxyArea.MainLand
         ) {
             context.startActivity(
@@ -31,6 +32,7 @@ class VideoInfoActivity : ComponentActivity() {
                     putExtra("cid", cid)
                     putExtra("fromSeason", fromSeason)
                     putExtra("fromPlayer", fromPlayer)
+                    putExtra("forceShowDetail", forceShowDetail)
                     putExtra("proxy_area", proxyArea.ordinal)
                 }
             )

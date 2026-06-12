@@ -313,4 +313,28 @@ object GithubApi {
 
         return results.toString()
     }
+
+    /**
+     * 判断指定 Release 是否比当前版本新
+     */
+    fun isNewerRelease(release: Release): Boolean {
+        val assetName = release.assets.firstOrNull { it.name.startsWith("BV") }?.name
+            ?: return false
+        val revision = assetName.split("_").getOrNull(1)?.toIntOrNull()
+            ?: return false
+        return revision >= BuildConfig.VERSION_CODE && !assetName.contains(BuildConfig.VERSION_NAME)
+    }
+
+    /**
+     * 轻量级检查是否有可用更新
+     * @return true 表示有新版本可用
+     */
+    suspend fun checkUpdateAvailable(): Boolean {
+        return try {
+            isNewerRelease(getLatestBuild())
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to check update availability" }
+            false
+        }
+    }
 }

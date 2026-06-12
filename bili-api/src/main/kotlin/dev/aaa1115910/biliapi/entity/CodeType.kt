@@ -5,6 +5,7 @@ import bilibili.playershared.CodeType as PlayerSharedCodeType
 
 enum class CodeType(val str: String, val codecId: Int) {
     NoCode("none", 0),
+    CodeDv("dvh1", 5),
     Code264("avc1", 7),
     Code265("hev1", 12),
     CodeAv1("av01", 13),
@@ -18,6 +19,7 @@ enum class CodeType(val str: String, val codecId: Int) {
 
     fun toPlayerSharedCodeType() = when (this) {
         NoCode -> PlayerSharedCodeType.NOCODE
+        CodeDv -> PlayerSharedCodeType.CODE265
         Code264 -> PlayerSharedCodeType.CODE264
         Code265 -> PlayerSharedCodeType.CODE265
         CodeAv1 -> PlayerSharedCodeType.CODEAV1
@@ -26,6 +28,7 @@ enum class CodeType(val str: String, val codecId: Int) {
 
     fun toPgcPlayUrlCodeType() = when (this) {
         NoCode, CodeAv1 -> PgcPlayUrlCodeType.NOCODE
+        CodeDv -> PgcPlayUrlCodeType.CODE265
         Code264 -> PgcPlayUrlCodeType.CODE264
         Code265 -> PgcPlayUrlCodeType.CODE265
         Unrecognized -> PgcPlayUrlCodeType.UNRECOGNIZED

@@ -129,6 +129,7 @@ fun BvPlayer(
     onLiveRetry: () -> Unit = {},
     onShowComment: () -> Unit = {},
     onShowDescription: () -> Unit = {},
+    onShowVideoDetail: () -> Unit = {},
     userActionContent: UserActionContent = EmptyUserActionContent,
     onViewerCountTipCanShowChanged: (Boolean) -> Unit = {},
     viewerCountText: String = "",
@@ -483,6 +484,9 @@ fun BvPlayer(
         }
     }
 
+    // 在组合时立即同步弹幕配置，确保在视频 onReady 之前弹幕引擎已使用正确的模式过滤
+    LaunchedEffect(Unit) { syncDanmakuConfig() }
+
     // 进度轮询：播放时每 200ms 更新进度、检查跳过片头片尾
     LaunchedEffect(isPlaying, videoPlayerConfigData.isLive) {
         while (isPlaying && !videoPlayerConfigData.isLive) {
@@ -827,7 +831,8 @@ fun BvPlayer(
             onLoadNextVideo = onLoadNextVideo,
             openPlayListRequestToken = openPlayListRequestToken,
             onShowComment = onShowComment,
-            onShowDescription = onShowDescription
+            onShowDescription = onShowDescription,
+            onShowVideoDetail = onShowVideoDetail
         ) {
             LaunchedEffect(Unit) {
                 videoPlayer.setOptions()

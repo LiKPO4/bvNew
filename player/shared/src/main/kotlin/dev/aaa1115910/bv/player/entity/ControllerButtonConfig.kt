@@ -17,15 +17,15 @@ data class ControllerButtonConfig(
  */
 val ALL_CONTROLLER_BUTTON_IDS = listOf(
     "nextVideo", "refresh", "speed", "resolution", "audio", "upSpace", "rotation",
-    "comment", "subtitle", "danmaku", "playlist", "related", "description",
-    "playMode", "settings"
+    "comment", "subtitle", "danmaku", "playlist", "related", "playMode",
+    "videoDetail", "description", "settings"
 )
 
 /**
  * 新增按钮的默认隐藏列表：出现在这里的新按钮在用户未保存任何配置时默认隐藏，
  * 同时在老用户升级后通过 insertMissingButtons 追加时也保持隐藏。
  */
-val DEFAULT_HIDDEN_CONTROLLER_BUTTON_IDS = setOf("audio")
+val DEFAULT_HIDDEN_CONTROLLER_BUTTON_IDS = setOf("audio", "videoDetail")
 
 /**
  * 解析控制栏按钮配置字符串
@@ -132,9 +132,10 @@ fun getControllerButtonDisplayName(id: String): String {
         "comment" -> "评论"
         "subtitle" -> "字幕"
         "danmaku" -> "弹幕"
-        "playMode" -> "播放模式"
         "playlist" -> "播放列表"
         "related" -> "相关推荐"
+        "playMode" -> "播放模式"
+        "videoDetail" -> "视频详情"
         "description" -> "简介"
         "settings" -> "设置"
         else -> id

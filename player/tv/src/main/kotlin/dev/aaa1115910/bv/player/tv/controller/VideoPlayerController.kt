@@ -121,6 +121,7 @@ fun VideoPlayerController(
     onRequestFocus: () -> Unit,
     onShowComment: () -> Unit = {},
     onShowDescription: () -> Unit = {},
+    onShowVideoDetail: () -> Unit = {},
     content: @Composable BoxScope.() -> Unit
 ) {
     val context = LocalContext.current
@@ -620,6 +621,7 @@ fun VideoPlayerController(
             onLoadNextVideo = onLoadNextVideo,
             onShowComment = onShowComment,
             onShowDescription = onShowDescription,
+            onShowVideoDetail = onShowVideoDetail,
             onResolutionChange = onResolutionChange,
             onAudioChange = onAudioChange,
             onLiveQualityChange = onLiveQualityChange,

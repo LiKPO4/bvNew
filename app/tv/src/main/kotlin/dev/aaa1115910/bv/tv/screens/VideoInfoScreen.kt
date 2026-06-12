@@ -213,6 +213,7 @@ fun VideoInfoScreen(
     var showUGCVideoInfo by remember { mutableStateOf(Prefs.showUGCVideoInfo) }
     var fromSeason by remember { mutableStateOf(false) }
     var fromPlayer by remember { mutableStateOf(false) }
+    var forceShowDetail by remember { mutableStateOf(false) }
     var paused by remember { mutableStateOf(false) }
     var proxyArea by remember { mutableStateOf(ProxyArea.MainLand) }
     var intentAid by remember { mutableLongStateOf(0L) }
@@ -411,6 +412,7 @@ fun VideoInfoScreen(
             var cid = intent.getLongExtra("cid", 0)
             fromSeason = intent.getBooleanExtra("fromSeason", false)
             fromPlayer = intent.getBooleanExtra("fromPlayer", false)
+            forceShowDetail = intent.getBooleanExtra("forceShowDetail", false)
             proxyArea = ProxyArea.entries[intent.getIntExtra("proxy_area", 0)]
             //获取视频信息
             screenScope.launch(Dispatchers.IO) {
@@ -452,7 +454,8 @@ fun VideoInfoScreen(
                     }
                     // 从播放器推荐视频打开时 fromPlayer=true 并显示loading。300m后 fromPlayer改成false，此后从播放器返回详情页，正常显示详情内容
                     //如果是从剧集跳转过来的或设置不显示视频详情，就直接播放 P1
-                    if (fromSeason || !showUGCVideoInfo || fromPlayer) {
+                    // forceShowDetail 时强制显示详情页，用于播放器控制条"详情"按钮
+                    if (!forceShowDetail && (fromSeason || !showUGCVideoInfo || fromPlayer)) {
                         val shouldFinishAfterAutoLaunch = fromPlayer && !Prefs.videoInfoHistoryIncludeFromPlayer
                         val playPart = videoDetailViewModel.videoDetail!!.pages.first()
                         cid = cid.takeIf { it > 0L } ?: playPart.cid
@@ -557,7 +560,7 @@ fun VideoInfoScreen(
 
     LaunchedEffect(videoDetailViewModel.videoDetail) {
         //如果是从剧集页跳转回来的，那就不需要再跳转到剧集页了
-        if (fromSeason || !showUGCVideoInfo) return@LaunchedEffect
+        if (fromSeason || (!showUGCVideoInfo && !forceShowDetail)) return@LaunchedEffect
 
         videoDetailViewModel.videoDetail?.let {
             if (it.redirectToEp) {
@@ -580,12 +583,12 @@ fun VideoInfoScreen(
     }
 
     // 确保页面显示时封面获得焦点
-    LaunchedEffect(videoDetailViewModel.videoDetail, fromSeason, showUGCVideoInfo, fromPlayer) {
+    LaunchedEffect(videoDetailViewModel.videoDetail, fromSeason, showUGCVideoInfo, fromPlayer, forceShowDetail) {
         if (videoDetailViewModel.videoDetail != null &&
             !videoDetailViewModel.videoDetail!!.redirectToEp &&
             !fromSeason &&
-            showUGCVideoInfo &&
-            !fromPlayer
+            (showUGCVideoInfo || forceShowDetail) &&
+            !(fromPlayer && !forceShowDetail)
         ) {
             // 延迟一小段时间确保UI完全渲染
             delay(300)
@@ -610,7 +613,7 @@ fun VideoInfoScreen(
         }
     }
 
-    if (videoDetailViewModel.videoDetail == null || videoDetailViewModel.videoDetail?.redirectToEp == true || fromSeason || !showUGCVideoInfo || fromPlayer) {
+    if (videoDetailViewModel.videoDetail == null || videoDetailViewModel.videoDetail?.redirectToEp == true || fromSeason || (!showUGCVideoInfo && !forceShowDetail) || (fromPlayer && !forceShowDetail)) {
         Box(
             modifier = Modifier
                 .fillMaxSize()

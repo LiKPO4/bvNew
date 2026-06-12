@@ -859,18 +859,6 @@ class VideoPlayerV3ViewModel(
     }
 
     private suspend fun updateAvailableCodec() {
-        if (Prefs.apiType == ApiType.App && playData!!.codec.isEmpty()) {
-            // 纠正当前实际播放的编码
-            val videoItem = playData!!.dashVideos
-                .find { it.quality == currentQuality.code }
-                ?: playData!!.dashVideos.first()
-            withContext(Dispatchers.Main) {
-                currentVideoCodec = VideoCodec.fromCodecId(videoItem.codecId)
-            }
-            logger.fInfo { "App API fixed, Select codec: $currentVideoCodec" }
-            return
-        }
-
         val supportedCodec = playData!!.codec
         val codecList =
             (supportedCodec[currentQuality.code]?.mapNotNull { VideoCodec.fromCodecString(it) } ?: emptyList()).sortedBy { it.ordinal }
@@ -884,7 +872,7 @@ class VideoPlayerV3ViewModel(
         } else if (codecList.contains(Prefs.defaultVideoCodec)) {
             Prefs.defaultVideoCodec
         } else {
-            codecList.maxByOrNull { it.ordinal }!!
+            codecList.minByOrNull { it.ordinal }!!
         }
         withContext(Dispatchers.Main) {
             this@VideoPlayerV3ViewModel.currentVideoCodec = currentVideoCodec

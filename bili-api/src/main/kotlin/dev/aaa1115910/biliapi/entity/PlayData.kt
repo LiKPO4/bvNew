@@ -410,11 +410,11 @@ data class PlayData(
                 .sortedByDescending { it.codecId },
             dolby = dolby ?: other.dolby,
             flac = flac ?: other.flac,
-            codec = codec.map {
-                it.key to (it.value + other.codec[it.key].orEmpty())
+            codec = (codec.keys + other.codec.keys).associate { key ->
+                key to (codec[key].orEmpty() + other.codec[key].orEmpty())
                     .distinct()
                     .filter { it != "none" }
-            }.toMap(),
+            },
             needPay = needPay || other.needPay,
             clipInfoList = clipInfoList + other.clipInfoList
         )
