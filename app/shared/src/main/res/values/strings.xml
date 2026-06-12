@@ -254,8 +254,8 @@
     <string name="settings_ui_theme_type_title">主题</string>
     <string name="settings_ui_ugc_video_info_history_count_title">UGC 视频详情页面的历史记录数量</string>
     <string name="settings_ui_ugc_video_info_history_count_text">设置可保留历史记录的 UGC 视频详情页数量</string>
-    <string name="settings_ui_video_info_history_include_from_player_title">详情页历史记录是否包含播放器打开的详情页</string>
-    <string name="settings_ui_video_info_history_include_from_player_text">关闭时，从播放器页面隐式打开的视频详情历史记录不保留</string>
+    <string name="settings_ui_video_info_history_include_from_player_title">详情页历史要记录播放器非详情入口打开的详情页</string>
+    <string name="settings_ui_video_info_history_include_from_player_text">关闭时，不记录从播放器页面合集、推荐等非控制条详情入口隐式打开的视频详情历史</string>
     <string name="settings_ui_ugc_video_player_history_count_title">UGC 视频播放页面的历史记录数量</string>
     <string name="settings_ui_ugc_video_player_history_count_text">设置可保留历史记录的 UGC 视频播放页数量</string>
     <string name="settings_ui_home_nav_items_title">首页导航项</string>

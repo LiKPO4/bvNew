@@ -30,14 +30,15 @@ data class LiveFollowingRoom(
     @SerialName("room_cover") val roomCover: String = "",
     @SerialName("cover_from_user") val coverFromUser: String = "",
     val face: String = "",
+    val switch: Boolean = true,
     @SerialName("text_small") val textSmall: String = "",
+    @SerialName("watch_icon") val watchIcon: String = "",
     @SerialName("live_status") val liveStatus: Int = 0,
     @SerialName("parent_area_id") val parentAreaId: Int = 0,
     @SerialName("area_v2_parent_name") val parentAreaName: String = "",
     @SerialName("area_id") val areaId: Int = 0,
     @SerialName("area_name_v2") val areaNameV2: String = "",
-    @SerialName("area_name") val areaName: String = "",
-    @SerialName("watched_show") val watchedShow: WatchedShow? = null
+    @SerialName("area_name") val areaName: String = ""
 ) {
     /** 是否正在直播 */
     val isLive: Boolean get() = liveStatus == 1
@@ -45,17 +46,21 @@ data class LiveFollowingRoom(
     /** 封面优先使用 room_cover，降级到 cover_from_user */
     val coverUrl: String
         get() = roomCover.ifBlank { coverFromUser }
-
-    /** 解析中文数字格式（如 "1.2万"）为整数 */
-    val onlineCount: Int
-        get() = parseCnCount(textSmall)
+    
+    val watchedShow: WatchedShow? get() = if (textSmall.isNotBlank()) {
+        WatchedShow(
+            switch = switch,
+            num = parseCnCount(textSmall), // 解析中文数字格式（如 "1.2万"）为整数
+            textSmall = textSmall,
+            iconWeb = watchIcon
+        )
+    } else null
 
     fun toLiveRoomItem(): LiveRoomItem = LiveRoomItem(
         roomId = roomId,
         uid = uid,
         title = title,
         uname = uname,
-        online = onlineCount,
         userCover = coverUrl,
         cover = coverUrl,
         face = face,

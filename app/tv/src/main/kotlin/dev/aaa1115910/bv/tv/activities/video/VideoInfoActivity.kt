@@ -39,6 +39,13 @@ class VideoInfoActivity : ComponentActivity() {
         }
     }
 
+    // 以 aid + cid 作为唯一键标识一个视频页面
+    private val videoKey: String by lazy {
+        val aid = intent.getLongExtra("aid", 0L)
+        val cid = intent.getLongExtra("cid", 0L)
+        "${aid}_${cid}"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -48,7 +55,11 @@ class VideoInfoActivity : ComponentActivity() {
         // 将当前活动加入队列
         if (shouldRecordInHistoryQueue) {
             synchronized(activityQueue) {
-                val maxVideoInfoScreens = Prefs.ugcVideoInfoHistoryCount.coerceAtLeast(1)
+                val maxVideoInfoScreens = if (Prefs.showUGCVideoInfo) {
+                    Prefs.ugcVideoInfoHistoryCount.coerceAtLeast(1)
+                } else {
+                    Prefs.ugcVideoInfoHistoryCount.coerceAtLeast(1) + 1
+                }
 
                 // 清理队列中的无效引用 - 这步是必要的
                 // 1. 确保队列大小计算准确，防止误判是否达到历史留存上限
@@ -60,6 +71,18 @@ class VideoInfoActivity : ComponentActivity() {
                     val activity = activityRef.get()
                     if (activity == null || activity.isFinishing) {
                         iterator.remove()
+                    }
+                }
+
+                // 如果队列中已存在相同 aid+cid 的活动，移除旧页面
+                val dupIterator = activityQueue.iterator()
+                while (dupIterator.hasNext()) {
+                    val activityRef = dupIterator.next()
+                    val activity = activityRef.get()
+                    if (activity != null && activity.videoKey == this.videoKey) {
+                        dupIterator.remove()
+                        activity.runOnUiThread { activity.finish() }
+                        break
                     }
                 }
 

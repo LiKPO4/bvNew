@@ -28,6 +28,7 @@ import dev.aaa1115910.biliapi.http.BiliLiveHttpApi
 import dev.aaa1115910.biliapi.http.entity.VVoucherException
 import dev.aaa1115910.biliapi.http.entity.live.DanmakuEvent
 import dev.aaa1115910.biliapi.http.entity.live.OnlineRankCountEvent
+import dev.aaa1115910.biliapi.http.entity.live.WatchedChangeEvent
 import dev.aaa1115910.biliapi.http.entity.live.PopularityChangeEvent
 import dev.aaa1115910.biliapi.repositories.VideoPlayRepository
 import dev.aaa1115910.biliapi.websocket.LiveDataWebSocket
@@ -266,12 +267,12 @@ class VideoPlayerV3ViewModel(
         private const val DANMAKU_SEGMENT_POLL_INTERVAL_MS = 15_000L
     }
 
-    // 直播人气值与高能观众
-    var livePopularityText by mutableStateOf("")   // "2.5万人气" (POPULARITY_CHANGE)
-    var liveOnlineCount by mutableStateOf("")      // "4333 高能观众" (ONLINE_RANK_COUNT)
+    // 直播人气值与在线人数
+    var watchedText by mutableStateOf("")   // "2.5万人气" (人气：POPULARITY_CHANGE 播放量：WATCHED_CHANGE)
+    var liveOnlineCount by mutableStateOf("")      // "4333人在线" (ONLINE_RANK_COUNT)
 
-    // 人气和高能观众更新频率限制（至少间隔 10 秒）
-    private var lastPopularityUpdateTime = 0L
+    // 播放量和在线人数更新频率限制（至少间隔 5 秒）
+    private var lastWatchedUpdateTime = 0L
     private var lastOnlineCountUpdateTime = 0L
 
     // 直播弹幕管理
@@ -1950,17 +1951,24 @@ class VideoPlayerV3ViewModel(
                 ) { event ->
                     when (event) {
                         is DanmakuEvent -> channel.trySend(event)
+                        is WatchedChangeEvent -> {
+                            val now = System.currentTimeMillis()
+                            if (now - lastWatchedUpdateTime >= 10_000 && (watchedText.contains("播放") || watchedText.isEmpty())) {
+                                watchedText = event.watchedText
+                                lastWatchedUpdateTime = now
+                            }
+                        }
                         is PopularityChangeEvent -> {
                             val now = System.currentTimeMillis()
-                            if (now - lastPopularityUpdateTime >= 10_000) {
-                                livePopularityText = event.popularityText
-                                lastPopularityUpdateTime = now
+                            if (now - lastWatchedUpdateTime >= 10_000 && watchedText.contains("人气")) {
+                                watchedText = event.popularityText
+                                lastWatchedUpdateTime = now
                             }
                         }
                         is OnlineRankCountEvent -> {
                             val now = System.currentTimeMillis()
-                            if (now - lastOnlineCountUpdateTime >= 10_000) {
-                                liveOnlineCount = "${event.count} 高能观众"
+                            if (now - lastOnlineCountUpdateTime >= 5_000 || lastOnlineCountUpdateTime == 0L) {
+                                liveOnlineCount = "${event.count}人在线"
                                 lastOnlineCountUpdateTime = now
                             }
                         }

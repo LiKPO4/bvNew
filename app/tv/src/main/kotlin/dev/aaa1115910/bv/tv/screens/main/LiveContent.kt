@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -35,7 +33,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.aaa1115910.biliapi.entity.live.LiveAreaItem
 import dev.aaa1115910.bv.tv.activities.video.VideoPlayerV3Activity
 import dev.aaa1115910.bv.tv.component.LoadingTip
@@ -57,7 +54,6 @@ import dev.aaa1115910.bv.viewmodel.live.LiveViewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
-import dev.aaa1115910.biliapi.entity.live.LiveAreaGroup
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
 import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 
@@ -313,6 +309,10 @@ fun LiveContent(
                                         "${room.uname} 未开播".toast(context)
                                         return@LiveRoomCard
                                     }
+
+                                    val watchedText = room.watchedShow?.let { show ->
+                                        show.textSmall + if (show.switch) "播放" else "人气"
+                                    } ?: ""
                                     // 启动播放器
                                     VideoPlayerV3Activity.actionStartLive(
                                         context = context,
@@ -321,7 +321,7 @@ fun LiveContent(
                                         upId = room.uid,
                                         upName = room.uname,
                                         upFace = room.face,
-                                        watchedNum = room.watchedShow?.num ?: (room.online / 10)
+                                        watchedText = watchedText
                                     )
                                 },
                                 onFocus = {

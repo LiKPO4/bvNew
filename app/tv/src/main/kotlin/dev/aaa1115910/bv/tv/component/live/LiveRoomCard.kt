@@ -31,7 +31,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.util.Locale
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -129,27 +128,32 @@ fun LiveRoomCard(
                     }
                 }
 
-                // 在线人数
-                Row(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .align(Alignment.BottomStart),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        modifier = Modifier.size(16.dp),
-                        painter = painterResource(id = R.drawable.ic_play_count),
-                        contentDescription = null,
-                        tint = Color.White
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = formatViewCount(
-                            data.watchedShow?.num ?: (data.online / 10)
-                        ),
-                        color = Color.White,
-                        fontSize = 13.sp
-                    )
+                // 播放量/人气
+                data.watchedShow?.let { watchedShow ->
+                    Row(
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .align(Alignment.BottomStart),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            modifier = Modifier.size(16.dp),
+                            painter = painterResource(id = if (watchedShow.switch) {
+                                R.drawable.ic_play_count
+                            } else {
+                                R.drawable.ic_group
+                            }),
+                            contentDescription = null,
+                            tint = Color.White
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        Text(
+                            text = watchedShow.textSmall,
+                            color = Color.White,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             }
 
@@ -193,16 +197,5 @@ fun LiveRoomCard(
 
             Spacer(modifier = Modifier.height(4.dp))
         }
-    }
-}
-
-/**
- * 格式化观看人数
- */
-private fun formatViewCount(count: Int): String {
-    return when {
-        count >= 100_000_000 -> String.format(Locale.US, "%.1f亿", count / 100_000_000.0)
-        count >= 10_000 -> String.format(Locale.US, "%.1f万", count / 10_000.0)
-        else -> count.toString()
     }
 }

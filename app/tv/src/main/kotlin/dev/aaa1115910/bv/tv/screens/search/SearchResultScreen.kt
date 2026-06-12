@@ -29,8 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -48,7 +46,6 @@ import dev.aaa1115910.biliapi.entity.ugc.toSmartDate
 import dev.aaa1115910.biliapi.repositories.SearchType
 import dev.aaa1115910.biliapi.repositories.SearchTypeResult
 import dev.aaa1115910.bv.R
-import dev.aaa1115910.bv.entity.NavSwitchMode
 import dev.aaa1115910.bv.tv.component.videocard.SeasonCard
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
@@ -165,8 +162,7 @@ fun SearchResultScreen(
                     title = resultItem.title,
                     upId = resultItem.uid,
                     upName = resultItem.uname,
-                    upFace = resultItem.face,
-                    watchedNum = resultItem.online / 10
+                    upFace = resultItem.face
                 )
             }
 
@@ -423,10 +419,9 @@ private fun SearchResultListItem(
                     uid = 0, // Not available directly in search result
                     title = searchResult.title.removeHtmlTags(),
                     uname = searchResult.uname,
-                    online = searchResult.online,
                     userCover = "",
                     systemCover = "",
-                    cover = searchResult.cover,
+                    cover = searchResult.userCover ?: searchResult.cover,
                     face = searchResult.face,
                     parentId = 0,
                     parentName = "",

@@ -6,6 +6,7 @@ import dev.aaa1115910.biliapi.http.entity.live.FrameHeader
 import dev.aaa1115910.biliapi.http.entity.live.HostListItem
 import dev.aaa1115910.biliapi.http.entity.live.LiveEvent
 import dev.aaa1115910.biliapi.http.entity.live.OnlineRankCountEvent
+import dev.aaa1115910.biliapi.http.entity.live.WatchedChangeEvent
 import dev.aaa1115910.biliapi.http.entity.live.PopularityChangeEvent
 import dev.aaa1115910.biliapi.http.entity.live.readFrameHeader
 import dev.aaa1115910.biliapi.http.plugins.BiliUserAgent
@@ -15,7 +16,6 @@ import dev.aaa1115910.biliapi.http.util.zlibDecompress
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.wss
 import io.ktor.utils.io.core.ByteReadPacket
@@ -251,14 +251,6 @@ object LiveDataWebSocket {
         return result
     }
 
-    private fun formatPopularity(popularity: Int): String {
-        return when {
-            popularity >= 100_000_000 -> String.format("%.1f亿人气", popularity / 100_000_000.0)
-            popularity >= 10_000 -> String.format("%.1f万人气", popularity / 10_000.0)
-            else -> "${popularity}人气"
-        }
-    }
-
     private fun handleLiveEventBody(head: FrameHeader, data: ByteArray): List<LiveEvent> {
         val result = mutableListOf<LiveEvent>()
         val bytePack = ByteReadPacket(data)
@@ -489,7 +481,19 @@ object LiveDataWebSocket {
             }
 
             "USER_TOAST_MSG" -> {}
-            "WATCHED_CHANGE" -> {}
+            "WATCHED_CHANGE" -> {
+                runCatching {
+                    val data = dataJson["data"]!!.jsonObject
+                    val playCount = data["num"]!!.jsonPrimitive.int
+                    val textSmall = data["text_small"]!!.jsonPrimitive.content
+                    return WatchedChangeEvent(
+                        num = playCount,
+                        watchedText = textSmall + "播放"
+                    )
+                }.onFailure {
+                    logger.warn { "Parse WATCHED_CHANGE failed: ${it.message}" }
+                }
+            }
             "WIDGET_BANNER" -> {}
             else -> {
                 logger.warn { "Unknown live event: $cmd" }

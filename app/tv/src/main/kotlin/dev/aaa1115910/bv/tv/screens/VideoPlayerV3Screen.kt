@@ -277,9 +277,9 @@ fun VideoPlayerV3Screen(
         }
     }
 
-    // 控制直播人气显示
-    LaunchedEffect(playerViewModel.isLive, prefsSnapshot.showLiveViewerCountTip, playerViewModel.livePopularityText) {
-        if (playerViewModel.isLive && prefsSnapshot.showLiveViewerCountTip > 0 && playerViewModel.livePopularityText.isNotEmpty()) {
+    // 控制直播播放量显示
+    LaunchedEffect(playerViewModel.isLive, prefsSnapshot.showLiveViewerCountTip, playerViewModel.watchedText) {
+        if (playerViewModel.isLive && (prefsSnapshot.showLiveViewerCountTip > 0 || playerViewModel.watchedText.isNotEmpty())) {
             showLiveViewerCountTip = true
             if (prefsSnapshot.showLiveViewerCountTip == 1) {
                 delay(30_000)
@@ -291,13 +291,17 @@ fun VideoPlayerV3Screen(
     }
 
     // 更新 viewerCountText
-    LaunchedEffect(prefsSnapshot.showOnlineViewerCount, onlineViewerCount, playerViewModel.livePopularityText, playerViewModel.liveOnlineCount) {
+    LaunchedEffect(prefsSnapshot.showOnlineViewerCount, onlineViewerCount, playerViewModel.watchedText, playerViewModel.liveOnlineCount) {
         if (playerViewModel.isLive && prefsSnapshot.showOnlineViewerCount > 0) {
-            if (playerViewModel.livePopularityText.isNotEmpty()) {
-                viewerCountText = playerViewModel.livePopularityText
+            viewerCountText = ""
+            if (playerViewModel.watchedText.isNotEmpty()) {
+                viewerCountText = playerViewModel.watchedText
+            }
+            if (playerViewModel.watchedText.isNotEmpty() && playerViewModel.liveOnlineCount.isNotEmpty()) {
+                viewerCountText += "  ·  "
             }
             if (playerViewModel.liveOnlineCount.isNotEmpty()) {
-                viewerCountText = viewerCountText + "  ·  " + playerViewModel.liveOnlineCount
+                viewerCountText += playerViewModel.liveOnlineCount
             }
         } else if (prefsSnapshot.showOnlineViewerCount > 0 && onlineViewerCount.isNotEmpty()) {
             viewerCountText = "$onlineViewerCount 人在看"
@@ -712,7 +716,7 @@ fun VideoPlayerV3Screen(
                         VideoInfoActivity.actionStart(
                             context = context,
                             aid = playerViewModel.currentAid,
-                            fromPlayer = true,
+                            fromPlayer = false,
                             forceShowDetail = true
                         )
                     }
@@ -1100,8 +1104,8 @@ fun VideoPlayerV3Screen(
 
             // 直播人气 Tip（左下角常驻）
             LiveViewerCountTip(
-                show = showLiveViewerCountTip && canShowViewerCountTip && playerViewModel.livePopularityText.isNotEmpty(),
-                popularityText = playerViewModel.livePopularityText,
+                show = showLiveViewerCountTip && canShowViewerCountTip,
+                watchedText = playerViewModel.watchedText,
                 onlineCount = playerViewModel.liveOnlineCount
             )
 

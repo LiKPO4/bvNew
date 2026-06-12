@@ -21,7 +21,6 @@ data class LiveRoomItem(
     val uid: Long = 0,
     val title: String = "",
     val uname: String = "",
-    val online: Int = 0,
     @SerialName("user_cover") val userCover: String = "",
     @SerialName("system_cover") val systemCover: String = "",
     val cover: String = "",

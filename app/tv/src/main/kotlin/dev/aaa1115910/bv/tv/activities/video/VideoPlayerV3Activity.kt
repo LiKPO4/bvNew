@@ -6,11 +6,8 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.lifecycle.lifecycleScope
 import java.lang.ref.WeakReference
 import java.util.LinkedList
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.entity.PlayerType
@@ -30,14 +27,6 @@ class VideoPlayerV3Activity : ComponentActivity() {
         private val logger = KotlinLogging.logger { }
         // 使用WeakReference防止内存泄漏，避免持有已销毁Activity的强引用
         private val activityQueue = LinkedList<WeakReference<VideoPlayerV3Activity>>()
-
-        private fun formatPopularity(count: Int): String {
-            return when {
-                count >= 100_000_000 -> String.format("%.1f亿人气", count / 100_000_000.0)
-                count >= 10_000 -> String.format("%.1f万人气", count / 10_000.0)
-                else -> "${count}人气"
-            }
-        }
         
         /**
          * 启动直播播放
@@ -47,7 +36,7 @@ class VideoPlayerV3Activity : ComponentActivity() {
             roomId: Int,
             title: String,
             upName: String = "",
-            watchedNum: Int = 0,
+            watchedText: String = "",
             upId: Long = 0L,
             upFace: String = ""
         ) {
@@ -65,7 +54,7 @@ class VideoPlayerV3Activity : ComponentActivity() {
                     putExtra("liveRoomId", roomId)
                     putExtra("title", title)
                     putExtra("upName", upName)
-                    putExtra("liveWatchedNum", watchedNum)
+                    putExtra("liveWatchedText", watchedText)
                     putExtra("upId", upId)
                     putExtra("upFace", upFace)
                 }
@@ -267,11 +256,11 @@ class VideoPlayerV3Activity : ComponentActivity() {
             val roomId = intent.getIntExtra("liveRoomId", 0)
             val title = intent.getStringExtra("title") ?: "Unknown Title"
             val upName = intent.getStringExtra("upName") ?: ""
-            val watchedNum = intent.getIntExtra("liveWatchedNum", 0)
+            val watchedText = intent.getStringExtra("liveWatchedText") ?: ""
             val upId = intent.getLongExtra("upId", 0L)
             val upFace = intent.getStringExtra("upFace") ?: ""
 
-            logger.fInfo { "Launch live parameter: [roomId=$roomId, watchedNum=$watchedNum]" }
+            logger.fInfo { "Launch live parameter: [roomId=$roomId, watchedText=$watchedText]" }
             
             playerViewModel.apply {
                 this.title = title
@@ -280,7 +269,7 @@ class VideoPlayerV3Activity : ComponentActivity() {
                 this.upFace = upFace
                 this.isLive = true
                 this.liveRoomId = roomId
-                this.livePopularityText = if (watchedNum > 0) formatPopularity(watchedNum) else ""
+                this.watchedText = watchedText
                 
                 // 通过 ViewModel 加载直播流（带画质选择，加载成功后自动启动弹幕）
                 loadLiveStreamWithQuality(roomId)

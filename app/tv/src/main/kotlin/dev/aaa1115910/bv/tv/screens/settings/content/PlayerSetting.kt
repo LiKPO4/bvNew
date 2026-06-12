@@ -196,8 +196,8 @@ fun PlayerSetting(
             }
             item {
                 SettingSwitchListItem(
-                    title = "是否自动切换屏幕刷新率以匹配视频帧率",
-                    supportText = "开启后，视频画面更顺畅，但弹幕变卡。关闭后，视频画面顺畅度轻微下降，但滚动弹幕会更顺畅",
+                    title = "自动切换屏幕刷新率以匹配视频帧率",
+                    supportText = "开启：视频画面更平滑，但弹幕变卡；关闭：视频画面平滑度轻微下降，但滚动弹幕会更平滑",
                     checked = enableScreenRefreshRateMatching,
                     onCheckedChange = {
                         enableScreenRefreshRateMatching = it
@@ -403,8 +403,8 @@ fun PlayerSetting(
             }
             item {
                 SettingListItem(
-                    title = "直播人气&高能观众",
-                    supportText = "设置直播人气和高能观众显示方式",
+                    title = "直播人气&在线人数",
+                    supportText = "设置直播人气和在线人数显示方式",
                     valueText = when (showLiveViewerCountTip) {
                         0 -> "不显示"
                         1 -> "30 秒后隐藏"
@@ -523,7 +523,7 @@ private fun LiveViewerCountTipDialog(
         TvAlertDialog(
             modifier = modifier,
             onDismissRequest = { onHideDialog() },
-            title = { Text(text = "直播人气&高能观众") },
+            title = { Text(text = "直播人气&在线人数") },
             text = {
                 Column {
                     val options = listOf(

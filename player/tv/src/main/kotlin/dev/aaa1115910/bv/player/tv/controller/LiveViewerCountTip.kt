@@ -13,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,14 +26,14 @@ import androidx.compose.ui.draw.scale
  *
  * @param modifier 修饰符
  * @param show 是否显示
- * @param popularityText 人气文本，如 "2.5万人气"
- * @param onlineCount 高能观众文本，如 "4333 高能观众"
+ * @param watchedText 人气文本，如 "2.5万人气"
+ * @param onlineCount 在线人数文本，如 "4333 在线人数"
  */
 @Composable
 fun LiveViewerCountTip(
     modifier: Modifier = Modifier,
     show: Boolean,
-    popularityText: String,
+    watchedText: String,
     onlineCount: String = ""
 ) {
     AnimatedVisibility(
@@ -53,20 +52,20 @@ fun LiveViewerCountTip(
             ) {
                 val contentColor = Color.White.copy(alpha = 0.6f)
 
-                Icon(
-                    modifier = Modifier.scale(0.8f),
-                    imageVector = Icons.Default.Group,
-                    contentDescription = null,
-                    tint = contentColor
-                )
                 val displayText = buildString {
-                    if (popularityText.isNotEmpty()) append(popularityText)
+                    if (watchedText.isNotEmpty()) append(watchedText)
                     if (onlineCount.isNotEmpty()) {
                         if (isNotEmpty()) append(" · ")
                         append(onlineCount)
                     }
                 }
                 if (displayText.isNotEmpty()) {
+                    Icon(
+                        modifier = Modifier.scale(0.8f),
+                        imageVector = Icons.Default.Group,
+                        contentDescription = null,
+                        tint = contentColor
+                    )
                     Text(
                         modifier = Modifier.padding(start = 4.dp),
                         text = displayText,

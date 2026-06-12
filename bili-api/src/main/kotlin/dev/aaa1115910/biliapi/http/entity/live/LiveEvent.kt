@@ -14,6 +14,11 @@ data class DanmakuEvent(
     val userLevel: Int = 0          // 用户等级 (0-60)
 ) : LiveEvent
 
+data class WatchedChangeEvent(
+    val num: Int,
+    val watchedText: String
+) : LiveEvent
+
 data class PopularityChangeEvent(
     val popularity: Int,
     val popularityText: String
