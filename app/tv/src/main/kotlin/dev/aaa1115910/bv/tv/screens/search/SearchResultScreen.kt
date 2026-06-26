@@ -116,8 +116,7 @@ fun SearchResultScreen(
     val onClickResult: (SearchTypeResult.SearchTypeResultItem) -> Unit = { resultItem ->
         when (resultItem) {
             is SearchTypeResult.Video -> {
-                videoInfoRepository.preloadedVideoList.clear()
-                videoInfoRepository.preloadedVideoList.addAll(
+                videoInfoRepository.setPreloadedVideoList(
                     searchResult.videos.map { video ->
                         VideoCardData(
                             avid = video.aid,

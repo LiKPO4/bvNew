@@ -291,7 +291,7 @@ fun DrawerContent(
                         focusOnContent -> MaterialTheme.colorScheme.surfaceVariant
                         f && s -> MaterialTheme.colorScheme.inverseSurface
                         f && !s -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.3f)
-                        !f && s -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.75f)
+                        !f && s -> MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.7f)
                         else -> MaterialTheme.colorScheme.surfaceVariant
                     }
                 )

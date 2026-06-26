@@ -54,6 +54,8 @@ import dev.aaa1115910.bv.viewmodel.live.LiveViewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
+import dev.aaa1115910.bv.repository.VideoInfoRepository
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
 import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 
@@ -72,6 +74,7 @@ fun LiveContent(
     val logger = KotlinLogging.logger("LiveContent")
     val context = LocalContext.current
     val navSwitchMode by Prefs.navSwitchModeFlow.collectAsState(Prefs.navSwitchMode)
+    val videoInfoRepository: VideoInfoRepository = koinInject()
 
     val gridState = rememberLazyGridState()
     // 使用 MainScreen 传入的 FocusRequester 作为默认入口焦点（从侧边栏按右进入内容区）
@@ -309,6 +312,11 @@ fun LiveContent(
                                         "${room.uname} 未开播".toast(context)
                                         return@LiveRoomCard
                                     }
+
+                                    // 填充预加载直播房间列表
+                                    videoInfoRepository.preloadedLiveRoomList.clear()
+                                    videoInfoRepository.preloadedLiveRoomList.addAll(liveViewModel.roomList)
+                                    videoInfoRepository.lastPreloadedRoomIndex = index
 
                                     val watchedText = room.watchedShow?.let { show ->
                                         show.textSmall + if (show.switch) "播放" else "人气"

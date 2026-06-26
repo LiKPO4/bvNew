@@ -132,8 +132,7 @@ fun TagScreen(
                             modifier = listFocusRestorer.firstItemModifier(index),
                             data = video,
                             onClick = {
-                                videoInfoRepository.preloadedVideoList.clear()
-                                videoInfoRepository.preloadedVideoList.addAll(tagViewModel.topVideos)
+                                videoInfoRepository.setPreloadedVideoList(tagViewModel.topVideos)
                                 VideoInfoActivity.actionStart(context, video.avid)
                             },
                             onLongClick = { UpInfoActivity.actionStart( context, mid = video.upId, name = video.upName, face = video.upFace ) },

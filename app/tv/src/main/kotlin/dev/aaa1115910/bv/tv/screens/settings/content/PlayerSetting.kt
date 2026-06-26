@@ -101,6 +101,7 @@ fun PlayerSetting(
     var showLongPressActionDialog by remember { mutableStateOf(false) }
     var playerLongPressAction by remember { mutableIntStateOf(Prefs.playerLongPressAction) }
     var playerLongPressSpeed by remember { mutableDoubleStateOf(Prefs.playerLongPressSpeed.toDouble()) }
+    var playerDoubleBackToExit by remember { mutableStateOf(Prefs.playerDoubleBackToExit) }
 
 
     Column(
@@ -196,7 +197,7 @@ fun PlayerSetting(
             }
             item {
                 SettingSwitchListItem(
-                    title = "自动切换屏幕刷新率以匹配视频帧率",
+                    title = "屏幕刷新率自动匹配视频帧率",
                     supportText = "开启：视频画面更平滑，但弹幕变卡；关闭：视频画面平滑度轻微下降，但滚动弹幕会更平滑",
                     checked = enableScreenRefreshRateMatching,
                     onCheckedChange = {
@@ -233,6 +234,17 @@ fun PlayerSetting(
                     onCheckedChange = {
                         playerExitWhenAllIsPlayed = it
                         Prefs.playerExitWhenAllIsPlayed = it
+                    }
+                )
+            }
+            item {
+                SettingSwitchListItem(
+                    title = "按两次返回才退出",
+                    supportText = "开启后视频播放中需要按两次返回键才能退出播放页面，关闭后按一次即可退出",
+                    checked = playerDoubleBackToExit,
+                    onCheckedChange = {
+                        playerDoubleBackToExit = it
+                        Prefs.playerDoubleBackToExit = it
                     }
                 )
             }

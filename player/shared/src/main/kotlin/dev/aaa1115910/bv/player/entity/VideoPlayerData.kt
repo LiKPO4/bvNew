@@ -138,6 +138,8 @@ data class VideoPlayerConfigData(
     val fromSeason: Boolean = false,
     var showDanmaku: Boolean = true,
     var showRelatedVideos: Boolean = false,
+    var showRelatedRooms: Boolean = false,
+    val hasPreloadedLiveRoomList: Boolean = false,
     var showNextVideoBtn: Boolean = false,
     val defaultStartPosition: DefaultStartPosition = DefaultStartPosition.History,
     val clipInfoList: List<ClipInfo> = emptyList(),

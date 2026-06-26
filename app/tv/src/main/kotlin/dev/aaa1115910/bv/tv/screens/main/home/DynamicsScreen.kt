@@ -74,8 +74,7 @@ fun DynamicsScreen(
         val proxyArea = ProxyArea.checkProxyArea(dynamic.title)
         val hasSeasonHint = dynamic.seasonId != null || dynamic.epid != null
 
-        videoInfoRepository.preloadedVideoList.clear()
-        videoInfoRepository.preloadedVideoList.addAll(
+        videoInfoRepository.setPreloadedVideoList(
             dynamicViewModel.dynamicVideoList.map { item ->
                 VideoCardData(
                     avid = item.aid,

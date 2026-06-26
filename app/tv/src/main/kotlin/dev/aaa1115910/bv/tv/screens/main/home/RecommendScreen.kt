@@ -57,8 +57,7 @@ fun RecommendScreen(
     }
 
     val onClickVideo: (UgcItem) -> Unit = { ugcItem ->
-        videoInfoRepository.preloadedVideoList.clear()
-        videoInfoRepository.preloadedVideoList.addAll(
+        videoInfoRepository.setPreloadedVideoList(
             recommendViewModel.recommendVideoList.map { item ->
                 VideoCardData(
                     avid = item.aid,

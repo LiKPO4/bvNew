@@ -66,6 +66,7 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import dev.aaa1115910.biliapi.entity.season.FollowingSeasonStatus
 import dev.aaa1115910.biliapi.entity.season.FollowingSeasonType
+import dev.aaa1115910.biliapi.entity.user.HistoryItemType
 import dev.aaa1115910.biliapi.http.entity.AuthFailureException
 import dev.aaa1115910.biliapi.repositories.FavoriteRepository
 import dev.aaa1115910.biliapi.repositories.HistoryRepository
@@ -138,6 +139,7 @@ fun UserInfoScreen(
                 )
                 histories.clear()
                 data.data.forEach { historyItem ->
+                    val isPgc = historyItem.type == HistoryItemType.Pgc
                     histories.add(
                         VideoCardData(
                             avid = historyItem.oid,
@@ -149,7 +151,10 @@ fun UserInfoScreen(
                                 R.string.play_time_history,
                                 (historyItem.progress * 1000L).formatHourMinSec(),
                                 (historyItem.duration * 1000L).formatHourMinSec()
-                            )
+                            ),
+                            jumpToSeason = isPgc,
+                            epId = historyItem.epid,
+                            seasonId = historyItem.seasonId ?: if (isPgc) historyItem.kid.toInt() else null,
                         )
                     )
                 }
@@ -696,6 +701,7 @@ private fun RecentVideosRow(
             SeasonInfoActivity.actionStart(
                 context = context,
                 epId = videoData.epId!!,
+                seasonId = videoData.seasonId!!,
                 proxyArea = ProxyArea.checkProxyArea(videoData.title)
             )
         },
@@ -797,6 +803,7 @@ private fun FavoriteVideosRow(
             SeasonInfoActivity.actionStart(
                 context = context,
                 epId = videoData.epId!!,
+                seasonId = videoData.seasonId!!,
                 proxyArea = ProxyArea.checkProxyArea(videoData.title)
             )
         },

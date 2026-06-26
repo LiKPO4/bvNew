@@ -1,5 +1,6 @@
 package dev.aaa1115910.bv.repository
 
+import dev.aaa1115910.biliapi.entity.live.LiveRoomItem
 import dev.aaa1115910.biliapi.entity.video.Tag
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.player.entity.VideoListItem
@@ -19,6 +20,14 @@ class VideoInfoRepository {
     var tags: List<Tag> = emptyList()
     var lastPreloadedVideoIndex = 0
     var interactivePlaybackContext: InteractivePlaybackContext? = null
+
+    val preloadedLiveRoomList = mutableListOf<LiveRoomItem>()
+    var lastPreloadedRoomIndex = 0
+
+    fun setPreloadedVideoList(items: List<VideoCardData>) {
+        preloadedVideoList.clear()
+        preloadedVideoList.addAll(items.distinctBy { it.avid })
+    }
 
     fun resolveLastPreloadedVideoIndex(avid: Long): Int {
         val currentIndex = preloadedVideoList.indexOfFirst { it.avid == avid }

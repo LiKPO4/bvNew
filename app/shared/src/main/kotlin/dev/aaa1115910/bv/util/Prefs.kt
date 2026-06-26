@@ -395,6 +395,10 @@ object Prefs {
         }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerDefaultStartPositionKey, value.value) }
 
+    var playerDoubleBackToExit: Boolean
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPlayerDoubleBackToExitRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerDoubleBackToExitKey, value) }
+
     var playerExitWhenAllIsPlayed: Boolean
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPlayerExitWhenAllIsPlayedRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerExitWhenAllIsPlayedKey, value) }
@@ -592,6 +596,7 @@ object PrefKeys {
     val prefDefaultHomeTabKey = intPreferencesKey("default_home_tab")
     val prefPortraitVideoFixModeKey = intPreferencesKey("portrait_video_fix_mode")
     val prefPlayerShowDebugInfoKey = booleanPreferencesKey("player_show_debug_info")
+    val prefPlayerDoubleBackToExitKey = booleanPreferencesKey("player_double_back_to_exit")
     val prefPlayerExitWhenAllIsPlayedKey = booleanPreferencesKey("player_exit_when_all_is_played")
     val prefPlayerSeekForwardStepKey = intPreferencesKey("player_seek_forward_step")
     val prefPlayerSeekBackwardStepKey = intPreferencesKey("player_seek_backward_step")
@@ -689,6 +694,7 @@ object PrefKeys {
     val prefDefaultHomeTabRequest = PreferenceRequest(prefDefaultHomeTabKey, 0)
     val prefPortraitVideoFixModeRequest = PreferenceRequest(prefPortraitVideoFixModeKey, 0)
     val prefPlayerShowDebugInfoRequest = PreferenceRequest(prefPlayerShowDebugInfoKey, false)
+    val prefPlayerDoubleBackToExitRequest = PreferenceRequest(prefPlayerDoubleBackToExitKey, true)
     val prefPlayerExitWhenAllIsPlayedRequest = PreferenceRequest(prefPlayerExitWhenAllIsPlayedKey, true)
     val prefPlayerSeekForwardStepRequest = PreferenceRequest(prefPlayerSeekForwardStepKey, 10)
     val prefPlayerSeekBackwardStepRequest = PreferenceRequest(prefPlayerSeekBackwardStepKey, 5)

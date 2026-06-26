@@ -210,8 +210,7 @@ fun ToViewScreen(
                                     selectedIndex = index
                                     showDeleteConfirmDialog = true
                                 } else {
-                                    videoInfoRepository.preloadedVideoList.clear()
-                                    videoInfoRepository.preloadedVideoList.addAll(toViewViewModel.histories)
+                                    videoInfoRepository.setPreloadedVideoList(toViewViewModel.histories)
                                     VideoInfoActivity.actionStart(
                                         context = context,
                                         aid = item.avid,

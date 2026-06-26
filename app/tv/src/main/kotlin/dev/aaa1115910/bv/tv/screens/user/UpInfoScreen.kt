@@ -406,8 +406,7 @@ fun UpSpaceScreen(
                         data = video,
                         onClick = {
                             if (!isLongPress) {
-                                videoInfoRepository.preloadedVideoList.clear()
-                                videoInfoRepository.preloadedVideoList.addAll(userSpaceViewModel.tvSpaceVideos)
+                                videoInfoRepository.setPreloadedVideoList(userSpaceViewModel.tvSpaceVideos)
                                 VideoInfoActivity.actionStart(
                                     context = context,
                                     aid = video.avid,

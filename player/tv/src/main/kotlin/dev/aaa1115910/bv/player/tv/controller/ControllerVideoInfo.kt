@@ -682,7 +682,7 @@ fun ControllerVideoInfoBottom(
                 )
                 .onPreviewKeyEvent { event ->
                     if (event.type == KeyEventType.KeyDown) {
-                        if (!fromSeason && !isLive && event.key == Key.DirectionDown) {
+                        if (!fromSeason && event.key == Key.DirectionDown) {
                             onOpenRelatedVideo()
                         }
                     }

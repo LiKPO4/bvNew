@@ -57,8 +57,7 @@ fun PopularScreen(
     }
 
     val onClickVideo: (UgcItem) -> Unit = { ugcItem ->
-        videoInfoRepository.preloadedVideoList.clear()
-        videoInfoRepository.preloadedVideoList.addAll(
+        videoInfoRepository.setPreloadedVideoList(
             popularViewModel.popularVideoList.map { item ->
                 VideoCardData(
                     avid = item.aid,

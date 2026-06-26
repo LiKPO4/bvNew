@@ -290,8 +290,7 @@ fun FavoriteScreen(
                                     selectedIndex = index
                                     showDeleteConfirmDialog = true
                                 } else {
-                                    videoInfoRepository.preloadedVideoList.clear()
-                                    videoInfoRepository.preloadedVideoList.addAll(favoriteViewModel.favorites)
+                                    videoInfoRepository.setPreloadedVideoList(favoriteViewModel.favorites)
                                     if (history.jumpToSeason) {
                                         SeasonInfoActivity.actionStart(
                                             context = context,

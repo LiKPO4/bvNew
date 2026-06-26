@@ -71,9 +71,13 @@ fun VideoPlayerController(
     playerSeekForwardStep: Int = 10,
     playerSeekBackwardStep: Int = 5,
     showBottomProgressBar: Boolean = false,
+    doubleBackToExit: Boolean = true,
 
     showRelatedVideos: Boolean = false,
     onToggleRelatedVideos: (Boolean) -> Unit,
+    showRelatedRooms: Boolean = false,
+    onToggleRelatedRooms: (Boolean) -> Unit = {},
+    onSwitchNextRoom: () -> Unit = {},
     registerShowInfoProvider: ((() -> Boolean) -> Unit) = {},
     onViewerCountTipCanShowChanged: (Boolean) -> Unit = {},
     viewerCountText: String = "",
@@ -246,7 +250,7 @@ fun VideoPlayerController(
             //.ifElse(hasFocus, Modifier.border(2.dp, Color.Yellow))
             .onPreviewKeyEvent {
 
-                if (showClickableControllers || showRelatedVideos) {
+                if (showClickableControllers || showRelatedVideos || showRelatedRooms) {
                     if (listOf(Key.Back, Key.Menu).contains(it.key)) {
                         if (it.type == KeyEventType.KeyUp) {
                             logger.fInfo { "[${it.key}] hide all controllers" }
@@ -256,6 +260,7 @@ fun VideoPlayerController(
                                 showListController = false
                                 showSeekController = false
                                 onToggleRelatedVideos(false)
+                                onToggleRelatedRooms(false)
                             }
                         }
                         onRequestFocus()
@@ -382,7 +387,11 @@ fun VideoPlayerController(
                                 longPressDownTriggered = true
                                 doublePressDownJob?.cancel()
                                 lastPressDown = 0L
-                                onLoadNextVideo(false)
+                                if (videoPlayerConfigData.isLive) {
+                                    onSwitchNextRoom()
+                                } else {
+                                    onLoadNextVideo(false)
+                                }
                             }
                             return@onPreviewKeyEvent true
                         }
@@ -393,12 +402,9 @@ fun VideoPlayerController(
                             return@onPreviewKeyEvent true
                         }
                         logger.info { "[${it.key} press]" }
-                        if (videoPlayerConfigData.isLive) {
-                            showInfo = true
-                            return@onPreviewKeyEvent true
-                        }
 
                         // 检查是否为连按两次（间隔小于300ms且上次按键时间不为0）
+                        val isLive = videoPlayerConfigData.isLive
                         val currentTime = System.currentTimeMillis()
                         val isDoublePress = lastPressDown != 0L && currentTime - lastPressDown < 300
                         lastPressDown = currentTime
@@ -407,10 +413,14 @@ fun VideoPlayerController(
                         doublePressDownJob = scope.launch(Dispatchers.Main) {
                             delay(300)
                             lastPressDown = 0L // 重置时间，避免第三次按下时误判
-                            if ((isDoublePress || showInfo) && !showRelatedVideos) {
+                            val (relatedShown, toggleRelated) = if (isLive)
+                                showRelatedRooms to { b: Boolean -> onToggleRelatedRooms(b) }
+                            else
+                                showRelatedVideos to { b: Boolean -> onToggleRelatedVideos(b) }
+                            if ((isDoublePress || showInfo) && !relatedShown) {
                                 showInfo = false
-                                onToggleRelatedVideos(true)
-                            } else if(!showInfo && !showRelatedVideos) {
+                                toggleRelated(true)
+                            } else if (!showInfo && !relatedShown) {
                                 showInfo = true
                             }
                         }
@@ -430,7 +440,7 @@ fun VideoPlayerController(
                         logger.info { "[${it.key} press]" }
 
                         // 有任何控制器显示中，先隐藏控制器
-                        if (showSeekController || showListController || showMenuController || showInfo || showRelatedVideos) {
+                        if (showSeekController || showListController || showMenuController || showInfo || showRelatedVideos || showRelatedRooms) {
                             logger.fInfo { "隐藏控制器" }
                             scope.launch(Dispatchers.Main) {
                                 showSeekController = false
@@ -438,12 +448,13 @@ fun VideoPlayerController(
                                 showMenuController = false
                                 showInfo = false
                                 onToggleRelatedVideos(false)
+                                onToggleRelatedRooms(false)
                                 hideVideoInfoJob?.cancel()
                             }
                             return@onPreviewKeyEvent true
                         }
 
-                        if (!videoPlayer.isPlaying) {
+                        if (!videoPlayer.isPlaying || !doubleBackToExit) {
                             logger.fInfo { "Exiting video player" }
                             onExit()
                             return@onPreviewKeyEvent true
@@ -587,13 +598,14 @@ fun VideoPlayerController(
                 showListController = true
             },
             onOpenRelatedVideo = {
-                if (!videoPlayerConfigData.isLive) {
+                if (videoPlayerConfigData.isLive)
+                    onToggleRelatedRooms(true)
+                else 
                     onToggleRelatedVideos(true)
 
-                    scope.launch(Dispatchers.Main) {
-                        delay(50)
-                        showInfo = false
-                    }
+                scope.launch(Dispatchers.Main) {
+                    delay(50)
+                    showInfo = false
                 }
             },
             onOpenSetting = {

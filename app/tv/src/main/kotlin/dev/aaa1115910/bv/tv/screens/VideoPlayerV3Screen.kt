@@ -98,6 +98,7 @@ import dev.aaa1115910.biliapi.http.BiliHttpApi
 import dev.aaa1115910.bv.player.entity.DefaultStartPosition
 import dev.aaa1115910.bv.player.entity.NextVideoStrategy
 import dev.aaa1115910.bv.tv.component.videocard.TabbedVideosPanel
+import dev.aaa1115910.bv.tv.component.live.LiveRoomListPanel
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -118,6 +119,7 @@ private data class VideoPlayerScreenPrefsSnapshot(
     val seekForwardStep: Int,
     val seekBackwardStep: Int,
     val showBottomProgressBar: Boolean,
+    val playerDoubleBackToExit: Boolean,
     val portraitVideoFixMode: PortraitVideoFixMode,
     val exitWhenAllPlayed: Boolean,
     val longPressAction: Int,
@@ -147,6 +149,7 @@ fun VideoPlayerV3Screen(
             seekForwardStep = Prefs.playerSeekForwardStep,
             seekBackwardStep = Prefs.playerSeekBackwardStep,
             showBottomProgressBar = Prefs.playerShowBottomProgressBar,
+            playerDoubleBackToExit = Prefs.playerDoubleBackToExit,
             portraitVideoFixMode = Prefs.portraitVideoFixMode,
             exitWhenAllPlayed = Prefs.playerExitWhenAllIsPlayed,
             longPressAction = Prefs.playerLongPressAction,
@@ -218,6 +221,16 @@ fun VideoPlayerV3Screen(
     // 当显示相关视频时，自动将焦点转移到VideosRow的第一个卡片
     LaunchedEffect(playerViewModel.showRelatedVideos) {
         if (playerViewModel.showRelatedVideos) {
+            delay(300)
+            kotlin.runCatching {
+                relatedVideosFocusRequester.requestFocus()
+            }
+        }
+    }
+
+    // 当显示直播列表时，自动将焦点转移到第一个卡片
+    LaunchedEffect(playerViewModel.showRelatedRooms) {
+        if (playerViewModel.showRelatedRooms) {
             delay(300)
             kotlin.runCatching {
                 relatedVideosFocusRequester.requestFocus()
@@ -312,6 +325,9 @@ fun VideoPlayerV3Screen(
     BackHandler(enabled = playerViewModel.showRelatedVideos) {
         playerViewModel.showRelatedVideos = false
     }
+    BackHandler(enabled = playerViewModel.showRelatedRooms) {
+        playerViewModel.showRelatedRooms = false
+    }
 
     val exitPlayer = {
         playerViewModel.dismissInteractiveOptionDialog()
@@ -389,6 +405,8 @@ fun VideoPlayerV3Screen(
             fromSeason = playerViewModel.fromSeason,
             showDanmaku = playerViewModel.showDanmaku,
             showRelatedVideos = playerViewModel.showRelatedVideos,
+            showRelatedRooms = playerViewModel.showRelatedRooms,
+            hasPreloadedLiveRoomList = playerViewModel.preloadedLiveRoomList.isNotEmpty(),
             showNextVideoBtn = !(playerViewModel.currentPlayMode == PlayMode.SingleVideo || playerViewModel.currentPlayMode == PlayMode.SingleLoop || (playerViewModel.currentPlayMode == PlayMode.Custom && customNextVideoStrategies.isEmpty())),
             defaultStartPosition = prefsSnapshot.defaultStartPosition,
             clipInfoList = playerViewModel.clipInfoList,
@@ -441,6 +459,7 @@ fun VideoPlayerV3Screen(
                 playerSeekForwardStep = prefsSnapshot.seekForwardStep,
                 playerSeekBackwardStep = prefsSnapshot.seekBackwardStep,
                 showBottomProgressBar = prefsSnapshot.showBottomProgressBar,
+                playerDoubleBackToExit = prefsSnapshot.playerDoubleBackToExit,
                 // 如果portraitVideoFixMode是降到1080P，但视频可能不存在1080P以下的资源（试看视频只有一个清晰度，可能是4K）
 //              // 所以 其实是只要启用portraitVideoFixMode的任意模式，遇到4K视频都要用TextureView方式
                 useTextureViewFixPortraitVideo = playerViewModel.isVerticalVideo && prefsSnapshot.portraitVideoFixMode != PortraitVideoFixMode.None && playerViewModel.currentQuality >= Resolution.R4K,
@@ -454,12 +473,52 @@ fun VideoPlayerV3Screen(
                 onToggleRelatedVideos = { state ->
                     playerViewModel.showRelatedVideos = if (playerViewModel.relatedVideos.isNotEmpty() || playerViewModel.preloadedVideoList.isNotEmpty()) state else false
                 },
+                onToggleRelatedRooms = { state ->
+                    playerViewModel.showRelatedRooms = if (playerViewModel.preloadedLiveRoomList.isNotEmpty()) state else false
+                },
+                onSwitchNextRoom = {
+                    val rooms = playerViewModel.preloadedLiveRoomList
+                    if (rooms.isEmpty()) return@BvPlayer
+                    val currentIndex = rooms.indexOfFirst { it.roomId == playerViewModel.liveRoomId }
+                    val nextRooms = rooms.filter { it.liveStatus == 1 }
+                    if (nextRooms.isEmpty()) return@BvPlayer
+                    // 找到当前房间之后的第一个在播房间
+                    val nextRoom = nextRooms.firstOrNull { room ->
+                        rooms.indexOf(room) > currentIndex
+                    } ?: nextRooms.first() // 如果后面没有了，循环到第一个
+                    // 如果下一个房间就是当前房间（只有一个在播房间），不切换
+                    if (nextRoom.roomId == playerViewModel.liveRoomId) return@BvPlayer
+                    autoActionCountdownJob = scope.launch {
+                        autoActionTipText = "即将播放下一个"
+                        autoActionTipVisible = true
+                        delay(1380)
+                        autoActionTipVisible = false
+                        if (autoActionCountdownJob != null) {
+                            autoActionCountdownJob = null
+                            logger.info { "Switch to next live room: ${nextRoom.roomId} - ${nextRoom.title}" }
+                            val roomWatchedText = nextRoom.watchedShow?.let { show ->
+                                show.textSmall + if (show.switch) "播放" else "人气"
+                            } ?: ""
+                            playerViewModel.apply {
+                                title = nextRoom.title
+                                upName = nextRoom.uname
+                                upId = nextRoom.uid
+                                upFace = nextRoom.face
+                                isLive = true
+                                liveRoomId = nextRoom.roomId
+                                watchedText = roomWatchedText
+                                showRelatedRooms = false
+                                loadLiveStreamWithQuality(nextRoom.roomId)
+                            }
+                        }
+                    }
+                },
                 autoOpenPlayListOnVideoEnd = false,
                 onSendHeartbeat = playerViewModel::uploadHistory,
                 onClearBackToHistoryData = { playerViewModel.lastPlayed = 0 },
                 onLoadNextVideo = { immediate ->
-                    if (playerViewModel.showRelatedVideos) {
-                        logger.info { "Related videos is shown, skip auto action" }
+                    if (playerViewModel.showRelatedVideos || playerViewModel.showRelatedRooms) {
+                        logger.info { "Related videos/rooms is shown, skip auto action" }
                         return@BvPlayer
                     }
 
@@ -611,6 +670,7 @@ fun VideoPlayerV3Screen(
                                                 SeasonInfoActivity.actionStart(
                                                     context = context,
                                                     epId = nextVideo.epId!!,
+                                                    seasonId = nextVideo.seasonId!!,
                                                     proxyArea = ProxyArea.checkProxyArea(nextVideo.title)
                                                 )
                                             } else {
@@ -1056,6 +1116,7 @@ fun VideoPlayerV3Screen(
                         SeasonInfoActivity.actionStart(
                             context = context,
                             epId = videoData.epId!!,
+                            seasonId = videoData.seasonId!!,
                             proxyArea = ProxyArea.checkProxyArea(videoData.title)
                         )
                     },
@@ -1072,9 +1133,46 @@ fun VideoPlayerV3Screen(
                 )
             }
 
+            // 直播房间列表
+            AnimatedVisibility(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth(),
+                visible = playerViewModel.showRelatedRooms && playerViewModel.isLive,
+                enter = expandVertically(),
+                exit = shrinkVertically(),
+                label = "RelatedRoomsForPlayer"
+            ) {
+                LiveRoomListPanel(
+                    liveRooms = playerViewModel.preloadedLiveRoomList,
+                    currentRoomId = playerViewModel.liveRoomId,
+                    focusRequester = relatedVideosFocusRequester,
+                    onOpenLiveRoom = { room ->
+                        if (room.liveStatus != 1) {
+                            "${room.uname} 未开播".toast(context)
+                            return@LiveRoomListPanel
+                        }
+                        val roomWatchedText = room.watchedShow?.let { show ->
+                            show.textSmall + if (show.switch) "播放" else "人气"
+                        } ?: ""
+                        playerViewModel.apply {
+                            title = room.title
+                            upName = room.uname
+                            upId = room.uid
+                            upFace = room.face
+                            isLive = true
+                            liveRoomId = room.roomId
+                            watchedText = roomWatchedText
+                            showRelatedRooms = false
+                            loadLiveStreamWithQuality(room.roomId)
+                        }
+                    }
+                )
+            }
+
             // 在线观看人数 Tip
             OnlineViewerCountTip(
-                show = showOnlineViewerCountTip && canShowViewerCountTip && !playerViewModel.showRelatedVideos,
+                show = showOnlineViewerCountTip && canShowViewerCountTip && !playerViewModel.showRelatedVideos && !playerViewModel.showRelatedRooms,
                 count = onlineViewerCount
             )
 

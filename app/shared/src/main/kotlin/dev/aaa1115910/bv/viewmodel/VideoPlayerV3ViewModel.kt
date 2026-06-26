@@ -303,6 +303,11 @@ class VideoPlayerV3ViewModel(
     var upId by mutableLongStateOf(0L)
     var showDanmaku by mutableStateOf(Prefs.showDanmaku)
     var showRelatedVideos by mutableStateOf(false)
+    var showRelatedRooms by mutableStateOf(false)
+    val preloadedLiveRoomList get() = videoInfoRepository.preloadedLiveRoomList
+    var lastPreloadedRoomIndex
+        get() = videoInfoRepository.lastPreloadedRoomIndex
+        set(value) { videoInfoRepository.lastPreloadedRoomIndex = value }
     var isFollowingUp by mutableStateOf(false)
 
     var needPay by mutableStateOf(false)
@@ -873,7 +878,8 @@ class VideoPlayerV3ViewModel(
         } else if (codecList.contains(Prefs.defaultVideoCodec)) {
             Prefs.defaultVideoCodec
         } else {
-            codecList.minByOrNull { it.ordinal }!!
+            VideoCodec.findBestCodec(Prefs.defaultVideoCodec, codecList)
+                ?: codecList.minByOrNull { it.ordinal }!!
         }
         withContext(Dispatchers.Main) {
             this@VideoPlayerV3ViewModel.currentVideoCodec = currentVideoCodec
@@ -982,7 +988,7 @@ class VideoPlayerV3ViewModel(
         )
 
         var videoHost = with(URI(videoUrl)) { "$scheme://$authority" }
-        var audioHost = audioUrl?.let { with(URI(it)) { "$scheme://$authority" } } ?: "无音频流，使用纯视频播放"
+        var audioHost = audioUrl?.let { with(URI(it)) { "$scheme://$authority" } } ?: "无音频流，纯视频流播放"
         addLogs("video host: $videoHost", replaceIfContains = "video host")
         addLogs("audio host: $audioHost", replaceIfContains = "audio host")
 

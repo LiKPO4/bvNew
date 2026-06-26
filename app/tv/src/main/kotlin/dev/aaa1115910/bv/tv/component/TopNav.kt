@@ -273,7 +273,7 @@ private fun TabRowScope.NavItemTab(
                 .ifElse(
                     !actualFocused && selected,
                     Modifier.background(
-                        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.75f),
+                        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.7f),
                         shape = RoundedCornerShape(tabCornerRadius)
                     )
                 )

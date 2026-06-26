@@ -169,8 +169,7 @@ fun UgcRegionScaffold(
                         )
                     },
                     onClick = {
-                        videoInfoRepository.preloadedVideoList.clear()
-                        videoInfoRepository.preloadedVideoList.addAll(
+                        videoInfoRepository.setPreloadedVideoList(
                             ugcViewModel.ugcItems.map { ugcItem ->
                                 VideoCardData(
                                     avid = ugcItem.aid,
