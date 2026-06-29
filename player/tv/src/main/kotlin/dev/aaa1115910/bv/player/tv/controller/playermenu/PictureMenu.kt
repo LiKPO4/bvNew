@@ -53,6 +53,7 @@ fun PictureMenuList(
     onAudioChange: (Audio) -> Unit,
     onLiveQualityChange: (Int) -> Unit = {},
     onLiveCodecChange: (LiveCodec) -> Unit = {},
+    onLiveLineChange: (Int) -> Unit = {},
     onFocusStateChange: (MenuFocusState) -> Unit
 ) {
     val context = LocalContext.current
@@ -139,6 +140,23 @@ fun PictureMenuList(
                     )
                 }
 
+                VideoPlayerPictureMenuItem.LiveLine -> {
+                    val liveLines = videoPlayerConfigData.availableLiveLines
+                    val selectedIndex = liveLines
+                        .indexOfFirst { it.index == videoPlayerConfigData.currentLiveLineIndex }
+                        .coerceAtLeast(0)
+                    RadioMenuList(
+                        modifier = menuItemsModifier,
+                        items = liveLines.map { it.displayName },
+                        selected = selectedIndex,
+                        onSelectedChanged = { onLiveLineChange(liveLines[it].index) },
+                        onFocusBackToParent = {
+                            onFocusStateChange(MenuFocusState.Menu)
+                            parentMenuFocusRequester.requestFocus()
+                        }
+                    )
+                }
+
                 VideoPlayerPictureMenuItem.AspectRatio -> RadioMenuList(
                     modifier = menuItemsModifier,
                     items = VideoAspectRatio.entries.map { it.getDisplayName(context) },
@@ -213,6 +231,11 @@ fun PictureMenuList(
                     remove(VideoPlayerPictureMenuItem.PlaySpeed)
                     remove(VideoPlayerPictureMenuItem.Codec)
                     remove(VideoPlayerPictureMenuItem.Audio)
+                    if (videoPlayerConfigData.availableLiveLines.isEmpty()) {
+                        remove(VideoPlayerPictureMenuItem.LiveLine)
+                    }
+                } else {
+                    remove(VideoPlayerPictureMenuItem.LiveLine)
                 }
             }) { index, item ->
                 MenuListItem(

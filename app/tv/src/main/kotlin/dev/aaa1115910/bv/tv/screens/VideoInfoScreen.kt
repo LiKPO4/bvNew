@@ -1414,7 +1414,9 @@ fun VideoInfoData(
                                     .height(32.dp), // 设置高度
                                 isCoin = isCoin,
                                 onAddCoin = {
-                                    onAddCoin()
+                                    if (!isCoin) {
+                                        onAddCoin()
+                                    }
                                 }
                             )
                         }

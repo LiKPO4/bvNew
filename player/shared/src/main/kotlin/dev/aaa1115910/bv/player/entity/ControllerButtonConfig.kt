@@ -16,7 +16,7 @@ data class ControllerButtonConfig(
  * 所有控制栏按钮 ID（默认顺序）
  */
 val ALL_CONTROLLER_BUTTON_IDS = listOf(
-    "nextVideo", "refresh", "speed", "resolution", "audio", "upSpace", "rotation",
+    "nextVideo", "refresh", "speed", "liveLine", "resolution", "audio", "upSpace", "rotation",
     "comment", "subtitle", "danmaku", "playlist", "related", "playMode",
     "videoDetail", "description", "settings"
 )
@@ -125,6 +125,7 @@ fun getControllerButtonDisplayName(id: String): String {
         "nextVideo" -> "下一个视频"
         "refresh" -> "刷新"
         "speed" -> "播放速度"
+        "liveLine" -> "直播线路"
         "resolution" -> "画质"
         "audio" -> "音频编码"
         "upSpace" -> "UP主空间"

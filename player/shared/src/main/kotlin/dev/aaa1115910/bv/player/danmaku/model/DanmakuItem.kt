@@ -24,7 +24,7 @@ internal class DanmakuItem(
     var pxPerMs: Float = 0f
     var textWidthPx: Float = 0f
 
-    var textSizeScaled: Float = 0f
+    var fontSizeMul: Float = 0f
 
     fun timeMs(): Int = data.positionMs
 }

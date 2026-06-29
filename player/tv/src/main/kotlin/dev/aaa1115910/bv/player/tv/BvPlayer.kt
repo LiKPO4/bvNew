@@ -109,6 +109,7 @@ fun BvPlayer(
     onAudioChange: (Audio, afterChange: suspend () -> Unit) -> Unit,
     onLiveQualityChange: (Int) -> Unit = {},
     onLiveCodecChange: (LiveCodec) -> Unit = {},
+    onLiveLineChange: (Int) -> Unit = {},
     onDanmakuSwitchChange: (List<DanmakuType>) -> Unit,
     onDanmakuSizeChange: (Float) -> Unit,
     onDanmakuOpacityChange: (Float) -> Unit,
@@ -136,6 +137,7 @@ fun BvPlayer(
     userActionContent: UserActionContent = EmptyUserActionContent,
     onViewerCountTipCanShowChanged: (Boolean) -> Unit = {},
     viewerCountText: String = "",
+    isShowSkipTip: Boolean = false,
     danmakuView: DanmakuView,
 ) {
 //    // 调试重组次数: AtomicInteger，不被 Compose 追踪，只记录真实由外部状态引起的重组次数。
@@ -639,6 +641,7 @@ fun BvPlayer(
             registerShowInfoProvider = { provider -> showInfoProvider = provider },
             onViewerCountTipCanShowChanged = onViewerCountTipCanShowChanged,
             viewerCountText = viewerCountText,
+            isShowSkipTip = isShowSkipTip,
 
             onPlay = { videoPlayer.start() },
             onPause = {
@@ -763,6 +766,7 @@ fun BvPlayer(
             },
             onLiveQualityChange = onLiveQualityChange,
             onLiveCodecChange = onLiveCodecChange,
+            onLiveLineChange = onLiveLineChange,
             onDanmakuSwitchChange = { enabledDanmakuTypes ->
                 logger.info { "On enabled danmaku type change: $enabledDanmakuTypes" }
                 onDanmakuSwitchChange(enabledDanmakuTypes)

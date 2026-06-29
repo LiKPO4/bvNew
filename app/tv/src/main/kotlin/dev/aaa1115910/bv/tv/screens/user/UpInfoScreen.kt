@@ -6,13 +6,17 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -21,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Done
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -50,11 +55,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
+import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
@@ -181,8 +188,10 @@ fun UpSpaceScreen(
                         userSpaceViewModel.upFace = userInfo.card.face
                         userSpaceViewModel.sign = userInfo.card.sign.replace("\n", "")
                         userSpaceViewModel.fans = userInfo.card.fans
+                        userSpaceViewModel.likeNum = userInfo.likeNum
                         userSpaceViewModel.friend = userInfo.card.attention
-
+                        userSpaceViewModel.currentLevel = userInfo.card.levelInfo.currentLevel
+                        userSpaceViewModel.spacestaText = if(userInfo.card.spacesta == -2) "该账号封禁中" else if (userInfo.card.spacesta == 0) "" else ""
                         if (Prefs.isLogin) {
                             FollowStateManager.updateFollowState(mid, userInfo.following)
                             isFollowing = userInfo.following
@@ -251,7 +260,7 @@ fun UpSpaceScreen(
                         if (showFollowButton) {
                             Surface(
                                 modifier = Modifier
-                                    .padding(start = if (showLargeTitle) 24.dp else 4.dp, top = 2.dp)
+                                    .padding(start = if (showLargeTitle) 24.dp else 0.dp)
                                     .scale(if (showLargeTitle) 1f else 0.7f),
                                 onClick = {
                                     if (isFollowing) {
@@ -338,21 +347,58 @@ fun UpSpaceScreen(
                                 }
                             }
                         }
+                        // up账号状态
+                        if (userSpaceViewModel.spacestaText.isNotBlank()) {
+                            Surface(
+                                modifier = Modifier
+                                    .offset(x = if (showLargeTitle) 16.dp else (-16).dp)
+                                    .scale(if (showLargeTitle) 1f else 0.7f),
+                                colors = SurfaceDefaults.colors(
+                                    containerColor = Color.Transparent,
+                                    contentColor = Color.Yellow.copy(alpha = 0.8f)
+                                ),
+                                shape = MaterialTheme.shapes.small
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(1.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        modifier = Modifier.scale(0.8f),
+                                        imageVector = Icons.Rounded.Warning,
+                                        contentDescription = null,
+                                        tint = Color.Yellow
+                                    )
+                                    Text(
+                                        text = userSpaceViewModel.spacestaText
+                                    )
+                                }
+                            }
+                        }
                     }
                     Row {
                         Text(
                             modifier = Modifier.padding(top =  if (showLargeTitle) 6.dp else 4.dp),
                             text = stringResource(
+                                R.string.user_info_level,
+                                userSpaceViewModel.currentLevel
+                            ) + " · " + stringResource(
                                 R.string.friend_count,
                                 if (userSpaceViewModel.friend >= 10000) String.format(
                                     "%.2f",
                                     userSpaceViewModel.friend / 10000.0
-                                ) + " 万" else userSpaceViewModel.friend.toString()
+                                ) + "万" else userSpaceViewModel.friend.toString()
                             ) + " · " + stringResource(
                                 R.string.fans_count,
                                 if (userSpaceViewModel.fans >= 10000) String.format(
                                     "%.2f",
                                     userSpaceViewModel.fans / 10000.0
+                                ) + " 万" else userSpaceViewModel.fans.toString()
+                            ) + " · " + stringResource(
+                                R.string.like_count,
+                                if (userSpaceViewModel.likeNum >= 10000) String.format(
+                                    "%.2f",
+                                    userSpaceViewModel.likeNum / 10000.0
                                 ) + " 万" else userSpaceViewModel.fans.toString()
                             ) + "${if (userSpaceViewModel.sign.isNotEmpty()) "   ｜   " + userSpaceViewModel.sign else ""}",
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
@@ -363,7 +409,9 @@ fun UpSpaceScreen(
                         )
                     }
                 }
-                Column {
+                Column(
+                    horizontalAlignment = Alignment.End
+                ) {
                     Text(
                         text = stringResource(
                             R.string.load_data_count,

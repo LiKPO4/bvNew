@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -80,6 +81,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.video.Subtitle
 import dev.aaa1115910.bv.player.entity.Audio
+import dev.aaa1115910.bv.player.entity.LiveStreamLine
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerClockState
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.PlayMode
@@ -106,7 +108,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dev.aaa1115910.bv.util.requestFocus
 import kotlinx.coroutines.Job
+import java.text.SimpleDateFormat
+import java.util.Locale
 import kotlin.math.roundToInt
+import androidx.compose.ui.platform.LocalLocale
 
 private fun formatSpeed(speed: Float): String {
     return "${(speed * 100).roundToInt() / 100f}x"
@@ -141,6 +146,7 @@ fun ControllerVideoInfo(
     onResolutionChange: (Resolution) -> Unit = {},
     onAudioChange: (Audio) -> Unit = {},
     onLiveQualityChange: (Int) -> Unit = {},
+    onLiveLineChange: (Int) -> Unit = {},
     viewerCountText: String = "",
 ) {
     val context = LocalContext.current
@@ -238,8 +244,12 @@ fun ControllerVideoInfo(
                 currentLiveQn = videoPlayerConfigData.currentLiveQn,
                 currentLiveQualityDescription = videoPlayerConfigData.currentLiveQualityDescription,
                 onLiveQualityChange = onLiveQualityChange,
+                onLiveLineChange = onLiveLineChange,
                 controllerButtonsOrder = videoPlayerConfigData.controllerButtonsOrder,
-                viewerCountText = viewerCountText
+                viewerCountText = viewerCountText,
+                liveTime = videoPlayerVideoInfoData.liveTime,
+                availableLiveLines = videoPlayerConfigData.availableLiveLines,
+                currentLiveLineIndex = videoPlayerConfigData.currentLiveLineIndex
             )
         }
     }
@@ -333,8 +343,12 @@ fun ControllerVideoInfoBottom(
     currentLiveQn: Int = 0,
     currentLiveQualityDescription: String = "",
     onLiveQualityChange: (Int) -> Unit = {},
+    onLiveLineChange: (Int) -> Unit = {},
     controllerButtonsOrder: String = "",
-    viewerCountText: String = ""
+    viewerCountText: String = "",
+    liveTime: Long = 0L,
+    availableLiveLines: List<LiveStreamLine> = emptyList(),
+    currentLiveLineIndex: Int = 0
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -346,6 +360,7 @@ fun ControllerVideoInfoBottom(
     var showQualityDialog by remember { mutableStateOf(false) }
     var showAudioDialog by remember { mutableStateOf(false) }
     var showPlayModeDialog by remember { mutableStateOf(false) }
+    var showLiveLineDialog by remember { mutableStateOf(false) }
     var speed by remember { mutableFloatStateOf(playSpeed) }
     val danmakuIconId = if (showDanmaku) R.drawable.ic_danmaku_on else R.drawable.ic_danmaku_hide
     val subtitleIconId = if (currentSubtitleId > -1) R.drawable.ic_subtitle_on else R.drawable.ic_subtitle_off
@@ -356,6 +371,10 @@ fun ControllerVideoInfoBottom(
 
     val currentQualityText = if (isLive) currentLiveQualityDescription.ifEmpty { "画质" } else currentResolution.getShortDisplayName(context).ifEmpty { "画质" }
     val currentAudioText = currentAudio.getDisplayName(context).ifEmpty { "音质" }
+    val currentLiveLineButtonText = availableLiveLines
+        .firstOrNull { it.index == currentLiveLineIndex }
+        ?.let { "线路 ${it.index + 1}" }
+        ?: "线路"
 
     val playModeIconId = when (currentPlayMode) {
         PlayMode.SingleVideo -> R.drawable.ic_play_mode_single
@@ -368,19 +387,26 @@ fun ControllerVideoInfoBottom(
         PlayMode.Custom -> R.drawable.ic_play_mode_custom
     }
 
-    val buttons = remember(isLive, fromSeason, showDanmaku, currentPlayMode, speed, rotation, currentSubtitleId, isFollowingUp, showNextVideoBtn, currentLiveQualityDescription, currentResolution, availableResolutions, currentAudio, availableAudio, buttonConfigs) {
+    val buttons = remember(isLive, fromSeason, showDanmaku, currentPlayMode, speed, rotation, currentSubtitleId, isFollowingUp, showNextVideoBtn, currentLiveQualityDescription, currentResolution, availableResolutions, currentAudio, availableAudio, availableLiveLines, currentLiveLineButtonText, buttonConfigs) {
         val rawButtons = listOf(
             ControlButton(
                 id = "nextVideo",
                 painterId = R.drawable.next_play_fill,
                 scale = 0.7f,
-                onClick = { onLoadNextVideo(true) },
+                onClick = { onHideInfo(); onLoadNextVideo(false) },
                 visible = showNextVideoBtn && !isLive
             ),
             ControlButton(
                 id = "refresh",
                 icon = Icons.Rounded.Refresh,
                 onClick = onRefreshVideo
+            ),
+            ControlButton(
+                id = "liveLine",
+                text = currentLiveLineButtonText,
+                onClick = { showLiveLineDialog = true },
+                width = 50,
+                visible = isLive && availableLiveLines.isNotEmpty()
             ),
             ControlButton(
                 id = "speed",
@@ -528,12 +554,27 @@ fun ControllerVideoInfoBottom(
 
     fun formatStat(value: Long): String = if (value >= 10000) String.format("%.1f", value / 10000.0) + " 万" else "$value "
 
-    val statString by remember(viewerCountText) {
+    val liveTimeFormatted = if (isLive && liveTime > 0) {
+        SimpleDateFormat("yyyy-MM-dd HH:mm", LocalLocale.current.platformLocale)
+            .format(java.util.Date(liveTime * 1000))
+    } else ""
+
+    var liveElapsed by remember { mutableLongStateOf(0L) }
+    if (isLive && liveTime > 0) {
+        LaunchedEffect(Unit) {
+            while (true) {
+                liveElapsed = (System.currentTimeMillis() - liveTime * 1000).coerceAtLeast(0)
+                delay(1000)
+            }
+        }
+    }
+
+    val statString by remember(viewerCountText, liveTimeFormatted, liveElapsed) {
         mutableStateOf(
             when {
                 upName.isNotEmpty() -> {
-                    val base = if (isLive) upName else {
-                        "$upName  ·  ${formatStat(play)}播放  ·  ${formatStat(danmaku.toLong())}弹幕  ·  ${formatStat(like.toLong())}点赞  ·  ${formatStat(favorite.toLong())}收藏  ·  ${formatStat(coin.toLong())}投币  ·  发布于 $pubTime"
+                    val base = if (isLive) "$upName  ·  $liveTimeFormatted 开播" else {
+                        "$upName  ·  ${formatStat(play)}播放  ·  ${formatStat(danmaku.toLong())}弹幕  ·  ${formatStat(like.toLong())}点赞  ·  ${formatStat(favorite.toLong())}收藏  ·  ${formatStat(coin.toLong())}投币  ·  $pubTime 发布"
                     }
                     if (viewerCountText.isNotEmpty()) "$base  ·  $viewerCountText" else base
                 }
@@ -564,7 +605,7 @@ fun ControllerVideoInfoBottom(
 
     fun scheduleHideJob() {
         cancelHideJob()
-        if (show && !showSpeedDialog && !showRotationDialog && !showSubtitleDialog && !showQualityDialog && !showAudioDialog && !showPlayModeDialog && !pauseAutoHide) {
+        if (show && !showSpeedDialog && !showRotationDialog && !showSubtitleDialog && !showQualityDialog && !showAudioDialog && !showPlayModeDialog && !showLiveLineDialog && !pauseAutoHide) {
             hideVideoInfoJob = scope.launch {
                 delay(5000)
                 withContext(Dispatchers.Main) { onHideInfo() }
@@ -572,7 +613,7 @@ fun ControllerVideoInfoBottom(
         }
     }
 
-    LaunchedEffect(show, showSpeedDialog, showRotationDialog, showSubtitleDialog, showQualityDialog, showAudioDialog, showPlayModeDialog, pauseAutoHide) {
+    LaunchedEffect(show, showSpeedDialog, showRotationDialog, showSubtitleDialog, showQualityDialog, showAudioDialog, showPlayModeDialog, showLiveLineDialog, pauseAutoHide) {
         scheduleHideJob()
     }
 
@@ -760,10 +801,11 @@ fun ControllerVideoInfoBottom(
             }
 
             Spacer(Modifier.weight(1f))
+            println("liveElapsed ${System.currentTimeMillis()} - $liveTime = $liveElapsed")
             Text(
                 modifier = Modifier
                     .padding(top = 8.dp, bottom = 0.dp),
-                text = "${seekData.position.formatHourMinSec()} / ${seekData.duration.formatHourMinSec()}",
+                text = if (isLive) liveElapsed.formatHourMinSec() else "${seekData.position.formatHourMinSec()} / ${seekData.duration.formatHourMinSec()}",
                 color = Color.White
             )
         }
@@ -837,6 +879,15 @@ fun ControllerVideoInfoBottom(
             hasRelatedVideos = hasRelatedVideos,
             fromSeason = fromSeason,
             onPlayModeChange = onPlayModeChange
+        )
+    }
+
+    if (showLiveLineDialog && availableLiveLines.isNotEmpty()) {
+        LiveLineDialog(
+            lines = availableLiveLines,
+            currentLineIndex = currentLiveLineIndex,
+            onHideDialog = { showLiveLineDialog = false },
+            onLineChange = onLiveLineChange
         )
     }
 }
@@ -1382,6 +1433,84 @@ private fun AudioDialog(
                             Text(
                                 modifier = Modifier.fillMaxWidth(),
                                 text = audio.getDisplayName(context),
+                                textAlign = TextAlign.Center,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveLineDialog(
+    modifier: Modifier = Modifier,
+    lines: List<LiveStreamLine>,
+    currentLineIndex: Int,
+    onHideDialog: () -> Unit,
+    onLineChange: (Int) -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val focusRequesters = remember(lines) {
+        lines.associate { it.index to FocusRequester() }
+    }
+    var lastInteractionTime by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    fun touch() { lastInteractionTime = System.currentTimeMillis() }
+
+    LaunchedEffect(lines, currentLineIndex) {
+        val requester = focusRequesters[currentLineIndex]
+            ?: lines.firstOrNull()?.let { focusRequesters[it.index] }
+        requester?.requestFocus(scope)
+    }
+
+    LaunchedEffect(lastInteractionTime) {
+        val base = lastInteractionTime
+        delay(15000)
+        if (base == lastInteractionTime) onHideDialog()
+    }
+
+    Dialog(onDismissRequest = { onHideDialog() }) {
+        Surface(
+            modifier = modifier.width(240.dp),
+            color = Color.Black.copy(alpha = 0.5f),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(
+                    text = "直播线路",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 18.sp
+                )
+
+                Column {
+                    lines.forEach { line ->
+                        val selected = line.index == currentLineIndex
+                        Button(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp, start = 8.dp, end = 8.dp)
+                                .focusRequester(focusRequesters[line.index]!!),
+                            shape = ButtonDefaults.shape(MaterialTheme.shapes.medium),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                            colors = ButtonDefaults.colors(
+                                containerColor = if (selected) MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.4f) else Color.Transparent,
+                                contentColor = Color.White,
+                                focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
+                                focusedContentColor = Color.Black
+                            ),
+                            onClick = {
+                                touch()
+                                onLineChange(line.index)
+                                onHideDialog()
+                            }
+                        ) {
+                            Text(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = line.displayName,
                                 textAlign = TextAlign.Center,
                                 fontSize = 16.sp
                             )

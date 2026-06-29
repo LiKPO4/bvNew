@@ -41,6 +41,7 @@ import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.DanmakuType
 import dev.aaa1115910.bv.player.entity.DefaultSubtitle
 import dev.aaa1115910.bv.player.entity.LiveCodec
+import dev.aaa1115910.bv.player.entity.LiveStreamLine
 import dev.aaa1115910.bv.player.entity.PlayMode
 import dev.aaa1115910.bv.player.entity.PlayerDefaultStartPosition
 import dev.aaa1115910.bv.player.entity.PortraitVideoFixMode
@@ -227,6 +228,14 @@ class VideoPlayerV3ViewModel(
 
     // 直播编码管理
     var currentLiveCodec by mutableStateOf(Prefs.defaultLiveCodec)
+
+    // 直播线路管理
+    var availableLiveLines = mutableStateListOf<LiveStreamLine>()
+    var currentLiveLineIndex by mutableIntStateOf(0)
+    private var preferredLiveLineIndex: Int? = null
+
+    // 直播开播时间
+    var liveTime by mutableLongStateOf(0L)
 
     // 直播流URL过期时间（毫秒时间戳）
     var liveStreamExpiresAt by mutableLongStateOf(0L)
@@ -1630,6 +1639,14 @@ class VideoPlayerV3ViewModel(
      * @param qn 请求的画质编号，默认30000（最高值，服务端会自动降级）
      */
     fun loadLiveStreamWithQuality(roomId: Int, qn: Int = 30000) {
+        var isSwitchRoom = false
+        if (liveRoomId != roomId) {
+            // 切换直播间时重置画质和编码为默认值
+            currentLiveQn = 30000
+            currentLiveCodec = Prefs.defaultLiveCodec
+            liveRoomId = roomId
+            isSwitchRoom = true
+        }
         // 取消之前的重连任务
         liveRetryJob?.cancel()
         liveRetryJob = null
@@ -1650,7 +1667,7 @@ class VideoPlayerV3ViewModel(
                 ensureDanmakuView()
             }
 
-            val playInfo = LiveStreamUrlFetcher.fetchLiveStreamUrl(roomId, qn, currentLiveCodec)
+            val playInfo = LiveStreamUrlFetcher.fetchLiveStreamUrl(roomId, qn, currentLiveCodec, preferredLiveLineIndex)
             if (playInfo == null) {
                 withContext(Dispatchers.Main) {
                     loadState = RequestState.Failed
@@ -1664,6 +1681,10 @@ class VideoPlayerV3ViewModel(
                 liveStreamExpiresAt = playInfo.expiresAt
                 currentLiveQn = playInfo.currentQn
                 liveQnDescMap = playInfo.qnDescMap
+                currentLiveLineIndex = playInfo.currentLineIndex
+                availableLiveLines.clear()
+                availableLiveLines.addAll(playInfo.availableLines)
+                liveTime = playInfo.liveTime
 
                 // 更新可用画质列表（按 qn 降序，即最高画质在前）
                 val qualities = playInfo.acceptQn
@@ -1688,7 +1709,7 @@ class VideoPlayerV3ViewModel(
                 }
                 logger.fInfo { "Live stream loaded successfully with quality ${playInfo.currentQn}" }
                 // 播放成功后自动启动直播弹幕（仅首次加载，画质切换时不重启弹幕）
-                if (liveWebSocket == null) {
+                if (liveWebSocket == null || isSwitchRoom) {
                     startLiveDanmaku(roomId)
                 }
                 // 调度URL刷新
@@ -1724,6 +1745,16 @@ class VideoPlayerV3ViewModel(
     }
 
     /**
+     * 切换直播线路
+     * @param lineIndex 目标线路序号
+     */
+    fun changeLiveLine(lineIndex: Int) {
+        logger.fInfo { "Change live line to: $lineIndex" }
+        preferredLiveLineIndex = lineIndex
+        loadLiveStreamWithQuality(liveRoomId, currentLiveQn)
+    }
+
+    /**
      * 直播流错误时自动重连
      * 延迟 2 秒后重新获取直播流 URL 并播放。
      * 使用 liveRetryJob 做防抖：新的重连请求会取消上一次未执行的延迟重试。
@@ -1753,7 +1784,7 @@ class VideoPlayerV3ViewModel(
                 // 重连时先清除错误状态，让 UI 不再显示错误
                 errorMessage = ""
             }
-            val playInfo = LiveStreamUrlFetcher.fetchLiveStreamUrl(liveRoomId, currentLiveQn, currentLiveCodec)
+            val playInfo = LiveStreamUrlFetcher.fetchLiveStreamUrl(liveRoomId, currentLiveQn, currentLiveCodec, preferredLiveLineIndex)
             if (playInfo == null) {
                 // fetchLiveStreamUrl 内部已判断 liveStatus != 1 并 Toast "主播未开播"
                 // 此时不再继续重试
@@ -1769,6 +1800,10 @@ class VideoPlayerV3ViewModel(
                 liveStreamUrl = playInfo.streamUrl
                 liveStreamExpiresAt = playInfo.expiresAt
                 currentLiveQn = playInfo.currentQn
+                currentLiveLineIndex = playInfo.currentLineIndex
+                availableLiveLines.clear()
+                availableLiveLines.addAll(playInfo.availableLines)
+                liveTime = playInfo.liveTime
                 videoPlayer?.playUrl(videoUrl = playInfo.streamUrl)
                 videoPlayer?.prepare()
                 videoPlayer?.start()
@@ -1819,7 +1854,8 @@ class VideoPlayerV3ViewModel(
             val playInfo = LiveStreamUrlFetcher.fetchLiveStreamUrl(
                 liveRoomId,
                 currentLiveQn,
-                currentLiveCodec
+                currentLiveCodec,
+                preferredLiveLineIndex
             )
 
             if (playInfo == null) {
@@ -1851,6 +1887,10 @@ class VideoPlayerV3ViewModel(
                 liveStreamUrl = playInfo.streamUrl
                 liveStreamExpiresAt = playInfo.expiresAt
                 currentLiveQn = playInfo.currentQn
+                currentLiveLineIndex = playInfo.currentLineIndex
+                availableLiveLines.clear()
+                availableLiveLines.addAll(playInfo.availableLines)
+                liveTime = playInfo.liveTime
             }
 
             // 无缝切换：更新播放器URL
@@ -2012,6 +2052,15 @@ class VideoPlayerV3ViewModel(
         // 清空缓冲区
         synchronized(liveDanmakuBuffer) {
             liveDanmakuBuffer.clear()
+        }
+
+        viewModelScope.launch(Dispatchers.Main) {
+            try {
+                danmakuMasks.clear()
+                danmakuView?.setDanmakus(emptyList())
+            } catch (e: Exception) {
+                logger.fError { "Error releasing danmaku player: ${e.message}" }
+            }
         }
 
         logger.fInfo { "Live danmaku stopped" }

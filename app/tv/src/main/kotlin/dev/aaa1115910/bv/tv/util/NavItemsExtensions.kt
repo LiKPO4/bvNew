@@ -281,8 +281,22 @@ val pgcNavItemsFlow: Flow<List<PgcTopNavItem>>
  * @return 过滤和排序后的导航项列表
  */
 fun parseHomeNavItemsOrder(orderString: String): List<HomeTopNavItem> {
-    return parseTopNavItemsOrder(orderString, HomeTopNavItem.entries)
+    return parseTopNavItemsOrder(orderString, defaultHomeNavOrder)
 }
+
+/**
+ * 首页导航默认显示顺序：将 [FollowingDrama] 放在 [ToView] 之前
+ * 这样枚举声明顺序保持 ordinal 兼容旧配置，同时 UI 上追剧出现在稍后再看之前
+ */
+private val defaultHomeNavOrder: List<HomeTopNavItem>
+    get() = HomeTopNavItem.entries.toMutableList().apply {
+        val idxToView = indexOf(HomeTopNavItem.ToView)
+        val idxDrama = indexOf(HomeTopNavItem.FollowingDrama)
+        if (idxToView >= 0 && idxDrama >= 0 && idxDrama > idxToView) {
+            removeAt(idxDrama)
+            add(idxToView, HomeTopNavItem.FollowingDrama)
+        }
+    }
 
 fun parseUgcTopNavItemsOrder(orderString: String): List<UgcTopNavItem> {
     return parseTopNavItemsOrder(orderString, UgcTopNavItem.entries)
@@ -345,6 +359,9 @@ fun moveNavItemToFirstAndUnhide(orderString: String, ordinal: Int, entriesCount:
  * @return 导航项配置列表（按显示顺序）
  */
 fun parseNavItemsOrderToConfig(orderString: String): List<NavItemConfig> {
+    if (orderString.isBlank()) {
+        return defaultHomeNavOrder.map { NavItemConfig(it.ordinal, false) }
+    }
     return parseNavItemsOrderToConfig(orderString, HomeTopNavItem.entries.size)
 }
 
@@ -360,7 +377,7 @@ fun parseNavItemsOrderToConfig(orderString: String, entriesCount: Int): List<Nav
         return (0 until entriesCount).map { NavItemConfig(it, false) }
     }
 
-    return orderString
+    val parsed = orderString
         .split(",")
         .mapNotNull { part ->
             val trimmed = part.trim()
@@ -369,6 +386,14 @@ fun parseNavItemsOrderToConfig(orderString: String, entriesCount: Int): List<Nav
             if (actualOrdinal !in 0 until entriesCount) return@mapNotNull null
             NavItemConfig(actualOrdinal, isHidden)
         }
+
+    // 追加已保存配置中不存在的条目（如新增的导航项），默认显示
+    val parsedOrdinals = parsed.map { it.ordinal }.toSet()
+    val missing = (0 until entriesCount)
+        .filter { it !in parsedOrdinals }
+        .map { NavItemConfig(it, false) }
+
+    return parsed + missing
 }
 
 // ======================== 主导航（左侧侧栏）配置 ========================

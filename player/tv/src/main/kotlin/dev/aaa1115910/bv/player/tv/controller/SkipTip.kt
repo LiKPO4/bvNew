@@ -75,39 +75,44 @@ fun SkipEdTip(
 fun SkipTip(
     modifier: Modifier = Modifier,
     show: Boolean,
-    text: String,
-    align: Alignment = Alignment.BottomStart
+    text: String = "",
+    align: Alignment = Alignment.BottomStart,
+    content: @Composable (() -> Unit)? = null
 ) {
     AnimatedVisibility(
         visible = show,
         enter = expandHorizontally(),
         exit = shrinkHorizontally()
     ) {
-        Box(
-            modifier = modifier.fillMaxSize()
-        ) {
-            Surface(
-                modifier = modifier
-                    .align(align)
-                    .padding(bottom = 32.dp),
-                colors = SurfaceDefaults.colors(
-                    containerColor = Color.Black.copy(alpha = 0.6f)
-                ),
-                shape = if (align == Alignment.BottomStart) {
-                    MaterialTheme.shapes.medium.copy(
-                        topStart = CornerSize(0.dp), bottomStart = CornerSize(0.dp)
-                    ) 
-                } else {
-                    MaterialTheme.shapes.medium.copy(
-                        topEnd = CornerSize(0.dp), bottomEnd = CornerSize(0.dp)
+        if (content != null) {
+            content()
+        } else {
+            Box(
+                modifier = modifier.fillMaxSize()
+            ) {
+                Surface(
+                    modifier = modifier
+                        .align(align)
+                        .padding(bottom = 32.dp),
+                    colors = SurfaceDefaults.colors(
+                        containerColor = Color.Black.copy(alpha = 0.6f)
+                    ),
+                    shape = if (align == Alignment.BottomStart) {
+                        MaterialTheme.shapes.medium.copy(
+                            topStart = CornerSize(0.dp), bottomStart = CornerSize(0.dp)
+                        ) 
+                    } else {
+                        MaterialTheme.shapes.medium.copy(
+                            topEnd = CornerSize(0.dp), bottomEnd = CornerSize(0.dp)
+                        )
+                    }
+                ) {
+                    Text(
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
+                        text = text,
+                        style = MaterialTheme.typography.titleLarge
                     )
                 }
-            ) {
-                Text(
-                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
-                    text = text,
-                    style = MaterialTheme.typography.titleLarge
-                )
             }
         }
     }

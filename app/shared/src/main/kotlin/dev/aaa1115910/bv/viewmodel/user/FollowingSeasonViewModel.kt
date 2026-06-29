@@ -24,7 +24,7 @@ import kotlinx.coroutines.withContext
 import org.koin.android.annotation.KoinViewModel
 
 @KoinViewModel
-class FollowingSeasonViewModel(
+open class FollowingSeasonViewModel(
     private val seasonRepository: SeasonRepository,
     private val userRepository: UserRepository
 ) : ViewModel() {
@@ -119,6 +119,16 @@ class FollowingSeasonViewModel(
                 deleting = false
             }
         }
+    }
+}
+
+@KoinViewModel
+class FollowingDramaViewModel(
+    seasonRepository: SeasonRepository,
+    userRepository: UserRepository
+) : FollowingSeasonViewModel(seasonRepository, userRepository) {
+    init {
+        followingSeasonType = FollowingSeasonType.Cinema
     }
 }
 

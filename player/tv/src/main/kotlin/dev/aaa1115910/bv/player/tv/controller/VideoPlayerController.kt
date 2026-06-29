@@ -73,6 +73,7 @@ fun VideoPlayerController(
     showBottomProgressBar: Boolean = false,
     doubleBackToExit: Boolean = true,
 
+    isShowSkipTip: Boolean = false,
     showRelatedVideos: Boolean = false,
     onToggleRelatedVideos: (Boolean) -> Unit,
     showRelatedRooms: Boolean = false,
@@ -107,6 +108,7 @@ fun VideoPlayerController(
     onAudioChange: (Audio) -> Unit,
     onLiveQualityChange: (Int) -> Unit = {},
     onLiveCodecChange: (LiveCodec) -> Unit = {},
+    onLiveLineChange: (Int) -> Unit = {},
     onDanmakuSwitchChange: (List<DanmakuType>) -> Unit,
     onDanmakuSizeChange: (Float) -> Unit,
     onDanmakuOpacityChange: (Float) -> Unit,
@@ -549,7 +551,7 @@ fun VideoPlayerController(
         BottomSubtitle()
         SkipTips()
         PlayStateTips(
-            canShowPause = !showInfo && !showSeekController
+            canShowPause = !showInfo && !showSeekController && !isShowSkipTip
         )
         // 长按加速播放提示
         if (isLongPressSpeedUp) {
@@ -637,6 +639,7 @@ fun VideoPlayerController(
             onResolutionChange = onResolutionChange,
             onAudioChange = onAudioChange,
             onLiveQualityChange = onLiveQualityChange,
+            onLiveLineChange = onLiveLineChange,
             viewerCountText = viewerCountText
         )
         SeekController(
@@ -658,6 +661,7 @@ fun VideoPlayerController(
             onAudioChange = onAudioChange,
             onLiveQualityChange = onLiveQualityChange,
             onLiveCodecChange = onLiveCodecChange,
+            onLiveLineChange = onLiveLineChange,
             onDanmakuSwitchChange = onDanmakuSwitchChange,
             onDanmakuSizeChange = onDanmakuSizeChange,
             onDanmakuOpacityChange = onDanmakuOpacityChange,

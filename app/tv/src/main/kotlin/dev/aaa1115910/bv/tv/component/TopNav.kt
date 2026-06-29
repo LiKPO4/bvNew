@@ -314,7 +314,8 @@ enum class HomeTopNavItem(private val displayName: String) : TopNavItem {
     History("历史"),
     Favorite("收藏"),
     FollowingSeason("追番"),
-    ToView("稍后再看");
+    ToView("稍后再看"),
+    FollowingDrama("追剧");
 
     override fun getDisplayName(context: Context): String {
         return displayName

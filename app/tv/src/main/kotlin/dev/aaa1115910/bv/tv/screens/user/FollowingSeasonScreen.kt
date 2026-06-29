@@ -57,6 +57,7 @@ import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.getDisplayName
 import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.util.resizedImageUrl
+import dev.aaa1115910.bv.viewmodel.user.FollowingDramaViewModel
 import dev.aaa1115910.bv.viewmodel.user.FollowingSeasonViewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.launch
@@ -67,7 +68,8 @@ fun FollowingSeasonScreen(
     modifier: Modifier = Modifier,
     followingSeasonViewModel: FollowingSeasonViewModel = koinViewModel(),
     showPageTitle: Boolean = true,
-    topTabFocusRequester: FocusRequester? = null
+    topTabFocusRequester: FocusRequester? = null,
+    followingSeasonType: FollowingSeasonType = FollowingSeasonType.Bangumi
 ) {
     val context = LocalContext.current
     val logger = KotlinLogging.logger { }
@@ -99,18 +101,8 @@ fun FollowingSeasonScreen(
     }
 
     val followingSeasons = followingSeasonViewModel.followingSeasons
-    var followingSeasonType by remember { mutableStateOf(followingSeasonViewModel.followingSeasonType) }
     var followingSeasonStatus by remember { mutableStateOf(followingSeasonViewModel.followingSeasonStatus) }
     val noMore = followingSeasonViewModel.noMore
-
-    val updateType: (FollowingSeasonType) -> Unit = {
-        if (followingSeasonType != it) {
-            followingSeasonType = it
-            followingSeasonViewModel.followingSeasonType = it
-            followingSeasonViewModel.clearData()
-            followingSeasonViewModel.loadMore()
-        }
-    }
 
     val updateStatus: (FollowingSeasonStatus) -> Unit = {
         if (followingSeasonStatus != it) {
@@ -134,10 +126,13 @@ fun FollowingSeasonScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(followingSeasonType) {
+        if (followingSeasonViewModel.followingSeasonType != followingSeasonType) {
+            followingSeasonViewModel.followingSeasonType = followingSeasonType
+            followingSeasonViewModel.clearData()
+        }
         if (followingSeasons.isEmpty()) {
             logger.fInfo { "Start update search result because filter updated" }
-            followingSeasonViewModel.clearData()
             followingSeasonViewModel.loadMore()
         }
     }
@@ -324,16 +319,19 @@ fun FollowingSeasonScreen(
     FollowingSeasonFilter(
         show = showFilter,
         onHideFilter = { showFilter = false },
-        selectedType = followingSeasonType,
         selectedStatus = followingSeasonStatus,
-        onSelectedTypeChange = updateType,
         onSelectedStatusChange = updateStatus
     )
 
     if (showDeleteConfirmDialog && selectedSeason != null) {
+        val typeName = when (followingSeasonType) {
+            FollowingSeasonType.Bangumi -> "番"
+            FollowingSeasonType.Cinema -> "剧"
+        }
         DeleteFollowingSeasonConfirmDialog(
             show = showDeleteConfirmDialog,
             seasonTitle = selectedSeason!!.title,
+            typeName = typeName,
             onConfirm = {
                 if (topTabFocusRequester != null) {
                     focusTopTabWhenListEmpty = true
@@ -359,6 +357,7 @@ fun FollowingSeasonScreen(
 private fun DeleteFollowingSeasonConfirmDialog(
     show: Boolean,
     seasonTitle: String,
+    typeName: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -370,13 +369,10 @@ private fun DeleteFollowingSeasonConfirmDialog(
 
     TvAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = stringResource(R.string.following_season_delete_confirm_dialog_title)) },
+        title = { Text(text = "取消追$typeName") },
         text = {
             Text(
-                text = stringResource(
-                    R.string.following_season_delete_confirm_dialog_text,
-                    seasonTitle
-                )
+                text = "确认取消追$typeName「$seasonTitle」吗？"
             )
         },
         confirmButton = {
@@ -392,5 +388,21 @@ private fun DeleteFollowingSeasonConfirmDialog(
                 Text(text = stringResource(R.string.following_season_delete_confirm_dialog_dismiss))
             }
         }
+    )
+}
+
+@Composable
+fun FollowingDramaScreen(
+    modifier: Modifier = Modifier,
+    showPageTitle: Boolean = true,
+    topTabFocusRequester: FocusRequester? = null
+) {
+    val viewModel: FollowingDramaViewModel = koinViewModel()
+    FollowingSeasonScreen(
+        modifier = modifier,
+        followingSeasonViewModel = viewModel,
+        showPageTitle = showPageTitle,
+        topTabFocusRequester = topTabFocusRequester,
+        followingSeasonType = FollowingSeasonType.Cinema
     )
 }

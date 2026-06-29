@@ -54,7 +54,8 @@ data class VideoPlayerVideoInfoData(
     val fromSeason: Boolean = false,
     val isFollowingUp: Boolean = false,
     val isVerticalVideo: Boolean = false,
-    val isLive: Boolean = false
+    val isLive: Boolean = false,
+    val liveTime: Long = 0L
 )
 
 data class VideoPlayerClockData(
@@ -151,6 +152,8 @@ data class VideoPlayerConfigData(
     val controllerButtonsOrder: String = "",
     val availableLiveCodecs: List<LiveCodec> = LiveCodec.entries,
     val currentLiveCodec: LiveCodec = LiveCodec.HLS,
+    val availableLiveLines: List<LiveStreamLine> = emptyList(),
+    val currentLiveLineIndex: Int = 0,
     val showDebugInfo: Boolean = false,
     val longPressAction: Int = 0, // 0 = 打开菜单, 1 = 加速播放
     val longPressSpeed: Float = 2f,

@@ -86,20 +86,6 @@ fun SeasonCard(
                 )
 
                 if (data.rating != null) {
-                    Box(
-                        modifier = Modifier
-                            .height(48.dp)
-                            // 无法使用 fillMaxWidth 来确定宽度
-                            .width(coverRealWidth)
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        Color.Black.copy(alpha = 0.8f)
-                                    )
-                                )
-                            )
-                    )
                     Text(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
@@ -115,23 +101,38 @@ fun SeasonCard(
                 }
             }
 
-            Column(
-                modifier = textBoxModifier.padding(8.dp)
-            ) {
-                Text(
-                    text = data.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (data.subTitle != null) {
-                    Text(
-                        text = data.subTitle!!,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            Box(
+                modifier = Modifier
+                    .height(48.dp)
+                    // 无法使用 fillMaxWidth 来确定宽度
+                    .width(coverRealWidth)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.8f)
+                            )
+                        )
                     )
+            ) {
+                Column(
+                    modifier = textBoxModifier.padding(8.dp)
+                ) {
+                    Text(
+                        text = data.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (data.subTitle != null) {
+                        Text(
+                            text = data.subTitle!!,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 }
             }
         }

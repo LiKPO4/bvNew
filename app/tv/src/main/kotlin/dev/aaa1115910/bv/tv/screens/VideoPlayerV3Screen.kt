@@ -10,12 +10,16 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -42,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
 import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
@@ -61,6 +66,9 @@ import dev.aaa1115910.bv.player.entity.VideoListInteractiveNode
 import dev.aaa1115910.bv.player.entity.VideoListItemData
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.player.entity.VideoPlayerConfigData
+import dev.aaa1115910.biliapi.entity.live.LiveRoomItem
+import dev.aaa1115910.bv.tv.component.live.LiveRoomCard
+import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.player.entity.VideoPlayerDanmakuMasksData
 import dev.aaa1115910.bv.player.entity.VideoPlayerHistoryData
 import dev.aaa1115910.bv.player.entity.VideoPlayerLoadStateData
@@ -124,6 +132,7 @@ private data class VideoPlayerScreenPrefsSnapshot(
     val exitWhenAllPlayed: Boolean,
     val longPressAction: Int,
     val longPressSpeed: Float,
+    val nextTipDuration: Float,
 )
 
 @Composable
@@ -154,6 +163,7 @@ fun VideoPlayerV3Screen(
             exitWhenAllPlayed = Prefs.playerExitWhenAllIsPlayed,
             longPressAction = Prefs.playerLongPressAction,
             longPressSpeed = Prefs.playerLongPressSpeed,
+            nextTipDuration = Prefs.playerNextTipDuration,
         )
     }
     val customNextVideoStrategies = remember(prefsSnapshot.playerNextVideoStrategyOrder) {
@@ -167,6 +177,11 @@ fun VideoPlayerV3Screen(
                 NextVideoStrategy.fromOrdinal(id)
             }
     }
+
+    // 存储下一个自动播放的内容，用于 SkipTip 卡片预览
+    var nextTipCardData by remember { mutableStateOf<Any?>(null) }
+    // 按确认键时立即执行的 action（跳过倒计时）
+    var pendingAutoAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     // 外部创建 DanmakuView，与 videoPlayer 一致的模式
     val danmakuView = remember { DanmakuView(context).also { playerViewModel.danmakuView = it } }
@@ -357,7 +372,8 @@ fun VideoPlayerV3Screen(
             fromSeason = playerViewModel.fromSeason,
             isFollowingUp = playerViewModel.isFollowingUp,
             isVerticalVideo = playerViewModel.isVerticalVideo,
-            isLive = playerViewModel.isLive
+            isLive = playerViewModel.isLive,
+            liveTime = playerViewModel.liveTime
         ),
         LocalVideoPlayerHistoryData provides VideoPlayerHistoryData(
             lastPlayed = playerViewModel.lastPlayed,
@@ -416,6 +432,8 @@ fun VideoPlayerV3Screen(
             currentLiveQn = playerViewModel.currentLiveQn,
             currentLiveQualityDescription = playerViewModel.currentLiveQualityDescription,
             currentLiveCodec = playerViewModel.currentLiveCodec,
+            availableLiveLines = playerViewModel.availableLiveLines.toList(),
+            currentLiveLineIndex = playerViewModel.currentLiveLineIndex,
             controllerButtonsOrder = prefsSnapshot.controllerButtonsOrder,
             showDebugInfo = showDebugInfo,
             longPressAction = prefsSnapshot.longPressAction,
@@ -436,6 +454,16 @@ fun VideoPlayerV3Screen(
                         && keyEvent.nativeKeyEvent.isLongPress) {
                         skipNextKeyUpCancel = true
                     }
+                    if (keyEvent.type == KeyEventType.KeyUp && listOf(Key.Enter, Key.DirectionCenter).contains(keyEvent.key) && autoActionCountdownJob != null && nextTipCardData != null) {
+                        // 确认键：立即播放下一个，跳过倒计时
+                        logger.debug { "按下确认键，立即播放下一个" }
+                        autoActionCountdownJob?.cancel()
+                        autoActionCountdownJob = null
+                        autoActionTipVisible = false
+                        pendingAutoAction?.invoke()
+                        pendingAutoAction = null
+                        return@onPreviewKeyEvent true
+                    }
                     if (keyEvent.type == KeyEventType.KeyUp && autoActionCountdownJob != null) {
                         // 跳过长按下键触发的那次 KeyUp（长按下键释放）
                         if (skipNextKeyUpCancel) {
@@ -447,6 +475,8 @@ fun VideoPlayerV3Screen(
                         autoActionCountdownJob?.cancel()
                         autoActionCountdownJob = null
                         autoActionTipVisible = false
+                        nextTipCardData = null
+                        pendingAutoAction = null
                         return@onPreviewKeyEvent keyEvent.key == Key.Back
                     }
                     false
@@ -469,6 +499,7 @@ fun VideoPlayerV3Screen(
                     }
                 },
                 viewerCountText = viewerCountText,
+                isShowSkipTip = autoActionTipVisible,
                 danmakuView = danmakuView,
                 onToggleRelatedVideos = { state ->
                     playerViewModel.showRelatedVideos = if (playerViewModel.relatedVideos.isNotEmpty() || playerViewModel.preloadedVideoList.isNotEmpty()) state else false
@@ -488,28 +519,32 @@ fun VideoPlayerV3Screen(
                     } ?: nextRooms.first() // 如果后面没有了，循环到第一个
                     // 如果下一个房间就是当前房间（只有一个在播房间），不切换
                     if (nextRoom.roomId == playerViewModel.liveRoomId) return@BvPlayer
+                    nextTipCardData = nextRoom
+                    pendingAutoAction = {
+                        nextTipCardData = null
+                        autoActionCountdownJob = null
+                        logger.info { "Switch to next live room: ${nextRoom.roomId} - ${nextRoom.title}" }
+                        val roomWatchedText = nextRoom.watchedShow?.let { show ->
+                            show.textSmall + if (show.switch) "播放" else "人气"
+                        } ?: ""
+                        playerViewModel.apply {
+                            title = nextRoom.title
+                            upName = nextRoom.uname
+                            upId = nextRoom.uid
+                            upFace = nextRoom.face
+                            isLive = true
+                            watchedText = roomWatchedText
+                            showRelatedRooms = false
+                            loadLiveStreamWithQuality(nextRoom.roomId)
+                        }
+                        pendingAutoAction = null
+                    }
                     autoActionCountdownJob = scope.launch {
-                        autoActionTipText = "即将播放下一个"
                         autoActionTipVisible = true
-                        delay(1380)
+                        delay((prefsSnapshot.nextTipDuration * 1000).toLong())
                         autoActionTipVisible = false
                         if (autoActionCountdownJob != null) {
-                            autoActionCountdownJob = null
-                            logger.info { "Switch to next live room: ${nextRoom.roomId} - ${nextRoom.title}" }
-                            val roomWatchedText = nextRoom.watchedShow?.let { show ->
-                                show.textSmall + if (show.switch) "播放" else "人气"
-                            } ?: ""
-                            playerViewModel.apply {
-                                title = nextRoom.title
-                                upName = nextRoom.uname
-                                upId = nextRoom.uid
-                                upFace = nextRoom.face
-                                isLive = true
-                                liveRoomId = nextRoom.roomId
-                                watchedText = roomWatchedText
-                                showRelatedRooms = false
-                                loadLiveStreamWithQuality(nextRoom.roomId)
-                            }
+                            pendingAutoAction?.invoke()
                         }
                     }
                 },
@@ -560,7 +595,6 @@ fun VideoPlayerV3Screen(
                     // 找出下一个推荐视频（非充电、非播放过的aid）
                     val candidates = playerViewModel.relatedVideos
                         .filter { related -> !related.isChargingArc && !PlayedAidsCache.hasPlayed(related.avid) }
-                        .take(10)
                     val nextRelatedVideo = if (candidates.isNotEmpty()) candidates.random() else null
 
                     // 找出预加载列表的下一个
@@ -630,62 +664,69 @@ fun VideoPlayerV3Screen(
                     }
 
                     if (nextVideo != null) {
+                        nextTipCardData = nextVideo
+                        pendingAutoAction = {
+                            nextTipCardData = null
+                            autoActionCountdownJob = null
+                            when (nextVideo) {
+                                is VideoListItemData -> {
+                                    PlayedAidsCache.markPlayed(nextVideo.aid)
+                                    playerViewModel.title = nextVideo.title
+                                    playerViewModel.partTitle = nextVideo.partTitle
+                                    if (nextVideo.seasonId == null && playerViewModel.currentAid != nextVideo.aid) {
+                                        VideoInfoActivity.actionStart(
+                                            context = context,
+                                            aid = nextVideo.aid,
+                                            cid = nextVideo.cid,
+                                            fromPlayer = true
+                                        )
+                                    } else {
+                                        playerViewModel.loadPlayUrl(
+                                            avid = nextVideo.aid,
+                                            cid = nextVideo.cid!!,
+                                            epid = nextVideo.epid,
+                                            seasonId = nextVideo.seasonId,
+                                            continuePlayNext = true
+                                        )
+                                    }
+                                }
+
+                                is VideoCardData -> {
+                                    // 推荐视频卡片：跳转到视频详情（再进入播放器）
+                                    PlayedAidsCache.markPlayed(nextVideo.avid)
+                                    if (nextVideo.jumpToSeason) {
+                                        SeasonInfoActivity.actionStart(
+                                            context = context,
+                                            epId = nextVideo.epId!!,
+                                            seasonId = nextVideo.seasonId!!,
+                                            proxyArea = ProxyArea.checkProxyArea(nextVideo.title)
+                                        )
+                                    } else {
+                                        VideoInfoActivity.actionStart(
+                                            context = context,
+                                            aid = nextVideo.avid,
+                                            fromPlayer = true
+                                        )
+                                    }
+                                }
+                            }
+                            pendingAutoAction = null
+                        }
                         autoActionCountdownJob = scope.launch {
                             try {
                                 if (!immediate) {
-                                    autoActionTipText = "即将播放下一个"
                                     autoActionTipVisible = true
-                                    delay(1380)
+                                    delay((prefsSnapshot.nextTipDuration * 1000).toLong())
                                 }
                                 autoActionTipVisible = false
                                 if (autoActionCountdownJob != null) {
-                                    autoActionCountdownJob = null
-                                    when (nextVideo) {
-                                        is VideoListItemData -> {
-                                            PlayedAidsCache.markPlayed(nextVideo.aid)
-                                            playerViewModel.title = nextVideo.title
-                                            playerViewModel.partTitle = nextVideo.partTitle
-                                            if (nextVideo.seasonId == null && playerViewModel.currentAid != nextVideo.aid) {
-                                                VideoInfoActivity.actionStart(
-                                                    context = context,
-                                                    aid = nextVideo.aid,
-                                                    cid = nextVideo.cid,
-                                                    fromPlayer = true
-                                                )
-                                            } else {
-                                                playerViewModel.loadPlayUrl(
-                                                    avid = nextVideo.aid,
-                                                    cid = nextVideo.cid!!,
-                                                    epid = nextVideo.epid,
-                                                    seasonId = nextVideo.seasonId,
-                                                    continuePlayNext = true
-                                                )
-                                            }
-                                        }
-
-                                        is VideoCardData -> {
-                                            // 推荐视频卡片：跳转到视频详情（再进入播放器）
-                                            PlayedAidsCache.markPlayed(nextVideo.avid)
-                                            if (nextVideo.jumpToSeason) {
-                                                SeasonInfoActivity.actionStart(
-                                                    context = context,
-                                                    epId = nextVideo.epId!!,
-                                                    seasonId = nextVideo.seasonId!!,
-                                                    proxyArea = ProxyArea.checkProxyArea(nextVideo.title)
-                                                )
-                                            } else {
-                                                VideoInfoActivity.actionStart(
-                                                    context = context,
-                                                    aid = nextVideo.avid,
-                                                    fromPlayer = true
-                                                )
-                                            }
-                                        }
-                                    }
+                                    pendingAutoAction?.invoke()
                                 }
                             } catch (_: Exception) {
                                 autoActionTipVisible = false
                                 autoActionCountdownJob = null
+                                nextTipCardData = null
+                                pendingAutoAction = null
                             }
                         }
                     } else if (prefsSnapshot.exitWhenAllPlayed) {
@@ -821,6 +862,9 @@ fun VideoPlayerV3Screen(
                 onLiveCodecChange = { codec ->
                     println("VideoPlayerV3Screen: onLiveCodecChange called with codec=$codec")
                     playerViewModel.changeLiveCodec(codec)
+                },
+                onLiveLineChange = { lineIndex ->
+                    playerViewModel.changeLiveLine(lineIndex)
                 },
                 onDanmakuSwitchChange = { enabledDanmakuTypes ->
                     Prefs.defaultDanmakuTypes = enabledDanmakuTypes
@@ -1028,6 +1072,9 @@ fun VideoPlayerV3Screen(
                                 ),
                                 isCoin = sharedActionState.coin,
                                 onAddCoin = {
+                                    if (sharedActionState.coin)
+                                        return@CoinButton
+
                                     scope.launch {
                                         val success = VideoUserActionManager.addCoin(playerViewModel.currentAid, prefsSnapshot.uid)
                                         withContext(Dispatchers.Main) {
@@ -1081,11 +1128,51 @@ fun VideoPlayerV3Screen(
 
             // 显示跳过提示
             if (autoActionTipVisible) {
+                val cardData = nextTipCardData
                 SkipTip(
                     modifier = Modifier.padding(bottom = 22.dp),
                     show = true,
                     text = autoActionTipText,
-                    align = Alignment.BottomEnd
+                    align = Alignment.BottomEnd,
+                    content = if (cardData != null) {
+                        {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .offset(x = (-36).dp, y = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .background(Color.Black.copy(alpha = 0.5f), MaterialTheme.shapes.medium)
+                                        .padding(start = 24.dp, top = 12.dp, end = 24.dp, bottom = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(
+                                            text = "即将",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = "播放",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(24.dp))
+                                    NextTipCardPreview(
+                                        data = cardData,
+                                        modifier = Modifier.width(240.dp)
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        null
+                    }
                 )
             }
 
@@ -1161,7 +1248,6 @@ fun VideoPlayerV3Screen(
                             upId = room.uid
                             upFace = room.face
                             isLive = true
-                            liveRoomId = room.roomId
                             watchedText = roomWatchedText
                             showRelatedRooms = false
                             loadLiveStreamWithQuality(room.roomId)
@@ -1251,4 +1337,35 @@ private fun InteractivePlaybackDialogHost(
         onDismiss = dismissDialog,
         onExit = onExit
     )
+}
+
+@Composable
+private fun NextTipCardPreview(
+    data: Any,
+    modifier: Modifier = Modifier,
+) {
+    when (data) {
+        is VideoCardData -> SmallVideoCard(
+            modifier = modifier.width(180.dp),
+            data = data,
+        )
+        is LiveRoomItem -> LiveRoomCard(
+            modifier = modifier.width(180.dp),
+            data = data,
+        )
+        is VideoListItemData -> {
+            val cardData = remember(data) {
+                VideoCardData(
+                    avid = data.aid,
+                    title = if (data.partTitle.isNotBlank()) data.partTitle else data.title,
+                    cover = data.cover,
+                    upName = "",
+                )
+            }
+            SmallVideoCard(
+                modifier = modifier.width(180.dp),
+                data = cardData,
+            )
+        }
+    }
 }

@@ -222,8 +222,8 @@ internal class DanmakuEngine(
                     if (item.data.text.isBlank()) continue
                     val textWidth = measureTextWidth(item, outlinePad, cfg)
                     when (item.data.mode) {
-                        Danmaku.MODE_TOP -> trySpawnFixed(DanmakuKind.TOP, item, textWidth, cachedTopFixedLaneCount, computeFixedDurationMs(textWidth, durationMul, item.data.textSize / item.textSizeScaled), nowMs)
-                        Danmaku.MODE_BOTTOM -> trySpawnFixed(DanmakuKind.BOTTOM, item, textWidth, cachedBottomFixedLaneCount, computeFixedDurationMs(textWidth, durationMul, item.data.textSize / item.textSizeScaled), nowMs)
+                        Danmaku.MODE_TOP -> trySpawnFixed(DanmakuKind.TOP, item, textWidth, cachedTopFixedLaneCount, computeFixedDurationMs(textWidth, durationMul, item.fontSizeMul), nowMs)
+                        Danmaku.MODE_BOTTOM -> trySpawnFixed(DanmakuKind.BOTTOM, item, textWidth, cachedBottomFixedLaneCount, computeFixedDurationMs(textWidth, durationMul, item.fontSizeMul), nowMs)
                         else -> trySpawnScroll(item, textWidth, width, cachedLaneCount, rollingDurationMs, cachedMarginPx, nowMs)
                     }
                 }
@@ -577,7 +577,7 @@ internal class DanmakuEngine(
         // Compute effective text size for measurement
         val clampedSize = min(item.data.textSize, 25)
         val scaleFactor = cfg.textSizeScale.coerceIn(25, 200) / 100f
-        item.textSizeScaled = clampedSize * scaleFactor
+        item.fontSizeMul = 25f / (scaleFactor * clampedSize)
 
         val effectiveTextSizePx = (textSizePx * clampedSize / 25f * scaleFactor).coerceAtLeast(1f)
         // Paint.setTextSize() 会触发 native 层布局重算，跳过相同值的写操作

@@ -17,7 +17,8 @@ data class LiveRoomPlayInfoData(
     val uid: Long,
     @SerialName("live_status") val liveStatus: Int, // 0=未开播, 1=直播中
     @SerialName("is_portrait") val isPortrait: Boolean,
-    @SerialName("playurl_info") val playUrlInfo: LivePlayUrlInfo? = null
+    @SerialName("playurl_info") val playUrlInfo: LivePlayUrlInfo? = null,
+    @SerialName("live_time") val liveTime: Long? = null
 )
 
 @Serializable

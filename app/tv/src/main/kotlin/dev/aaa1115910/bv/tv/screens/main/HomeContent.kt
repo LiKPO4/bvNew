@@ -34,6 +34,7 @@ import dev.aaa1115910.bv.tv.screens.main.home.DynamicsScreen
 import dev.aaa1115910.bv.tv.screens.main.home.PopularScreen
 import dev.aaa1115910.bv.tv.screens.main.home.RecommendScreen
 import dev.aaa1115910.bv.tv.screens.user.FavoriteScreen
+import dev.aaa1115910.bv.tv.screens.user.FollowingDramaScreen
 import dev.aaa1115910.bv.tv.screens.user.FollowingSeasonScreen
 import dev.aaa1115910.bv.tv.screens.user.HistoryScreen
 import dev.aaa1115910.bv.tv.screens.user.ToViewScreen
@@ -47,6 +48,7 @@ import dev.aaa1115910.bv.viewmodel.home.DynamicViewModel
 import dev.aaa1115910.bv.viewmodel.home.PopularViewModel
 import dev.aaa1115910.bv.viewmodel.home.RecommendViewModel
 import dev.aaa1115910.bv.viewmodel.user.FavoriteViewModel
+import dev.aaa1115910.bv.viewmodel.user.FollowingDramaViewModel
 import dev.aaa1115910.bv.viewmodel.user.FollowingSeasonViewModel
 import dev.aaa1115910.bv.viewmodel.user.HistoryViewModel
 import dev.aaa1115910.bv.viewmodel.user.ToViewViewModel
@@ -66,6 +68,7 @@ fun HomeContent(
     dynamicViewModel: DynamicViewModel = koinViewModel(),
     favouriteViewModel: FavoriteViewModel = koinViewModel(),
     followingSeasonViewModel: FollowingSeasonViewModel = koinViewModel(),
+    followingDramaViewModel: FollowingDramaViewModel = koinViewModel(),
     historyViewModel: HistoryViewModel = koinViewModel(),
     toViewViewModel: ToViewViewModel = koinViewModel(),
     userViewModel: UserViewModel = koinViewModel()
@@ -79,6 +82,7 @@ fun HomeContent(
     val dynamicState = rememberLazyGridState()
     val favoriteState = rememberLazyGridState()
     val followingSeasonState = rememberLazyGridState()
+    val followingDramaState = rememberLazyGridState()
     val historyState = rememberLazyGridState()
     val toViewState = rememberLazyGridState()
     
@@ -142,6 +146,12 @@ fun HomeContent(
 //                    }
                 }
 
+                HomeTopNavItem.FollowingDrama -> {
+//                    if (followingDramaViewModel.followingSeasons.isEmpty() && userViewModel.isLogin) {
+//                        followingDramaViewModel.loadMore()
+//                    }
+                }
+
                 HomeTopNavItem.History -> {
 //                    if (historyViewModel.histories.isEmpty() && userViewModel.isLogin) {
 //                        historyViewModel.update()
@@ -179,6 +189,7 @@ fun HomeContent(
                     HomeTopNavItem.Dynamics -> dynamicState
                     HomeTopNavItem.Favorite -> favoriteState
                     HomeTopNavItem.FollowingSeason -> followingSeasonState
+                    HomeTopNavItem.FollowingDrama -> followingDramaState
                     HomeTopNavItem.History -> historyState
                     HomeTopNavItem.ToView -> toViewState
                 }
@@ -264,6 +275,13 @@ fun HomeContent(
                             }
                         }
 
+                        HomeTopNavItem.FollowingDrama -> {
+                            if (userViewModel.isLogin) {
+                                followingDramaViewModel.clearData()
+                                followingDramaViewModel.loadMore()
+                            }
+                        }
+
                         HomeTopNavItem.History -> {
                             if (userViewModel.isLogin) {
                                 historyViewModel.clearData()
@@ -330,6 +348,16 @@ fun HomeContent(
                     HomeTopNavItem.FollowingSeason -> {
                         if (userViewModel.isLogin) {
                             FollowingSeasonScreen(
+                                showPageTitle = false,
+                                topTabFocusRequester = navFocusRequester
+                            )
+                        } else {
+                            LoginRequiredScreen()
+                        }
+                    }
+                    HomeTopNavItem.FollowingDrama -> {
+                        if (userViewModel.isLogin) {
+                            FollowingDramaScreen(
                                 showPageTitle = false,
                                 topTabFocusRequester = navFocusRequester
                             )

@@ -152,9 +152,9 @@ enum class SettingsMenuNavItem(private val strRes: Int) {
     Player(R.string.settings_item_player),
     PlayerType(R.string.settings_item_player_type),
     UI(R.string.settings_item_ui),
+    Network(R.string.settings_item_network),
     Other(R.string.settings_item_other),
     Storage(R.string.settings_item_storage),
-    Network(R.string.settings_item_network),
     Info(R.string.settings_item_info),
     About(R.string.settings_item_about);
 

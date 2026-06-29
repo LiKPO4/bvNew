@@ -85,6 +85,7 @@ fun PlayerSetting(
     var defaultPlaybackSpeed by remember { mutableDoubleStateOf(Prefs.defaultPlaySpeed.toDouble()) }
     var playerSeekForwardStep by remember { mutableDoubleStateOf(Prefs.playerSeekForwardStep.toDouble()) }
     var playerSeekBackwardStep by remember { mutableDoubleStateOf(Prefs.playerSeekBackwardStep.toDouble()) }
+    var playerNextTipDuration by remember { mutableDoubleStateOf(Prefs.playerNextTipDuration.toDouble()) }
     var portraitVideoFixMode by remember { mutableStateOf(Prefs.portraitVideoFixMode) }
     var showOnlineViewerCountDialog by remember { mutableStateOf(false) }
     val showOnlineViewerCount by Prefs.showOnlineViewerCountFlow.collectAsState(Prefs.showOnlineViewerCount)
@@ -245,6 +246,21 @@ fun PlayerSetting(
                     onCheckedChange = {
                         playerDoubleBackToExit = it
                         Prefs.playerDoubleBackToExit = it
+                    }
+                )
+            }
+            item {
+                SettingNumberListItem(
+                    title = stringResource(R.string.settings_player_next_tip_duration_title),
+                    supportText = stringResource(R.string.settings_player_next_tip_duration_text),
+                    value = playerNextTipDuration,
+                    minValue = 0.5,
+                    maxValue = 10.0,
+                    isInteger = false,
+                    step = 0.1,
+                    onValueChange = {
+                        playerNextTipDuration = it
+                        Prefs.playerNextTipDuration = it.toFloat()
                     }
                 )
             }

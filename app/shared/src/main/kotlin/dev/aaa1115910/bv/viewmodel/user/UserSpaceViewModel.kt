@@ -34,6 +34,9 @@ class UserSpaceViewModel(
     var sign by mutableStateOf("") // 个性签名
     var fans by mutableIntStateOf(0) // 粉丝数
     var friend by mutableIntStateOf(0) // 关注数
+    var likeNum by mutableIntStateOf(0) // 获赞数
+    var currentLevel by mutableIntStateOf(0) // 当前会员等级
+    var spacestaText by mutableStateOf("") // 账号状态提示语，userInfo.card.spacesta -2封禁 0正常
     var upMid by mutableLongStateOf(0L)
     var tvSpaceVideos = mutableStateListOf<VideoCardData>()
     var spaceVideos = mutableStateListOf<SpaceVideo>()

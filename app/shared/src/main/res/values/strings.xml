@@ -776,6 +776,7 @@
     <string name="video_info_time">投稿时间: %1$s</string>
     <string name="video_player_referer">https://www.bilibili.com</string>
 
+    <string name="like_count">获赞 %1$s</string>
     <string name="fans_count">粉丝 %1$s</string>
     <string name="friend_count">关注 %1$s</string>
     <string name="settings_portrait_video_fix_mode_title">竖屏视频播放异常时的处理方式</string>
@@ -792,6 +793,8 @@
     <string name="settings_player_seek_forward_step_title">视频快进时间间隔（秒）</string>
     <string name="settings_player_seek_backward_step_text">设置视频快退时间间隔（秒）</string>
     <string name="settings_player_seek_backward_step_title">视频快退时间间隔（秒）</string>
+    <string name="settings_player_next_tip_duration_title">“播放下一个提示”时长（秒）</string>
+    <string name="settings_player_next_tip_duration_text">设置播放器“播放下一个提示”的显示时长</string>
     <string name="settings_player_show_bottom_progress_bar_text">在播放器底部常驻显示迷你进度条</string>
     <string name="settings_player_show_bottom_progress_bar_title">显示迷你进度条</string>
     <string name="settings_player_load_next_action_title">自定义播放模式的规则</string>

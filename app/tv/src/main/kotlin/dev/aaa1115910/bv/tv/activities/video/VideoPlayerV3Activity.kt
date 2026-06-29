@@ -268,7 +268,6 @@ class VideoPlayerV3Activity : ComponentActivity() {
                 this.upId = upId
                 this.upFace = upFace
                 this.isLive = true
-                this.liveRoomId = roomId
                 this.watchedText = watchedText
                 
                 // 通过 ViewModel 加载直播流（带画质选择，加载成功后自动启动弹幕）

@@ -7,6 +7,7 @@ enum class VideoPlayerPictureMenuItem(private val strRes: Int) {
     PlaySpeed(R.string.video_player_menu_picture_play_speed),
     Resolution(R.string.video_player_menu_picture_resolution),
     Codec(R.string.video_player_menu_picture_codec),
+    LiveLine(R.string.video_player_menu_picture_live_line),
     Audio(R.string.video_player_menu_picture_audio),
     Rotation(R.string.video_player_menu_picture_rotation),
     AspectRatio(R.string.video_player_menu_picture_aspect_ratio);

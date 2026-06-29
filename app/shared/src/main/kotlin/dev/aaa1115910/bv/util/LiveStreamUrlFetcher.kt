@@ -1,10 +1,12 @@
 package dev.aaa1115910.bv.util
 
 import android.widget.Toast
-import dev.aaa1115910.biliapi.entity.live.LiveCodec
+import dev.aaa1115910.biliapi.entity.live.LiveCodec as ApiLiveCodec
 import dev.aaa1115910.biliapi.entity.live.LiveRoomPlayInfoResponse
+import dev.aaa1115910.biliapi.entity.live.LiveUrlInfo
 import dev.aaa1115910.bv.player.entity.LiveCodec as AppLiveCodec
 import dev.aaa1115910.biliapi.entity.live.LiveStream
+import dev.aaa1115910.bv.player.entity.LiveStreamLine
 import dev.aaa1115910.biliapi.repositories.LiveRepository
 import dev.aaa1115910.bv.BVApp
 import dev.aaa1115910.bv.util.Prefs
@@ -25,12 +27,14 @@ object LiveStreamUrlFetcher {
      * @param roomId 直播间ID
      * @param qn 画质编号，默认30000（杜比，最高值），服务端会自动降级到实际最高可用画质
      * @param preferredCodec 首选编码格式，默认 HLS 自动选择最佳编码
+     * @param preferredLineIndex 首选线路序号，null 表示自动选择当前最佳线路
      * @return 直播播放信息，包含流URL和可用画质列表，如果未开播或获取失败则返回null
      */
     suspend fun fetchLiveStreamUrl(
         roomId: Int,
         qn: Int = 30000,
-        preferredCodec: AppLiveCodec = AppLiveCodec.HLS
+        preferredCodec: AppLiveCodec = AppLiveCodec.HLS,
+        preferredLineIndex: Int? = null
     ): LivePlayInfo? = withContext(Dispatchers.IO) {
         try {
             val sessData = Prefs.sessData
@@ -78,7 +82,7 @@ object LiveStreamUrlFetcher {
             }
 
             // 解析播放URL和画质信息
-            val result = parsePlayUrl(response, preferredCodec)
+            val result = parsePlayUrl(response, preferredCodec, preferredLineIndex)
             if (result == null) {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(
@@ -99,6 +103,9 @@ object LiveStreamUrlFetcher {
                 currentQn = result.currentQn,
                 acceptQn = result.acceptQn,
                 qnDescMap = qnDescMap,
+                availableLines = result.availableLines,
+                currentLineIndex = result.currentLineIndex,
+                liveTime = data.liveTime ?: 0L,
                 expiresAt = result.expiresAt
             )
         } catch (e: Exception) {
@@ -118,6 +125,8 @@ object LiveStreamUrlFetcher {
         val url: String,
         val currentQn: Int,
         val acceptQn: List<Int>,
+        val availableLines: List<LiveStreamLine>,
+        val currentLineIndex: Int,
         val expiresAt: Long = 0
     )
 
@@ -141,7 +150,8 @@ object LiveStreamUrlFetcher {
      */
     private fun parsePlayUrl(
         response: LiveRoomPlayInfoResponse,
-        preferredCodec: AppLiveCodec
+        preferredCodec: AppLiveCodec,
+        preferredLineIndex: Int?
     ): ParseResult? {
         val streams = response.data?.playUrlInfo?.playurl?.stream ?: return null
 
@@ -150,7 +160,7 @@ object LiveStreamUrlFetcher {
                 // HLS 自动选择最佳编码（HEVC > AV1 > AVC）
                 val hlsStream = streams.find { it.protocolName == "http_hls" }
                 if (hlsStream != null) {
-                    val result = buildUrlFromStream(hlsStream, null)
+                    val result = buildUrlFromStream(hlsStream, null, preferredLineIndex)
                     if (result != null) {
                         logger.info { "Using HLS stream with auto codec" }
                         return result
@@ -159,7 +169,7 @@ object LiveStreamUrlFetcher {
                 // 回退到 FLV
                 val flvStream = streams.find { it.protocolName == "http_stream" }
                 if (flvStream != null) {
-                    val result = buildUrlFromStream(flvStream, "avc")
+                    val result = buildUrlFromStream(flvStream, "avc", preferredLineIndex)
                     if (result != null) {
                         logger.info { "Using FLV stream (fallback)" }
                         return result
@@ -170,7 +180,7 @@ object LiveStreamUrlFetcher {
                 // 强制使用 FLV（仅支持 AVC）
                 val flvStream = streams.find { it.protocolName == "http_stream" }
                 if (flvStream != null) {
-                    val result = buildUrlFromStream(flvStream, "avc")
+                    val result = buildUrlFromStream(flvStream, "avc", preferredLineIndex)
                     if (result != null) {
                         logger.info { "Using FLV stream" }
                         return result
@@ -179,7 +189,7 @@ object LiveStreamUrlFetcher {
                 // 回退到 HLS
                 val hlsStream = streams.find { it.protocolName == "http_hls" }
                 if (hlsStream != null) {
-                    val result = buildUrlFromStream(hlsStream, "avc")
+                    val result = buildUrlFromStream(hlsStream, "avc", preferredLineIndex)
                     if (result != null) {
                         logger.info { "Using HLS stream with AVC (fallback)" }
                         return result
@@ -190,7 +200,7 @@ object LiveStreamUrlFetcher {
                 // HLS 强制 AVC
                 val hlsStream = streams.find { it.protocolName == "http_hls" }
                 if (hlsStream != null) {
-                    val result = buildUrlFromStream(hlsStream, "avc")
+                    val result = buildUrlFromStream(hlsStream, "avc", preferredLineIndex)
                     if (result != null) {
                         logger.info { "Using HLS stream with AVC" }
                         return result
@@ -199,7 +209,7 @@ object LiveStreamUrlFetcher {
                 // 回退到 FLV
                 val flvStream = streams.find { it.protocolName == "http_stream" }
                 if (flvStream != null) {
-                    val result = buildUrlFromStream(flvStream, "avc")
+                    val result = buildUrlFromStream(flvStream, "avc", preferredLineIndex)
                     if (result != null) {
                         logger.info { "Using FLV stream (fallback)" }
                         return result
@@ -210,7 +220,7 @@ object LiveStreamUrlFetcher {
 
         // 使用第一个可用的流作为兜底
         for (stream in streams) {
-            val result = buildUrlFromStream(stream, null)
+            val result = buildUrlFromStream(stream, null, preferredLineIndex)
             if (result != null) {
                 logger.info { "Using fallback stream: ${stream.protocolName}" }
                 return result
@@ -223,7 +233,7 @@ object LiveStreamUrlFetcher {
     /**
      * 从编解码器列表中按优先级选择最佳编解码器 (HEVC > AV1 > AVC)
      */
-    private fun selectBestCodec(codecs: List<LiveCodec>): LiveCodec? {
+    private fun selectBestCodec(codecs: List<ApiLiveCodec>): ApiLiveCodec? {
         for (preferredCodec in codecPriority) {
             val codec = codecs.find { it.codecName == preferredCodec }
             if (codec != null && codec.urlInfo.isNotEmpty()) {
@@ -240,7 +250,7 @@ object LiveStreamUrlFetcher {
      * @param stream 直播流信息
      * @param preferredCodecName 首选编码名称，null 表示按优先级自动选择
      */
-    private fun buildUrlFromStream(stream: LiveStream, preferredCodecName: String?): ParseResult? {
+    private fun buildUrlFromStream(stream: LiveStream, preferredCodecName: String?, preferredLineIndex: Int?): ParseResult? {
         // 优先选择 fmp4，其次 ts，最后 flv
         val formatOrder = listOf("fmp4", "ts", "flv")
 
@@ -254,7 +264,8 @@ object LiveStreamUrlFetcher {
                     // 自动选择最佳编码
                     selectBestCodec(format.codec)
                 } ?: continue
-                val urlInfo = codec.urlInfo.first()
+                val urlInfo = selectUrlInfo(codec.urlInfo, preferredLineIndex) ?: continue
+                val lineIndex = codec.urlInfo.indexOf(urlInfo).coerceAtLeast(0)
                 val fullUrl = "${urlInfo.host}${codec.baseUrl}${urlInfo.extra}"
                 val expiresAt = parseExpiresFromExtra(urlInfo.extra)
                 logger.debug { "Built URL with format $formatName, codec ${codec.codecName}: $fullUrl" }
@@ -262,6 +273,8 @@ object LiveStreamUrlFetcher {
                     url = fullUrl,
                     currentQn = codec.currentQn,
                     acceptQn = codec.acceptQn,
+                    availableLines = buildLineOptions(codec),
+                    currentLineIndex = lineIndex,
                     expiresAt = expiresAt
                 )
             }
@@ -275,7 +288,8 @@ object LiveStreamUrlFetcher {
                 } else {
                     selectBestCodec(format.codec)
                 } ?: continue
-                val urlInfo = codec.urlInfo.first()
+                val urlInfo = selectUrlInfo(codec.urlInfo, preferredLineIndex) ?: continue
+                val lineIndex = codec.urlInfo.indexOf(urlInfo).coerceAtLeast(0)
                 val fullUrl = "${urlInfo.host}${codec.baseUrl}${urlInfo.extra}"
                 val expiresAt = parseExpiresFromExtra(urlInfo.extra)
                 logger.debug { "Built URL with fallback format ${format.formatName}, codec ${codec.codecName}: $fullUrl" }
@@ -283,6 +297,8 @@ object LiveStreamUrlFetcher {
                     url = fullUrl,
                     currentQn = codec.currentQn,
                     acceptQn = codec.acceptQn,
+                    availableLines = buildLineOptions(codec),
+                    currentLineIndex = lineIndex,
                     expiresAt = expiresAt
                 )
             }
@@ -290,6 +306,32 @@ object LiveStreamUrlFetcher {
 
         return null
     }
+
+    private fun selectUrlInfo(urlInfos: List<LiveUrlInfo>, preferredLineIndex: Int?): LiveUrlInfo? {
+        if (urlInfos.isEmpty()) return null
+        return preferredLineIndex
+            ?.coerceIn(0, urlInfos.lastIndex)
+            ?.let { urlInfos[it] }
+            ?: selectBestUrlInfo(urlInfos)
+    }
+
+    private fun selectBestUrlInfo(urlInfos: List<LiveUrlInfo>): LiveUrlInfo? =
+        urlInfos.maxWithOrNull(
+            compareBy<LiveUrlInfo> { parseExtraLong(it.extra, "score") ?: Long.MIN_VALUE }
+                .thenBy { parseExtraLong(it.extra, "total") ?: Long.MIN_VALUE }
+        )
+
+    private fun parseExtraLong(extra: String, key: String): Long? = Regex("""[?&]$key=(\d+)""")
+        .find(extra)?.groupValues?.getOrNull(1)?.toLongOrNull()
+
+    private fun buildLineOptions(codec: ApiLiveCodec): List<LiveStreamLine> =
+        codec.urlInfo.mapIndexed { index, urlInfo ->
+            LiveStreamLine(
+                index = index,
+                displayName = "线路 ${index + 1}",
+                host = urlInfo.host.trimEnd('/')
+            )
+        }
 }
 
 /**
@@ -303,5 +345,9 @@ data class LivePlayInfo(
     val currentQn: Int = 0,
     val acceptQn: List<Int> = emptyList(),
     val qnDescMap: Map<Int, String> = emptyMap(),
+    val availableLines: List<LiveStreamLine> = emptyList(),
+    val currentLineIndex: Int = 0,
+    val liveTime: Long = 0L,
     val expiresAt: Long = 0
 )
+
