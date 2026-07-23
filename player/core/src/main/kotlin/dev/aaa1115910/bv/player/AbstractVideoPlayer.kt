@@ -10,6 +10,9 @@ abstract class AbstractVideoPlayer {
     /** 解码器错误回调，返回 true 表示已处理（如降级清晰度），false 表示未处理需走正常错误流程 */
     var onDecoderError: (() -> Boolean)? = null
 
+    /** 播放/暂停状态变化回调 */
+    var onPlayStateChanged: ((Boolean) -> Unit)? = null
+
     /** 标记是否处于后台/生命周期过渡期，用于抑制 Surface 相关的非致命错误 */
     @Volatile
     var isInBackground: Boolean = false

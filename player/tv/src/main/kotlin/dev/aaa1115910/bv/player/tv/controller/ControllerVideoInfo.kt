@@ -394,7 +394,7 @@ fun ControllerVideoInfoBottom(
                 painterId = R.drawable.next_play_fill,
                 scale = 0.7f,
                 onClick = { onHideInfo(); onLoadNextVideo(false) },
-                visible = showNextVideoBtn && !isLive
+                visible = showNextVideoBtn
             ),
             ControlButton(
                 id = "refresh",

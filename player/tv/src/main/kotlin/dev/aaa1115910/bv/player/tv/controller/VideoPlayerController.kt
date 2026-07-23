@@ -632,7 +632,13 @@ fun VideoPlayerController(
                 }
             },
             onSubtitleChange = onSubtitleChange,
-            onLoadNextVideo = onLoadNextVideo,
+            onLoadNextVideo = {
+                if (videoPlayerConfigData.isLive) {
+                    onSwitchNextRoom()
+                } else {
+                    onLoadNextVideo(false)
+                }
+            },
             onShowComment = onShowComment,
             onShowDescription = onShowDescription,
             onShowVideoDetail = onShowVideoDetail,
@@ -645,6 +651,63 @@ fun VideoPlayerController(
         SeekController(
             show = showSeekController,
             goTime = goTime,
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             moveState = moveState
         )
         VideoListController(

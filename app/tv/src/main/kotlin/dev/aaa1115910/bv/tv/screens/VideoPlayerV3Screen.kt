@@ -450,11 +450,11 @@ fun VideoPlayerV3Screen(
             modifier = Modifier
                 .onPreviewKeyEvent { keyEvent ->
                     // 检测长按下键，标记跳过对应的 KeyUp 取消
-                    if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionDown
+                    if (keyEvent.type == KeyEventType.KeyDown
                         && keyEvent.nativeKeyEvent.isLongPress) {
                         skipNextKeyUpCancel = true
                     }
-                    if (keyEvent.type == KeyEventType.KeyUp && listOf(Key.Enter, Key.DirectionCenter).contains(keyEvent.key) && autoActionCountdownJob != null && nextTipCardData != null) {
+                    if (!skipNextKeyUpCancel && keyEvent.type == KeyEventType.KeyUp && listOf(Key.Enter, Key.DirectionCenter).contains(keyEvent.key) && autoActionCountdownJob != null && nextTipCardData != null) {
                         // 确认键：立即播放下一个，跳过倒计时
                         logger.debug { "按下确认键，立即播放下一个" }
                         autoActionCountdownJob?.cancel()
@@ -540,7 +540,10 @@ fun VideoPlayerV3Screen(
                         pendingAutoAction = null
                     }
                     autoActionCountdownJob = scope.launch {
-                        autoActionTipVisible = true
+                        if(prefsSnapshot.nextTipDuration > 0f) {
+                            delay(500)
+                            autoActionTipVisible = true
+                        }
                         delay((prefsSnapshot.nextTipDuration * 1000).toLong())
                         autoActionTipVisible = false
                         if (autoActionCountdownJob != null) {
@@ -595,17 +598,17 @@ fun VideoPlayerV3Screen(
                     // 找出下一个推荐视频（非充电、非播放过的aid）
                     val candidates = playerViewModel.relatedVideos
                         .filter { related -> !related.isChargingArc && !PlayedAidsCache.hasPlayed(related.avid) }
-                    val nextRelatedVideo = if (candidates.isNotEmpty()) candidates.random() else null
+                    val nextRelatedVideo = if (!playerViewModel.fromSeason && candidates.isNotEmpty()) candidates.random() else null
 
                     // 找出预加载列表的下一个
                     val preloaded = playerViewModel.preloadedVideoList
                     val preloadIndex = playerViewModel.resolveLastPreloadedVideoIndex()
-                    val nextPreloaded = if (preloadIndex >= 0 && preloadIndex + 1 < preloaded.size) {
+                    val nextPreloaded = if (!playerViewModel.fromSeason && preloadIndex >= 0 && preloadIndex + 1 < preloaded.size) {
                         preloaded[preloadIndex + 1]
                     } else null
 
                     // 找出预加载列表的上一个（逆序模式用）
-                    val prevPreloaded = if (preloadIndex > 0) {
+                    val prevPreloaded = if (!playerViewModel.fromSeason && preloadIndex > 0) {
                         preloaded[preloadIndex - 1]
                     } else null
 
@@ -1139,33 +1142,22 @@ fun VideoPlayerV3Screen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .offset(x = (-36).dp, y = 12.dp),
+                                    .background(Color.Black.copy(alpha = 0.6f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .background(Color.Black.copy(alpha = 0.5f), MaterialTheme.shapes.medium)
-                                        .padding(start = 24.dp, top = 12.dp, end = 24.dp, bottom = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                Column (
+                                    modifier = Modifier.offset(y = (-16).dp),
+                                    horizontalAlignment = Alignment.Start
                                 ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text(
-                                            text = "即将",
-                                            style = MaterialTheme.typography.titleLarge,
-                                            color = Color.White
-                                        )
-                                        Text(
-                                            text = "播放",
-                                            style = MaterialTheme.typography.titleLarge,
-                                            color = Color.White
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(24.dp))
+                                    Text(
+                                        text = "即将播放",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     NextTipCardPreview(
                                         data = cardData,
-                                        modifier = Modifier.width(240.dp)
+                                        modifier = Modifier.width(200.dp)
                                     )
                                 }
                             }
@@ -1357,7 +1349,7 @@ private fun NextTipCardPreview(
             val cardData = remember(data) {
                 VideoCardData(
                     avid = data.aid,
-                    title = if (data.partTitle.isNotBlank()) data.partTitle else data.title,
+                    title = data.partTitle.ifBlank { data.title },
                     cover = data.cover,
                     upName = "",
                 )

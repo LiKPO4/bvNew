@@ -244,6 +244,7 @@ class ExoMediaPlayer(
         } else {
             mPlayerEventListener?.onPause()
         }
+        onPlayStateChanged?.invoke(isPlaying)
     }
 
     override fun onSeekBackIncrementChanged(seekBackIncrementMs: Long) {

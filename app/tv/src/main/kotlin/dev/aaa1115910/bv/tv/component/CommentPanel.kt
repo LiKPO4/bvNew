@@ -114,9 +114,12 @@ fun CommentPanel(
     var selectedCommentIndex by remember { mutableStateOf(0) }
     var focusedCommentIndex by remember { mutableStateOf(0) }
 
+    val context = LocalContext.current
+
     // 全屏图片查看器状态
     var showImageViewer by remember { mutableStateOf(false) }
     var imageViewerPictures by remember { mutableStateOf<List<dev.aaa1115910.biliapi.entity.Picture>>(emptyList()) }
+    var imageViewerBitmaps by remember { mutableStateOf<Map<Int, androidx.compose.ui.graphics.ImageBitmap>>(emptyMap()) }
 
     // 选集相关状态
     var currentEpisode by remember { mutableStateOf<Episode?>(null) }
@@ -525,8 +528,13 @@ fun CommentPanel(
                                         }
                                     },
                                     onLongClick = {
-                                        if (comment.pictures.isNotEmpty()) {
-                                            imageViewerPictures = comment.pictures
+                                        // 如果发现评论带链接（可能有多个链接）
+                                        // 把链接转成二维码图片（二维码图片底部显示二维码内容、也就是链接文本）
+                                        // 拼接comment.pictures和二维码图片,comment.pictures在前面
+                                        val result = getDisplayPictures(context, comment)
+                                        if (result.pictures.isNotEmpty()) {
+                                            imageViewerPictures = result.pictures
+                                            imageViewerBitmaps = result.bitmapOverrides
                                             showImageViewer = true
                                         }
                                     }
@@ -589,9 +597,11 @@ fun CommentPanel(
     if (showImageViewer && imageViewerPictures.isNotEmpty()) {
         FullscreenImageViewer(
             pictures = imageViewerPictures,
+            bitmapOverrides = imageViewerBitmaps,
             onDismiss = {
                 showImageViewer = false
                 imageViewerPictures = emptyList()
+                imageViewerBitmaps = emptyMap()
             }
         )
     }

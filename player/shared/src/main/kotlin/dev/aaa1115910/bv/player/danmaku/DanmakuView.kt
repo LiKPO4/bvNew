@@ -90,6 +90,11 @@ class DanmakuView @JvmOverloads constructor(
         player.setDanmakus(list)
         invalidate()
     }
+    fun clearDanmakus() {
+        player.clearDanmakus()
+        invalidate()
+    }
+
     fun appendDanmakus(list: List<Danmaku>, maxItems: Int = 0, alreadySorted: Boolean = false) {
         if (list.isEmpty()) return
         player.updateConfig(config)

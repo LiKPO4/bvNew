@@ -269,9 +269,9 @@ internal class DanmakuEngine(
 
     private fun computeFixedDurationMs(textWidth: Float, durationMul: Float, fontSizeMul: Float = 1f): Int {
         // 线性插值：1 + (ratio - 1) * 2/3，让增长幅度逐渐减小，避免过长的弹幕占用过多时间。
-        val ratio = min(textWidth, viewportWidth.toFloat()) / 400f
-        val baseRatio = 1f + (ratio - 1f) * if(ratio > 1f) 0.65f else 1f
-        return (FIXED_DURATION_MS * baseRatio * durationMul * fontSizeMul).roundToInt().coerceIn(MIN_ROLLING_DURATION_MS, MAX_ROLLING_DURATION_MS)
+        val ratio = min(textWidth * fontSizeMul * durationMul, viewportWidth.toFloat()) / (viewportWidth.toFloat() / 4)
+        val baseRatio = 1f + (ratio - 1f) * if(ratio > 1f) 0.58f else 1f
+        return (FIXED_DURATION_MS * baseRatio).roundToInt().coerceIn(MIN_ROLLING_DURATION_MS, MAX_ROLLING_DURATION_MS)
     }
 
     private fun recordActDuration(durationNanos: Long) {
@@ -400,6 +400,23 @@ internal class DanmakuEngine(
 
     fun clear() {
         synchronized(actionStateLock) { clearActives(); publishEmptySnapshot() }
+    }
+
+    /** 清空所有弹幕数据（含已加载但未激活的），引擎保持可用。 */
+    fun clearAll() {
+        synchronized(actionStateLock) {
+            clearActives()
+            for (item in allItems) {
+                val bmp = item.cacheBitmap
+                if (bmp != null && !bmp.isRecycled) try { bmp.recycle() } catch (_: Exception) {}
+                item.cacheBitmap = null
+            }
+            allItems = mutableListOf()
+            items = mutableListOf()
+            index = 0
+            lastNowMs = 0.0
+            publishEmptySnapshot()
+        }
     }
 
     fun release() {

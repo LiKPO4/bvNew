@@ -254,7 +254,7 @@ fun PlayerSetting(
                     title = stringResource(R.string.settings_player_next_tip_duration_title),
                     supportText = stringResource(R.string.settings_player_next_tip_duration_text),
                     value = playerNextTipDuration,
-                    minValue = 0.5,
+                    minValue = 0.0,
                     maxValue = 10.0,
                     isInteger = false,
                     step = 0.1,

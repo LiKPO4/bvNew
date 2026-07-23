@@ -90,7 +90,7 @@ internal class DanmakuTimer {
         if (playbackSpeed.isFinite() && playbackSpeed > 0f) playbackSpeed.toDouble() else 1.0
 
     private companion object {
-        const val EXTREME_DRIFT_REANCHOR_THRESHOLD_MS = 500.0
+        const val EXTREME_DRIFT_REANCHOR_THRESHOLD_MS = 600.0
         const val CORRECTION_FACTOR = 0.1
         const val MAX_CORRECTION_MS = 80.0
         const val SPEED_CHANGE_EPSILON = 0.0001

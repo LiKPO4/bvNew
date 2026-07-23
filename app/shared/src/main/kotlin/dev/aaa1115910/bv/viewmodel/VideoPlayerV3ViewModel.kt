@@ -351,6 +351,7 @@ class VideoPlayerV3ViewModel(
         currentDanmakuSegmentIndex = -1
         loadedDanmakuSegmentCounts.clear()
         currentLoadedDanmakuTotal = 0
+        danmakuView?.clearDanmakus()
     }
 
     private fun getDanmakuSegmentIndex(positionMs: Long): Int {
@@ -2057,7 +2058,7 @@ class VideoPlayerV3ViewModel(
         viewModelScope.launch(Dispatchers.Main) {
             try {
                 danmakuMasks.clear()
-                danmakuView?.setDanmakus(emptyList())
+                danmakuView?.clearDanmakus()
             } catch (e: Exception) {
                 logger.fError { "Error releasing danmaku player: ${e.message}" }
             }

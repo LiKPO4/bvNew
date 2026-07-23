@@ -16,7 +16,7 @@ data class IndexResultData(
     data class IndexResultItem(
         val badge: String,
         @SerialName("badge_info")
-        val badgeInfo: BadgeInfo,
+        val badgeInfo: BadgeInfo? = null,
         @SerialName("badge_type")
         val badgeType: Int,
         val cover: String,

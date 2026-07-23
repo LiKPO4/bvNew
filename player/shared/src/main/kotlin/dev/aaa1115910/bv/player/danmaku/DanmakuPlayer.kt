@@ -109,6 +109,15 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
         actionHandler.obtainMessage(MSG_OP_SET, list).sendToTarget()
     }
 
+    fun clearDanmakus() {
+        if (released) return
+        try {
+            actionHandler.obtainMessage(MSG_OP_CLEAR_ALL).sendToTarget()
+        } catch (_: IllegalStateException) {
+            // Handler's looper thread already dead — safe to ignore
+        }
+    }
+
     fun appendDanmakus(list: List<Danmaku>, maxItems: Int, alreadySorted: Boolean) {
         actionHandler.obtainMessage(MSG_OP_APPEND, AppendPayload(list, maxItems, alreadySorted)).sendToTarget()
     }
@@ -254,6 +263,7 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
                     renderOnceIfPaused(pos)
                 }
                 MSG_OP_CLEAR -> engine.clear()
+                MSG_OP_CLEAR_ALL -> engine.clearAll()
                 MSG_OP_VIEWPORT -> {
                     engine.updateViewport(viewportWidth, viewportHeight, viewportTopInsetPx, viewportBottomInsetPx)
                     renderOnceIfPaused()
@@ -322,6 +332,7 @@ internal class DanmakuPlayer(private val view: DanmakuView) {
         private const val MSG_OP_TRIM_RANGE = 3103
         private const val MSG_OP_SEEK = 3105
         private const val MSG_OP_CLEAR = 3106
+        private const val MSG_OP_CLEAR_ALL = 3107
         private const val MSG_OP_VIEWPORT = 3201
         private const val MSG_OP_CONFIG = 3202
         private const val MSG_OP_RELEASE = 3999

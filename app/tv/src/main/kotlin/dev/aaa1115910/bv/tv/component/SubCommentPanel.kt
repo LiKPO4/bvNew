@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
@@ -89,9 +90,12 @@ fun SubCommentPanel(
     var hasNext by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    val context = LocalContext.current
+
     // 全屏图片查看器状态
     var showImageViewer by remember { mutableStateOf(false) }
     var imageViewerPictures by remember { mutableStateOf<List<dev.aaa1115910.biliapi.entity.Picture>>(emptyList()) }
+    var imageViewerBitmaps by remember { mutableStateOf<Map<Int, androidx.compose.ui.graphics.ImageBitmap>>(emptyMap()) }
 
     // 加载子评论
     val loadReplies: (Boolean) -> Unit = { reset ->
@@ -188,8 +192,10 @@ fun SubCommentPanel(
                     SubCommentRootItem(
                         comment = rootComment,
                         onLongClick = {
-                            if (rootComment.pictures.isNotEmpty()) {
-                                imageViewerPictures = rootComment.pictures
+                            val result = getDisplayPictures(context, rootComment)
+                            if (result.pictures.isNotEmpty()) {
+                                imageViewerPictures = result.pictures
+                                imageViewerBitmaps = result.bitmapOverrides
                                 showImageViewer = true
                             }
                         }
@@ -282,8 +288,10 @@ fun SubCommentPanel(
                                             }
                                         },
                                     onLongClick = {
-                                        if (reply.pictures.isNotEmpty()) {
-                                            imageViewerPictures = reply.pictures
+                                        val result = getDisplayPictures(context, reply)
+                                        if (result.pictures.isNotEmpty()) {
+                                            imageViewerPictures = result.pictures
+                                            imageViewerBitmaps = result.bitmapOverrides
                                             showImageViewer = true
                                         }
                                     }
@@ -325,9 +333,11 @@ fun SubCommentPanel(
     if (showImageViewer && imageViewerPictures.isNotEmpty()) {
         FullscreenImageViewer(
             pictures = imageViewerPictures,
+            bitmapOverrides = imageViewerBitmaps,
             onDismiss = {
                 showImageViewer = false
                 imageViewerPictures = emptyList()
+                imageViewerBitmaps = emptyMap()
             }
         )
     }

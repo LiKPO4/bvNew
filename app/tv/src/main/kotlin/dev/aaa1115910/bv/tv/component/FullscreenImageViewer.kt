@@ -23,6 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -30,7 +33,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.Icons
@@ -55,12 +57,14 @@ import dev.aaa1115910.bv.util.isKeyDown
  * @param pictures 图片列表
  * @param initialIndex 初始显示的图片索引
  * @param onDismiss 关闭回调
+ * @param bitmapOverrides 指定索引使用内存位图替代 URL 加载
  */
 @Composable
 fun FullscreenImageViewer(
     pictures: List<Picture>,
     initialIndex: Int = 0,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    bitmapOverrides: Map<Int, ImageBitmap> = emptyMap()
 ) {
     var currentIndex by remember { mutableIntStateOf(initialIndex) }
     var scale by remember { mutableFloatStateOf(1f) }
@@ -76,7 +80,12 @@ fun FullscreenImageViewer(
 
     val focusRequester = remember { FocusRequester() }
 
-    val painter = rememberAsyncImagePainter(model = pictures[currentIndex].url)
+    val isBitmapItem = currentIndex in bitmapOverrides
+    val painter = if (isBitmapItem) {
+        BitmapPainter(bitmapOverrides[currentIndex]!!)
+    } else {
+        rememberAsyncImagePainter(model = pictures[currentIndex].url)
+    }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -198,14 +207,15 @@ fun FullscreenImageViewer(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                // 图片
-                val painterState = painter.state
-
-                if (painterState is AsyncImagePainter.State.Loading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(36.dp),
-                        color = Color.White
-                    )
+                // 图片（加载指示器仅用于远程图片）
+                if (!isBitmapItem) {
+                    val painterState = (painter as AsyncImagePainter).state
+                    if (painterState is AsyncImagePainter.State.Loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(36.dp),
+                            color = Color.White
+                        )
+                    }
                 }
 
                 Image(

@@ -163,7 +163,6 @@ class VideoPlayerV3Activity : ComponentActivity() {
         initVideoPlayer()
         //initDanmakuPlayer()
         getParamsFromIntent()
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContent {
             BVTheme(
                 forceDark = true
@@ -243,6 +242,14 @@ class VideoPlayerV3Activity : ComponentActivity() {
             PlayerType.Media3 -> ExoPlayerFactory().create(this, options)
         }
         playerViewModel.videoPlayer = videoPlayer
+        
+        videoPlayer.onPlayStateChanged = { isPlaying ->
+            if (isPlaying) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
     }
 
     /*private fun initDanmakuPlayer() {
@@ -303,6 +310,7 @@ class VideoPlayerV3Activity : ComponentActivity() {
             playerViewModel.apply {
                 // lastPlayed 需要在 loadPlayUrl 之前设置，以便 prepare() 时能正确设置初始跳转位置
                 this.lastPlayed = played
+                this.fromSeason = fromSeason
                 loadPlayUrl(
                     avid = aid,
                     cid = cid,
@@ -310,7 +318,6 @@ class VideoPlayerV3Activity : ComponentActivity() {
                 )
                 this.title = title
                 this.partTitle = partTitle
-                this.fromSeason = fromSeason
                 this.subType = subType
                 this.epid = epid
                 this.seasonId = seasonId
