@@ -303,7 +303,6 @@ fun CommentPanel(
             Surface(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
                     .widthIn(
                         min = if (showSidebar) 650.dp else 350.dp,
                         max = if (showSidebar) 750.dp else 450.dp
@@ -323,14 +322,13 @@ fun CommentPanel(
                         }
                     },
                 colors = SurfaceDefaults.colors(
-                    containerColor = Color.Black.copy(alpha = 0.85f)
-                ),
-                shape = MaterialTheme.shapes.large
+                    containerColor = Color.Black.copy(alpha = 0.8f)
+                )
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(20.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // 左侧边栏 - 仅在有多个剧集时显示

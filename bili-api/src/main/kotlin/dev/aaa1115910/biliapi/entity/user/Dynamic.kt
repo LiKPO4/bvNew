@@ -39,13 +39,13 @@ data class DynamicData(
                 dynamics = data.items
                     .mapNotNull {
                         if (!availableWebDynamicTypes.contains(it.type)) {
-                            logger.warn { "unknown dynamic type ${it.type}, up: ${it.modules.moduleAuthor.name}, date: ${it.modules.moduleAuthor.pubTime}" }
+                            logger.warn { "unknown dynamic type ${it.type}, up: ${it.modules.moduleAuthor?.name}, date: ${it.modules.moduleAuthor?.pubTime}" }
                             return@mapNotNull null
                         }
 
                         if (it.type == DynamicType.Forward.webValue) {
                             if (!availableWebDynamicTypes.contains(it.orig?.type)) {
-                                logger.warn { "unknown dynamic forward type ${it.orig?.type}, up: ${it.modules.moduleAuthor.name}, date: ${it.modules.moduleAuthor.pubTime}" }
+                                logger.warn { "unknown dynamic forward type ${it.orig?.type}, up: ${it.modules.moduleAuthor?.name}, date: ${it.modules.moduleAuthor?.pubTime}" }
                                 return@mapNotNull null
                             }
                         }
@@ -115,7 +115,7 @@ data class DynamicItem(
                 commentId = item.basic.commentIdStr.toLongOrDefault(0),
                 commentType = item.basic.commentType,
                 type = dynamicType,
-                author = DynamicAuthorModule.fromModuleAuthor(item.modules.moduleAuthor),
+                author = DynamicAuthorModule.fromModuleAuthor(item.modules.moduleAuthor!!),
                 footer = DynamicFooterModule.fromModuleStat(item.modules.moduleStat)
             )
             when (dynamicType) {
@@ -316,7 +316,7 @@ data class DynamicItem(
     ) {
         companion object {
             fun fromModuleArchive(moduleArchive: dev.aaa1115910.biliapi.http.entity.dynamic.DynamicItem.Modules.Dynamic.Major.Archive): DynamicVideoModule {
-                val isChargingArc = moduleArchive.badge.text.contains("充电") || moduleArchive.badge.text.contains("限时免费")
+                val isChargingArc = moduleArchive.badge?.text?.contains("充电") == true || moduleArchive.badge?.text?.contains("限时免费") == true
                 return DynamicVideoModule(
                     aid = moduleArchive.aid.toLong(),
                     bvid = moduleArchive.bvid,
@@ -325,10 +325,10 @@ data class DynamicItem(
                     text = moduleArchive.desc,
                     cover = moduleArchive.cover,
                     duration = moduleArchive.durationText,
-                    play = moduleArchive.stat.play,
-                    danmaku = moduleArchive.stat.danmaku,
+                    play = moduleArchive.stat?.play ?: "",
+                    danmaku = moduleArchive.stat?.danmaku ?: "",
                     isChargingArc = isChargingArc,
-                    chargingArcBadge = if (isChargingArc) moduleArchive.badge.text else ""
+                    chargingArcBadge = if (isChargingArc) moduleArchive.badge?.text ?: "" else ""
                 )
             }
 
@@ -363,9 +363,9 @@ data class DynamicItem(
             fun fromModuleStat(moduleStat: dev.aaa1115910.biliapi.http.entity.dynamic.DynamicItem.Modules.Stat?) =
                 moduleStat?.let {
                     DynamicFooterModule(
-                        like = moduleStat.like.count,
-                        comment = moduleStat.comment.count,
-                        share = moduleStat.forward.count
+                        like = moduleStat.like?.count ?: 0,
+                        comment = moduleStat.comment?.count ?: 0,
+                        share = moduleStat.forward?.count ?: 0
                     )
                 }
 
@@ -701,8 +701,8 @@ data class DynamicItem(
                     desc = moduleDynamic.desc ?: "empty description",
                     duration = moduleDynamic.durationText,
                     url = moduleDynamic.jumpUrl,
-                    play = moduleDynamic.stat.play,
-                    danmaku = moduleDynamic.stat.danmaku,
+                    play = moduleDynamic.stat?.play ?: "",
+                    danmaku = moduleDynamic.stat?.danmaku ?: "",
                     title = moduleDynamic.title
                 )
         }
@@ -780,8 +780,8 @@ data class DynamicVideo(
     companion object {
         fun fromDynamicVideoItem(item: dev.aaa1115910.biliapi.http.entity.dynamic.DynamicItem): DynamicVideo {
             val archive = item.modules.moduleDynamic.major!!.archive!!
-            val author = item.modules.moduleAuthor
-            val isChargingArc = archive.badge.text.contains("充电") || archive.badge.text.contains("限时免费")
+            val author = item.modules.moduleAuthor!!
+            val isChargingArc = archive.badge?.text?.contains("充电") == true || archive.badge?.text?.contains("限时免费") == true
             return DynamicVideo(
                 aid = archive.aid.toLong(),
                 bvid = archive.bvid,
@@ -793,12 +793,12 @@ data class DynamicVideo(
                 authorId = author.mid,
                 authorFace = author.face,
                 duration = convertStringTimeToSeconds(archive.durationText),
-                play = convertStringPlayCountToNumberPlayCount(archive.stat.play),
-                danmaku = convertStringPlayCountToNumberPlayCount(archive.stat.danmaku).toInt(),
+                play = convertStringPlayCountToNumberPlayCount(archive.stat?.play ?: "0"),
+                danmaku = convertStringPlayCountToNumberPlayCount(archive.stat?.danmaku ?: "0").toInt(),
                 avatar = author.face,
                 pubTime = author.pubTime,
                 isChargingArc = isChargingArc,
-                chargingArcBadge = if (isChargingArc) archive.badge.text else ""
+                chargingArcBadge = if (isChargingArc) archive.badge?.text ?: "" else ""
             )
         }
 

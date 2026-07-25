@@ -172,20 +172,18 @@ fun SubCommentPanel(
             Surface(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
                     .widthIn(min = 320.dp, max = 420.dp)
                     .fillMaxWidth(0.3f)
                     .clickable(enabled = true, onClick = {})
                     .onBackPressed { onHide() },
                 colors = SurfaceDefaults.colors(
-                    containerColor = Color.Black.copy(alpha = 0.85f)
-                ),
-                shape = MaterialTheme.shapes.large
+                    containerColor = Color.Black.copy(alpha = 0.8f)
+                )
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // 根评论（只读显示，右键展开/收起）

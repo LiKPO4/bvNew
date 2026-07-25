@@ -17,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -29,7 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import dev.aaa1115910.bv.R
-import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
+import dev.aaa1115910.bv.tv.component.VideoActionMenu
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
 import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
@@ -50,6 +52,13 @@ fun TagScreen(
     val videoInfoRepository: VideoInfoRepository = koinInject()
     val listFocusRestorer = rememberTvLazyListFocusRestorer()
     var currentIndex by remember { mutableIntStateOf(0) }
+    // 长按菜单状态
+    var showVideoActionMenu by remember { mutableStateOf(false) }
+    var menuAid by remember { mutableLongStateOf(0L) }
+    var menuUpId by remember { mutableLongStateOf(0L) }
+    var menuUpName by remember { mutableStateOf("") }
+    var menuUpFace by remember { mutableStateOf("") }
+
     val showLargeTitle by remember { derivedStateOf { currentIndex < 4 } }
     val titleFontSize by animateFloatAsState(
         targetValue = if (showLargeTitle) 48f else 24f,
@@ -135,7 +144,13 @@ fun TagScreen(
                                 videoInfoRepository.setPreloadedVideoList(tagViewModel.topVideos)
                                 VideoInfoActivity.actionStart(context, video.avid)
                             },
-                            onLongClick = { UpInfoActivity.actionStart( context, mid = video.upId, name = video.upName, face = video.upFace ) },
+                            onLongClick = {
+                                menuAid = video.avid
+                                menuUpId = video.upId
+                                menuUpName = video.upName
+                                menuUpFace = video.upFace
+                                showVideoActionMenu = true
+                            },
                             onFocus = {
                                 currentIndex = index
                                 if (index + 20 > tagViewModel.topVideos.size) {
@@ -148,4 +163,14 @@ fun TagScreen(
             }
         }
     }
+
+    // 长按操作菜单
+    VideoActionMenu(
+        show = showVideoActionMenu,
+        aid = menuAid,
+        upId = menuUpId,
+        upName = menuUpName,
+        upFace = menuUpFace,
+        onDismiss = { showVideoActionMenu = false }
+    )
 }

@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import org.koin.core.annotation.Single
+import java.util.concurrent.ConcurrentHashMap
 
 @Single
 class VideoDetailRepository(
@@ -40,6 +41,22 @@ class VideoDetailRepository(
         get() = runCatching {
             ReplyGrpcKt.ReplyCoroutineStub(channelRepository.defaultChannel!!)
         }.getOrNull()
+
+    /**
+     * Cache for user action status (like/favorite/coin), keyed by aid.
+     * Populated by [ensureStateLoaded] (via [setCachedUserActions]) or the first call
+     * to [getVideoDetail] with [withUserActions]=true. Subsequent consumers read from
+     * cache, avoiding duplicate network requests.
+     */
+    private val userActionsCache = ConcurrentHashMap<Long, Triple<Boolean, Boolean, Boolean>>()
+
+    /**
+     * Cache user action results that were already fetched externally (e.g. by [VideoUserActionManager]).
+     * Subsequent [getVideoDetail] calls for the same [aid] will read from cache instead of re-fetching.
+     */
+    fun setCachedUserActions(aid: Long, liked: Boolean, favored: Boolean, coined: Boolean) {
+        userActionsCache.putIfAbsent(aid, Triple(liked, favored, coined))
+    }
 
     private suspend fun fillInteractiveInfo(
         videoDetail: VideoDetail,
@@ -116,50 +133,24 @@ class VideoDetailRepository(
                     var isFavoured = false
                     var isCoined = false
 
-//                    if (withUserActions) {
-//                        // 检查点赞、收藏、投币状态
-//                        runCatching {
-//                            val archiveRelation = BiliHttpApi.getArchiveRelation(
-//                                avid = aid,
-//                                sessData = authRepository.sessionData ?: ""
-//                            ).getResponseData()
-//                            isLiked = archiveRelation.like
-//                            isCoined = archiveRelation.coin > 0
-//                            isFavoured = archiveRelation.favorite
-//                        }.onFailure {
-//                            println("Check video relation failed: $it")
-//                        }
-//                    }
                     if (withUserActions) {
-                        // 串行执行：检查点赞状态
-                        isLiked = runCatching {
-                            likeRepository.checkVideoLike(
-                                aid = aid,
-                                preferApiType = ApiType.Web
+                        // 从缓存读取（缓存由 ensureStateLoaded 或本方法的首次调用填充）
+                        val cached = userActionsCache.getOrPut(aid) {
+                            Triple(
+                                runCatching { likeRepository.checkVideoLike(aid, preferApiType = ApiType.Web) }
+                                    .onFailure { println("Check video liked failed: $it") }
+                                    .getOrDefault(false),
+                                runCatching { favoriteRepository.checkVideoFavoured(aid, preferApiType = ApiType.Web) }
+                                    .onFailure { println("Check video favoured failed: $it") }
+                                    .getOrDefault(false),
+                                runCatching { coinRepository.checkVideoCoin(aid, preferApiType = ApiType.Web) }
+                                    .onFailure { println("Check video coin failed: $it") }
+                                    .getOrDefault(false)
                             )
-                        }.onFailure {
-                            println("Check video liked failed: $it")
-                        }.getOrDefault(false)
-
-                        // 串行执行：检查投币状态
-                        isCoined =  runCatching {
-                            coinRepository.checkVideoCoin(
-                                aid = aid,
-                                preferApiType = ApiType.Web
-                            )
-                        }.onFailure {
-                            println("Check video liked failed: $it")
-                        }.getOrDefault(false)
-
-                        // 串行执行：检查收藏状态
-                        isFavoured = runCatching {
-                            favoriteRepository.checkVideoFavoured(
-                                aid = aid,
-                                preferApiType = ApiType.Web
-                            )
-                        }.onFailure {
-                            println("Check video favoured failed: $it")
-                        }.getOrDefault(false)
+                        }
+                        isLiked = cached.first
+                        isFavoured = cached.second
+                        isCoined = cached.third
                     }
 
                     // 串行执行：获取历史和播放器图标

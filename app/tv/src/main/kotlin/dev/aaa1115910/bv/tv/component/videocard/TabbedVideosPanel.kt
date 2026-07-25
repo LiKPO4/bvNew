@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,7 +36,7 @@ import androidx.tv.material3.TabDefaults
 import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
-import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
+import dev.aaa1115910.bv.tv.component.VideoActionMenu
 import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.tv.util.stableItemKey
 
@@ -96,14 +97,19 @@ fun TabbedVideosPanel(
 
     val listFocusRestorer = rememberTvLazyListFocusRestorer(focusRequester)
 
+    // 长按菜单状态
+    var showVideoActionMenu by remember { mutableStateOf(false) }
+    var menuAid by remember { mutableLongStateOf(0L) }
+    var menuUpId by remember { mutableLongStateOf(0L) }
+    var menuUpName by remember { mutableStateOf("") }
+    var menuUpFace by remember { mutableStateOf("") }
+
     val onLongClickVideo: (VideoCardData) -> Unit = { videoCard ->
-        if (videoCard.upId > 0)
-            UpInfoActivity.actionStart(
-                context,
-                mid = videoCard.upId,
-                name = videoCard.upName,
-                face = videoCard.upFace
-            )
+        menuAid = videoCard.avid
+        menuUpId = videoCard.upId
+        menuUpName = videoCard.upName
+        menuUpFace = videoCard.upFace
+        showVideoActionMenu = true
     }
 
     Column(
@@ -182,4 +188,13 @@ fun TabbedVideosPanel(
             }
         }
     }
+
+    VideoActionMenu(
+        show = showVideoActionMenu,
+        aid = menuAid,
+        upId = menuUpId,
+        upName = menuUpName,
+        upFace = menuUpFace,
+        onDismiss = { showVideoActionMenu = false }
+    )
 }

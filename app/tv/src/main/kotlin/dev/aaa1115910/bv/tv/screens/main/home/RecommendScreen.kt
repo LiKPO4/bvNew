@@ -16,11 +16,12 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.dp
@@ -30,6 +31,7 @@ import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.tv.R
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.tv.component.VideoActionMenu
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
@@ -76,13 +78,19 @@ fun RecommendScreen(
         VideoInfoActivity.actionStart(context, ugcItem.aid)
     }
 
+    // 长按菜单状态
+    var showVideoActionMenu by remember { mutableStateOf(false) }
+    var menuAid by remember { mutableLongStateOf(0L) }
+    var menuUpId by remember { mutableLongStateOf(0L) }
+    var menuUpName by remember { mutableStateOf("") }
+    var menuUpFace by remember { mutableStateOf("") }
+
     val onLongClickVideo: (UgcItem) -> Unit = { ugcItem ->
-        UpInfoActivity.actionStart(
-            context,
-            mid = ugcItem.authorId,
-            name = ugcItem.author,
-            face = ugcItem.authorFace
-        )
+        menuAid = ugcItem.aid
+        menuUpId = ugcItem.authorId
+        menuUpName = ugcItem.author
+        menuUpFace = ugcItem.authorFace
+        showVideoActionMenu = true
     }
 
     //不能直接使用 LaunchedEffect(currentFocusedIndex)，会导致整个页面重组
@@ -150,4 +158,14 @@ fun RecommendScreen(
             }
         }
     }
+
+    // 长按操作菜单
+    VideoActionMenu(
+        show = showVideoActionMenu,
+        aid = menuAid,
+        upId = menuUpId,
+        upName = menuUpName,
+        upFace = menuUpFace,
+        onDismiss = { showVideoActionMenu = false }
+    )
 }

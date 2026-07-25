@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -44,9 +45,9 @@ import androidx.tv.material3.Text
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
-import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
 import dev.aaa1115910.bv.tv.component.TvAlertDialog
+import dev.aaa1115910.bv.tv.component.VideoActionMenu
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
 import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
@@ -84,6 +85,13 @@ fun ToViewScreen(
     var selectedVideo by remember { mutableStateOf<VideoCardData?>(null) }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var focusTopTabWhenListEmpty by remember { mutableStateOf(false) }
+
+    // 长按菜单状态
+    var showVideoActionMenu by remember { mutableStateOf(false) }
+    var menuAid by remember { mutableLongStateOf(0L) }
+    var menuUpId by remember { mutableLongStateOf(0L) }
+    var menuUpName by remember { mutableStateOf("") }
+    var menuUpFace by remember { mutableStateOf("") }
 
     val focusRequesters = remember { mutableMapOf<Int, FocusRequester>() }
     fun getFocusRequester(index: Int): FocusRequester {
@@ -223,12 +231,11 @@ fun ToViewScreen(
                                     selectedIndex = index
                                     showClearConfirmDialog = true
                                 } else {
-                                    UpInfoActivity.actionStart(
-                                        context,
-                                        mid = item.upId,
-                                        name = item.upName,
-                                        face = item.upFace
-                                    )
+                                    menuAid = item.avid
+                                    menuUpId = item.upId
+                                    menuUpName = item.upName
+                                    menuUpFace = item.upFace
+                                    showVideoActionMenu = true
                                 }
                             },
                             onFocus = {
@@ -305,6 +312,22 @@ fun ToViewScreen(
             }
         )
     }
+
+    VideoActionMenu(
+        show = showVideoActionMenu,
+        aid = menuAid,
+        upId = menuUpId,
+        upName = menuUpName,
+        upFace = menuUpFace,
+        onDismiss = { showVideoActionMenu = false },
+        onDelete = {
+            val nextIndex = if (currentIndex < toViewViewModel.histories.size - 1) currentIndex + 1 else currentIndex - 1
+            if (nextIndex >= 0) runCatching { getFocusRequester(nextIndex).requestFocus() }
+            toViewViewModel.deleteToView(
+                avid = menuAid
+            )
+        }
+    )
 }
 
 @Composable

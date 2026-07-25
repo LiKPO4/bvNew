@@ -82,35 +82,35 @@ class DanmakuView @JvmOverloads constructor(
         if (this.config == config) return
         this.config = config
         player.updateConfig(config)
-        invalidate()
+        postInvalidate()
     }
 
     fun setDanmakus(list: List<Danmaku>) {
         player.updateConfig(config)
         player.setDanmakus(list)
-        invalidate()
+        postInvalidate()
     }
     fun clearDanmakus() {
         player.clearDanmakus()
-        invalidate()
+        postInvalidate()
     }
 
     fun appendDanmakus(list: List<Danmaku>, maxItems: Int = 0, alreadySorted: Boolean = false) {
         if (list.isEmpty()) return
         player.updateConfig(config)
         player.appendDanmakus(list, maxItems, alreadySorted)
-        invalidate()
+        postInvalidate()
     }
-    fun trimToTimeRange(minPositionMs: Long, maxPositionMs: Long) { player.trimToTimeRange(minPositionMs, maxPositionMs); invalidate() }
+    fun trimToTimeRange(minPositionMs: Long, maxPositionMs: Long) { player.trimToTimeRange(minPositionMs, maxPositionMs); postInvalidate() }
     fun notifySeek(positionMs: Long) {
         player.seekTo(positionMs)
         lastRawPositionMs = positionMs
         lastPositionChangeUptimeMs = SystemClock.uptimeMillis()
-        invalidate()
+        postInvalidate()
     }
 
     fun play() {
-        invalidate()
+        postInvalidate()
     }
 
     /** 显式释放资源。可多次调用，幂等。 */
@@ -127,14 +127,14 @@ class DanmakuView @JvmOverloads constructor(
         if (!enabled) {
             clearMaskFrame(requestRedraw = false)
         }
-        invalidate()
+        postInvalidate()
     }
 
     fun setMaskSegments(segments: List<DanmakuMaskSegment>) {
         if (maskSegments == segments) return
         maskSegments = segments
         clearMaskFrame(requestRedraw = false)
-        invalidate()
+        postInvalidate()
     }
 
     fun setVideoAspectRatio(ratio: Float) { videoAspectRatio = ratio }
@@ -148,7 +148,7 @@ class DanmakuView @JvmOverloads constructor(
         maskDecodeRequestId++
         if (maskFrame != null) {
             maskFrame = null
-            if (requestRedraw) invalidate()
+            if (requestRedraw) postInvalidate()
         }
     }
 
@@ -162,7 +162,7 @@ class DanmakuView @JvmOverloads constructor(
         if (frame == cachedMaskFrame && cachedMaskBitmap != null) {
             if (maskFrame != frame && requestRedraw) {
                 maskFrame = frame
-                invalidate()
+                postInvalidate()
             }
             return
         }
@@ -172,7 +172,7 @@ class DanmakuView @JvmOverloads constructor(
     private fun promoteCachedMaskFrame(frame: DanmakuMaskFrame?, requestRedraw: Boolean) {
         if (maskFrame == frame) return
         maskFrame = frame
-        if (requestRedraw) invalidate()
+        if (requestRedraw) postInvalidate()
     }
 
     private fun resolveMaskFrame(positionMs: Long): DanmakuMaskFrame? {
@@ -231,7 +231,7 @@ class DanmakuView @JvmOverloads constructor(
                 cachedMaskFrame = frame
                 cachedMaskBitmap = bitmap
                 maskFrame = frame.takeIf { bitmap != null }
-                invalidate()
+                postInvalidate()
             }
         }
     }

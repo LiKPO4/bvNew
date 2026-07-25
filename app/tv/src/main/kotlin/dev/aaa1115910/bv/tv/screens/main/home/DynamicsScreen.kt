@@ -20,6 +20,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -43,8 +45,8 @@ import dev.aaa1115910.bv.entity.proxy.ProxyArea
 import dev.aaa1115910.bv.tv.R
 import dev.aaa1115910.bv.tv.activities.user.FollowActivity
 import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
-import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.tv.component.VideoActionMenu
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
@@ -106,13 +108,19 @@ fun DynamicsScreen(
         }
     }
 
+    // 长按菜单状态
+    var showVideoActionMenu by remember { mutableStateOf(false) }
+    var menuAid by remember { mutableLongStateOf(0L) }
+    var menuUpId by remember { mutableLongStateOf(0L) }
+    var menuUpName by remember { mutableStateOf("") }
+    var menuUpFace by remember { mutableStateOf("") }
+
     val onLongClickVideo: (DynamicVideo) -> Unit = { dynamic ->
-        UpInfoActivity.actionStart(
-            context,
-            mid = dynamic.authorId,
-            name = dynamic.author,
-            face = dynamic.authorFace
-        )
+        menuAid = dynamic.aid
+        menuUpId = dynamic.authorId
+        menuUpName = dynamic.author
+        menuUpFace = dynamic.authorFace
+        showVideoActionMenu = true
     }
 
     //不能直接使用 LaunchedEffect(currentFocusedIndex)，会导致整个页面重组
@@ -228,6 +236,16 @@ fun DynamicsScreen(
                 }
             }
         }
+
+        // 长按操作菜单
+        VideoActionMenu(
+            show = showVideoActionMenu,
+            aid = menuAid,
+            upId = menuUpId,
+            upName = menuUpName,
+            upFace = menuUpFace,
+            onDismiss = { showVideoActionMenu = false }
+        )
     } else {
         Box(
             modifier = Modifier.fillMaxSize(),

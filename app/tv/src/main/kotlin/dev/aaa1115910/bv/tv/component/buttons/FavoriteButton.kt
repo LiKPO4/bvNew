@@ -2,19 +2,13 @@ package dev.aaa1115910.bv.tv.component.buttons
 
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material3.AlertDialogDefaults
@@ -22,37 +16,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonBorder
 import androidx.tv.material3.ButtonColors
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
-import androidx.tv.material3.FilterChip
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.FavoriteFolderMetadata
 import dev.aaa1115910.bv.R
-import dev.aaa1115910.bv.tv.component.TvAlertDialog
+import dev.aaa1115910.bv.tv.component.FavoriteFolderDialog
 import dev.aaa1115910.bv.tv.manager.VideoUserActionManager
 import dev.aaa1115910.bv.ui.theme.BVTheme
-import dev.aaa1115910.bv.util.swapList
-import kotlinx.coroutines.delay
 
 @Composable
 fun FavoriteButton(
@@ -135,105 +121,15 @@ private fun FavoriteDialog(
     onUpdateFavoriteFolders: (List<Long>) -> Unit,
     dialogContainerColor: Color = AlertDialogDefaults.containerColor
 ) {
-    val selectedFavoriteFolderIds = remember { mutableStateListOf<Long>() }
-    val defaultFocusRequester = remember { FocusRequester() }
-    var lastInteractionTime by remember { mutableStateOf(System.currentTimeMillis()) }
-    fun touch() { lastInteractionTime = System.currentTimeMillis() }
-
-    LaunchedEffect(show) {
-        if (show) {
-            selectedFavoriteFolderIds.swapList(favoriteFolderIds)
-            defaultFocusRequester.requestFocus()
-            // 打开时更新交互时间
-            touch()
-        }
-    }
-    // 10 秒无操作自动关闭
-    LaunchedEffect(lastInteractionTime, show) {
-        if (show) {
-            val base = lastInteractionTime
-            delay(10000)
-            if (base == lastInteractionTime) onHideDialog()
-        }
-    }
-
-    if (show) {
-        TvAlertDialog(
-            modifier = modifier,
-            containerColor = dialogContainerColor,
-            onDismissRequest = onHideDialog,
-            confirmButton = {},
-            title = { Text(text = stringResource(R.string.favorite_dialog_title)) },
-            text = {
-                FlowRow(
-                    modifier = Modifier
-                        .width(550.dp)
-                        .verticalScroll(rememberScrollState())
-                        .padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    userFavoriteFolders.forEachIndexed { index, userFavoriteFolder ->
-                        val selected = selectedFavoriteFolderIds.contains(userFavoriteFolder.id)
-                        val isDefault = userFavoriteFolder.title == "默认收藏夹"
-
-                        val itemModifier =
-                            if (index == 0) Modifier.focusRequester(defaultFocusRequester)
-                            else Modifier
-
-                        FilterChip(
-                            modifier = itemModifier
-                                .onFocusChanged {
-                                    if (it.hasFocus) touch()
-                                },
-                            enabled = isDefault || selected || userFavoriteFolder.mediaCount < 1000,
-                            selected = selected,
-                            onClick = {
-                                if (selectedFavoriteFolderIds.contains(userFavoriteFolder.id)) {
-                                    selectedFavoriteFolderIds.remove(userFavoriteFolder.id)
-                                    userFavoriteFolder.mediaCount -= 1
-                                } else {
-                                    selectedFavoriteFolderIds.add(userFavoriteFolder.id)
-                                    userFavoriteFolder.mediaCount += 1
-                                }
-                                onUpdateFavoriteFolders(selectedFavoriteFolderIds)
-                                // 点击交互更新最后交互时间
-                                touch()
-                            },
-                            leadingIcon = {
-                                Row {
-                                    if(selected) {
-                                        Icon(
-                                            modifier = Modifier.size(20.dp),
-                                            imageVector = Icons.Rounded.Done,
-                                            contentDescription = null
-                                        )
-                                    }
-                                }
-                            }
-                        ) {
-                            Column {
-                                Text(
-                                    text = userFavoriteFolder.title,
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        fontSize = 15.sp,
-                                        lineHeight = 15.sp
-                                    )
-                                )
-                                Text(
-                                    text = "${userFavoriteFolder.mediaCount}${if (!isDefault) "/1000" else ""}",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = 10.sp,
-                                        lineHeight = 11.sp
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        )
-    }
+    FavoriteFolderDialog(
+        modifier = modifier,
+        show = show,
+        onDismiss = onHideDialog,
+        userFavoriteFolders = userFavoriteFolders,
+        favoriteFolderIds = favoriteFolderIds,
+        onUpdateFavoriteFolders = onUpdateFavoriteFolders,
+        containerColor = dialogContainerColor
+    )
 }
 
 @Preview

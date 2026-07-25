@@ -191,8 +191,8 @@ fun FullscreenImageViewer(
                 },
             onClick = { /* 消费点击事件 */ },
             colors = ClickableSurfaceDefaults.colors(
-                containerColor = Color.Black.copy(alpha = 0.25f),
-                focusedContainerColor = Color.Black.copy(alpha = 0.25f),
+                containerColor = Color.Black.copy(alpha = 0.3f),
+                focusedContainerColor = Color.Black.copy(alpha = 0.3f),
                 pressedContainerColor = Color.Transparent
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 1f),

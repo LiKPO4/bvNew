@@ -5,6 +5,7 @@ import dev.aaa1115910.biliapi.repositories.CoinRepository
 import dev.aaa1115910.biliapi.repositories.FavoriteRepository
 import dev.aaa1115910.biliapi.repositories.LikeRepository
 import dev.aaa1115910.biliapi.repositories.ToViewRepository
+import dev.aaa1115910.biliapi.repositories.VideoDetailRepository
 import dev.aaa1115910.bv.util.Prefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +37,10 @@ object VideoUserActionManager {
     // key = uid, favorite folders are user-global
     private val favoriteFoldersMap = ConcurrentHashMap<Long, MutableStateFlow<List<FavoriteFolderMetadata>>>()
     private val fetchMutexMap = ConcurrentHashMap<Long, Mutex>()
+    /** Tracks which (uid, aid) pairs have been populated via either lazy fetch or gRPC loaded data. */
+    private val loadedKeys = ConcurrentHashMap.newKeySet<Pair<Long, Long>>()
+    /** Per-(uid,aid) mutex for lazy fetch to prevent duplicate concurrent requests. */
+    private val stateFetchMutexMap = ConcurrentHashMap<Pair<Long, Long>, Mutex>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private fun key(uid: Long, aid: Long) = uid to aid
@@ -68,9 +73,64 @@ object VideoUserActionManager {
 
     fun getFavoriteFoldersFlow(uid: Long = Prefs.uid): StateFlow<List<FavoriteFolderMetadata>> = ensureFavoriteFolders(uid)
 
+    /**
+     * Lazy-load video action state (like/favorite/coin) via individual check APIs.
+     * Only the first consumer triggers the request; subsequent consumers read the cached StateFlow.
+     * Skips if already loaded via [updateFromLoadedData] or a prior [ensureStateLoaded] call.
+     */
+    suspend fun ensureStateLoaded(aid: Long, uid: Long = Prefs.uid) {
+        val k = key(uid, aid)
+        if (k in loadedKeys || aid <= 0 || !Prefs.isLogin) return
+
+        val mutex = stateFetchMutexMap.getOrPut(k) { Mutex() }
+        mutex.withLock {
+            if (k in loadedKeys) return
+            val success = runCatching {
+                val likeRepo: LikeRepository = get(LikeRepository::class.java)
+                val coinRepo: CoinRepository = get(CoinRepository::class.java)
+                val favRepo: FavoriteRepository = get(FavoriteRepository::class.java)
+
+                withContext(Dispatchers.IO) {
+                    val liked = likeRepo.checkVideoLike(aid)
+                    val coin = coinRepo.checkVideoCoin(aid)
+                    val favored = favRepo.checkVideoFavoured(aid)
+
+                    // 将结果推入 VideoDetailRepository 缓存，避免 getVideoDetail 重复请求
+                    get<VideoDetailRepository>(VideoDetailRepository::class.java)
+                        .setCachedUserActions(aid, liked, favored, coin)
+
+                    val flow = ensure(aid, uid)
+                    flow.value = flow.value.copy(liked = liked, coin = coin, favorited = favored)
+
+                    if (favored) {
+                        runCatching {
+                            val folders = favRepo.getAllFavoriteFolderMetadataList(
+                                mid = uid,
+                                rid = aid,
+                                preferApiType = Prefs.apiType
+                            )
+                            favoriteFoldersMap.getOrPut(uid) { MutableStateFlow(emptyList()) }.value = folders
+                            flow.value = flow.value.copy(
+                                favoriteFolderIds = folders.filter { it.videoInThisFav }.map { it.id }
+                            )
+                        }
+                    }
+                }
+            }.isSuccess
+            if (success) {
+                loadedKeys.add(k)
+            }
+        }
+    }
+
     suspend fun updateFromLoadedData(aid: Long, liked: Boolean, favorited: Boolean, coin: Boolean, uid: Long = Prefs.uid) {
+        val k = key(uid, aid)
+        // If already loaded via lazy fetch (e.g. from menu), skip to avoid stale snapshot overwrite
+        if (k in loadedKeys) return
+
         val flow = ensure(aid, uid)
         flow.value = flow.value.copy(liked = liked, favorited = favorited, coin = coin)
+        loadedKeys.add(k)
 
         // load favorite folder ids for this video
         if (aid <= 0 || !Prefs.isLogin) return

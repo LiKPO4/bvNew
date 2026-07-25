@@ -32,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -1142,6 +1143,7 @@ fun VideoPlayerV3Screen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .scale(1.1f)
                                     .background(Color.Black.copy(alpha = 0.6f)),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -1157,7 +1159,7 @@ fun VideoPlayerV3Screen(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     NextTipCardPreview(
                                         data = cardData,
-                                        modifier = Modifier.width(200.dp)
+                                        modifier = Modifier.width(210.dp)
                                     )
                                 }
                             }
