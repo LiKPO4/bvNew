@@ -77,6 +77,32 @@ fun PlayStateTips(
         }
     }
 
+    // 缓冲提示防抖：短暂卡顿（600ms 内恢复）不显示，避免网络抖动/解码瞬时停顿时提示反复闪烁
+    var showBufferingTip by remember { mutableStateOf(false) }
+    LaunchedEffect(videoPlayerStateData.isBuffering, videoPlayerStateData.isError) {
+        if (videoPlayerStateData.isBuffering && !videoPlayerStateData.isError) {
+            delay(600)
+            showBufferingTip = true
+        } else {
+            showBufferingTip = false
+        }
+    }
+
+    // 频繁缓冲兜底：30 秒窗口内出现 3 次以上缓冲，视为网络或设备性能不佳，
+    // 在缓冲提示上追加降清晰度建议（显示本身仍走上面的防抖，不会额外闪烁）
+    var rebufferCount by remember { mutableStateOf(0) }
+    var rebufferWindowStart by remember { mutableStateOf(0L) }
+    LaunchedEffect(videoPlayerStateData.isBuffering) {
+        if (videoPlayerStateData.isBuffering) {
+            val now = System.currentTimeMillis()
+            if (now - rebufferWindowStart > 30_000) {
+                rebufferWindowStart = now
+                rebufferCount = 0
+            }
+            rebufferCount++
+        }
+    }
+
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -87,11 +113,12 @@ fun PlayStateTips(
                     .padding(20.dp)
             )
         }
-        if (videoPlayerStateData.isBuffering && !videoPlayerStateData.isError) {
+        if (showBufferingTip) {
             BufferingTip(
                 modifier = Modifier
                     .align(Alignment.Center),
-                speed = ""
+                speed = "",
+                poorNetwork = rebufferCount >= 3
             )
         }
         if (videoPlayerStateData.isError) {
@@ -141,7 +168,8 @@ fun PauseIcon(
 @Composable
 fun BufferingTip(
     modifier: Modifier = Modifier,
-    speed: String
+    speed: String,
+    poorNetwork: Boolean = false
 ) {
     Surface(
         modifier = modifier,
@@ -150,22 +178,33 @@ fun BufferingTip(
         ),
         shape = MaterialTheme.shapes.medium
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(16.dp, 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            CircularProgressIndicator(
-                modifier = Modifier
-                    .size(36.dp)
-                    .padding(8.dp),
-                color = Color.White,
-                strokeWidth = 2.dp
-            )
-            Text(
-                modifier = Modifier,
-                text = "缓冲中...$speed",
-                fontSize = 22.sp
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .padding(8.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+                Text(
+                    modifier = Modifier,
+                    text = "缓冲中...$speed",
+                    fontSize = 22.sp
+                )
+            }
+            if (poorNetwork) {
+                Text(
+                    text = "网络或设备性能不佳，可尝试降低清晰度",
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }

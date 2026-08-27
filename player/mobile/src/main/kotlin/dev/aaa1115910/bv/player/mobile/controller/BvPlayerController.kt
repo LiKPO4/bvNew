@@ -74,6 +74,7 @@ import dev.aaa1115910.bv.player.mobile.controller.menu.SpeedMenu
 import dev.aaa1115910.bv.player.mobile.controller.menu.VideoListMenu
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 @Composable
 fun BvPlayerController(
@@ -415,13 +416,24 @@ fun BvPlayerControllerVideoContent(
         if (is2xPlaying) showBaseUi = false
     }
 
+    // 缓冲提示防抖：短暂卡顿（600ms 内恢复）不显示，避免网络抖动/解码瞬时停顿时提示反复闪烁
+    var showBufferingTip by remember { mutableStateOf(false) }
+    LaunchedEffect(videoPlayerStateData.isBuffering, videoPlayerStateData.isError) {
+        if (videoPlayerStateData.isBuffering && !videoPlayerStateData.isError) {
+            delay(600)
+            showBufferingTip = true
+        } else {
+            showBufferingTip = false
+        }
+    }
+
     Box(
         modifier = modifier
             .background(Color.Black)
     ) {
         content()
 
-        if (videoPlayerStateData.isBuffering && !videoPlayerStateData.isError) {
+        if (showBufferingTip && !videoPlayerStateData.isError) {
             BufferingTip(modifier = Modifier.align(Alignment.Center))
         }
 
