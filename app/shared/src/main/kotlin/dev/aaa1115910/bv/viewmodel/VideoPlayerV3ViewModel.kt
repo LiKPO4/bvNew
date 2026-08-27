@@ -455,6 +455,7 @@ class VideoPlayerV3ViewModel(
         }
         epid?.let { this.epid = it }
         seasonId?.let { this.seasonId = it }
+        currentPlayMode = videoInfoRepository.resolvePlayModeForPreloadedList(currentPlayMode)
         if (currentPlayMode in listOf(PlayMode.ListOrder, PlayMode.ListOrderReverse) && preloadedVideoList.isEmpty()) {
             currentPlayMode = PlayMode.PartAndEpisode
         }
@@ -1479,6 +1480,10 @@ class VideoPlayerV3ViewModel(
         }.onFailure {
             logger.fWarn { "Load video shot failed: ${it.stackTraceToString()}" }
         }
+    }
+
+    fun finishPreloadedVideoListPlayback() {
+        videoInfoRepository.finishPreloadedVideoListPlayback()
     }
 
     // 这个方法当时只适配了移动端逻辑，TV端比较复杂，另外写了一份

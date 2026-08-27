@@ -220,7 +220,8 @@ fun ToViewScreen(
                                 } else {
                                     videoInfoRepository.setPreloadedVideoList(
                                         items = toViewViewModel.histories,
-                                        currentAvid = item.avid
+                                        currentAvid = item.avid,
+                                        preferListPlayback = true,
                                     )
                                     VideoInfoActivity.actionStart(
                                         context = context,

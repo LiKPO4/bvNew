@@ -3,6 +3,7 @@ package dev.aaa1115910.bv.repository
 import dev.aaa1115910.biliapi.entity.live.LiveRoomItem
 import dev.aaa1115910.biliapi.entity.video.Tag
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
+import dev.aaa1115910.bv.player.entity.PlayMode
 import dev.aaa1115910.bv.player.entity.VideoListItem
 import org.koin.core.annotation.Single
 
@@ -19,18 +20,39 @@ class VideoInfoRepository {
     var description: String = ""
     var tags: List<Tag> = emptyList()
     var lastPreloadedVideoIndex = 0
+    var preferPreloadedVideoListPlayback = false
+        private set
     var interactivePlaybackContext: InteractivePlaybackContext? = null
 
     val preloadedLiveRoomList = mutableListOf<LiveRoomItem>()
     var lastPreloadedRoomIndex = 0
 
-    fun setPreloadedVideoList(items: List<VideoCardData>, currentAvid: Long? = null) {
+    fun setPreloadedVideoList(
+        items: List<VideoCardData>,
+        currentAvid: Long? = null,
+        preferListPlayback: Boolean = false,
+    ) {
         preloadedVideoList.clear()
         preloadedVideoList.addAll(items.distinctBy { it.avid })
+        preferPreloadedVideoListPlayback = preferListPlayback && preloadedVideoList.isNotEmpty()
         lastPreloadedVideoIndex = currentAvid
             ?.let { avid -> preloadedVideoList.indexOfFirst { it.avid == avid } }
             ?.takeIf { it >= 0 }
             ?: 0
+    }
+
+    fun finishPreloadedVideoListPlayback() {
+        preferPreloadedVideoListPlayback = false
+    }
+
+    fun resolvePlayModeForPreloadedList(currentPlayMode: PlayMode): PlayMode {
+        if (!preferPreloadedVideoListPlayback || preloadedVideoList.isEmpty()) return currentPlayMode
+
+        return when (currentPlayMode) {
+            PlayMode.PartAndEpisode -> PlayMode.ListOrder
+            PlayMode.PartAndEpisodeReverse -> PlayMode.ListOrderReverse
+            else -> currentPlayMode
+        }
     }
 
     fun resolveLastPreloadedVideoIndex(avid: Long): Int {

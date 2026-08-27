@@ -1,8 +1,11 @@
 package dev.aaa1115910.bv.repository
 
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
+import dev.aaa1115910.bv.player.entity.PlayMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class VideoInfoRepositoryTest {
     @Test
@@ -33,6 +36,51 @@ class VideoInfoRepositoryTest {
         assertEquals(1, repository.resolveLastPreloadedVideoIndex(avid = 200_001))
         assertEquals(2, repository.resolveLastPreloadedVideoIndex(avid = 30))
         assertEquals(2, repository.resolveLastPreloadedVideoIndex(avid = 300_001))
+    }
+
+    @Test
+    fun `watch later list requests outer list playback`() {
+        val repository = VideoInfoRepository()
+
+        repository.setPreloadedVideoList(
+            items = listOf(video(10), video(20)),
+            currentAvid = 10,
+            preferListPlayback = true,
+        )
+
+        assertTrue(repository.preferPreloadedVideoListPlayback)
+        assertEquals(
+            PlayMode.ListOrder,
+            repository.resolvePlayModeForPreloadedList(PlayMode.PartAndEpisode),
+        )
+        assertEquals(
+            PlayMode.ListOrderReverse,
+            repository.resolvePlayModeForPreloadedList(PlayMode.PartAndEpisodeReverse),
+        )
+        assertEquals(
+            PlayMode.Custom,
+            repository.resolvePlayModeForPreloadedList(PlayMode.Custom),
+        )
+        repository.finishPreloadedVideoListPlayback()
+        assertFalse(repository.preferPreloadedVideoListPlayback)
+        assertEquals(
+            PlayMode.PartAndEpisode,
+            repository.resolvePlayModeForPreloadedList(PlayMode.PartAndEpisode),
+        )
+    }
+
+    @Test
+    fun `ordinary list replaces watch later playback request`() {
+        val repository = VideoInfoRepository()
+        repository.setPreloadedVideoList(
+            items = listOf(video(10), video(20)),
+            currentAvid = 10,
+            preferListPlayback = true,
+        )
+
+        repository.setPreloadedVideoList(listOf(video(30), video(40)), currentAvid = 30)
+
+        assertFalse(repository.preferPreloadedVideoListPlayback)
     }
 
     private fun video(avid: Long) = VideoCardData(

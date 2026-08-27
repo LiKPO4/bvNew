@@ -347,6 +347,7 @@ fun VideoPlayerV3Screen(
 
     val exitPlayer = {
         playerViewModel.dismissInteractiveOptionDialog()
+        playerViewModel.finishPreloadedVideoListPlayback()
         Prefs.currentPlaySpeed = prefsSnapshot.defaultPlaySpeed
         PlayedAidsCache.clear()
         (context as Activity).finish()
@@ -755,6 +756,7 @@ fun VideoPlayerV3Screen(
                                     Prefs.currentPlaySpeed = prefsSnapshot.defaultPlaySpeed
                                     // 自动退出时也清空缓存
                                     PlayedAidsCache.clear()
+                                    playerViewModel.finishPreloadedVideoListPlayback()
                                     (context as Activity).finish()
                                 }
                             } catch (_: Exception) {
