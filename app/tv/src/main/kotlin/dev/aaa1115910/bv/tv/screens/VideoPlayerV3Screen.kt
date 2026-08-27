@@ -626,13 +626,21 @@ fun VideoPlayerV3Screen(
                                 } else if (strategy == NextVideoStrategy.PartAndEpisode) {
                                     if (nextEp != null) { nextVideo = nextEp; break }
                                 } else if (strategy == NextVideoStrategy.PreloadedVideoList) {
-                                    if (nextPreloaded != null) { nextVideo = nextPreloaded; break }
+                                    if (nextPreloaded != null) {
+                                        playerViewModel.resolveLastPreloadedVideoIndex(nextPreloaded.avid)
+                                        nextVideo = nextPreloaded
+                                        break
+                                    }
                                 } else if (strategy == NextVideoStrategy.RelatedVideo) {
                                     if (nextRelatedVideo != null) { nextVideo = nextRelatedVideo; break }
                                 } else if (strategy == NextVideoStrategy.PartAndEpisodeReverse) {
                                     if (prevEp != null) { nextVideo = prevEp; break }
                                 } else if (strategy == NextVideoStrategy.PreloadedVideoListReverse) {
-                                    if (prevPreloaded != null) { nextVideo = prevPreloaded; break }
+                                    if (prevPreloaded != null) {
+                                        playerViewModel.resolveLastPreloadedVideoIndex(prevPreloaded.avid)
+                                        nextVideo = prevPreloaded
+                                        break
+                                    }
                                 }
                             }
                         }

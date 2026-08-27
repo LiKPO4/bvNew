@@ -24,9 +24,13 @@ class VideoInfoRepository {
     val preloadedLiveRoomList = mutableListOf<LiveRoomItem>()
     var lastPreloadedRoomIndex = 0
 
-    fun setPreloadedVideoList(items: List<VideoCardData>) {
+    fun setPreloadedVideoList(items: List<VideoCardData>, currentAvid: Long? = null) {
         preloadedVideoList.clear()
         preloadedVideoList.addAll(items.distinctBy { it.avid })
+        lastPreloadedVideoIndex = currentAvid
+            ?.let { avid -> preloadedVideoList.indexOfFirst { it.avid == avid } }
+            ?.takeIf { it >= 0 }
+            ?: 0
     }
 
     fun resolveLastPreloadedVideoIndex(avid: Long): Int {
