@@ -405,25 +405,31 @@ fun VideoPlayerController(
                         }
                         logger.info { "[${it.key} press]" }
 
-                        // 检查是否为连按两次（间隔小于300ms且上次按键时间不为0）
+                        // 双击下键（300ms 内连按两次）呼出推荐列表；单击立即显示控制栏，不再等待双击判定
                         val isLive = videoPlayerConfigData.isLive
                         val currentTime = System.currentTimeMillis()
                         val isDoublePress = lastPressDown != 0L && currentTime - lastPressDown < 300
                         lastPressDown = currentTime
 
                         doublePressDownJob?.cancel()
-                        doublePressDownJob = scope.launch(Dispatchers.Main) {
-                            delay(300)
-                            lastPressDown = 0L // 重置时间，避免第三次按下时误判
-                            val (relatedShown, toggleRelated) = if (isLive)
-                                showRelatedRooms to { b: Boolean -> onToggleRelatedRooms(b) }
-                            else
-                                showRelatedVideos to { b: Boolean -> onToggleRelatedVideos(b) }
-                            if ((isDoublePress || showInfo) && !relatedShown) {
-                                showInfo = false
-                                toggleRelated(true)
-                            } else if (!showInfo && !relatedShown) {
-                                showInfo = true
+
+                        val (relatedShown, toggleRelated) = if (isLive)
+                            showRelatedRooms to { b: Boolean -> onToggleRelatedRooms(b) }
+                        else
+                            showRelatedVideos to { b: Boolean -> onToggleRelatedVideos(b) }
+
+                        if (isDoublePress || (showInfo && !relatedShown)) {
+                            // 双击，或控制栏已显示时再按下键：收起控制栏并呼出推荐列表
+                            showInfo = false
+                            if (!relatedShown) toggleRelated(true)
+                            lastPressDown = 0L
+                        } else if (!relatedShown) {
+                            // 单击：立即显示控制栏
+                            showInfo = true
+                            // 300ms 窗口内若有第二击会转为双击处理；窗口结束清零避免三击误判
+                            doublePressDownJob = scope.launch(Dispatchers.Main) {
+                                delay(300)
+                                lastPressDown = 0L
                             }
                         }
                         return@onPreviewKeyEvent true
