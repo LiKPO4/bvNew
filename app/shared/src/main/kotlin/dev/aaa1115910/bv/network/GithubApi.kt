@@ -33,8 +33,8 @@ import java.util.concurrent.TimeUnit
 
 object GithubApi {
     private var endPoint = "api.github.com"
-    private const val OWNER = "fantasytyx"
-    private const val REPO = "bv"
+    private const val OWNER = "LiKPO4"
+    private const val REPO = "bvNew"
     private const val PROXY_URL = "https://ghfast.top/"
     private lateinit var client: HttpClient
     private val json = Json {

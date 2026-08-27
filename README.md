@@ -155,7 +155,7 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
 
 ### Release
 
-- [Github Release](https://github.com/fantasytyx/bv/releases)
+- [Github Release](https://github.com/LiKPO4/bvNew/releases)
 
 ## License
 

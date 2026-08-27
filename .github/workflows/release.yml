@@ -6,17 +6,20 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+'
 
+permissions:
+  contents: write
+
 jobs:
   build-release:
     name: Build Release Apk
     runs-on: macos-latest
-    if: github.repository == 'aaa1115910/bv'
+    if: github.repository == 'LiKPO4/bvNew'
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: master
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Set up JDK 21
@@ -32,13 +35,23 @@ jobs:
         env:
           SIGNING_PROPERTIES: ${{ secrets.SIGNING_PROPERTIES }}
         run: |
-          echo ${{ secrets.SIGNING_PROPERTIES }} > encoded_signing_properties
-          base64 -Dd -i encoded_signing_properties > signing.properties
+          if [ -z "$SIGNING_PROPERTIES" ]; then
+            echo "::error::The SIGNING_PROPERTIES secret is required for a signed release."
+            exit 1
+          fi
+          printf '%s' "$SIGNING_PROPERTIES" | base64 -D > signing.properties
+          test -s signing.properties
 
       - name: Add jks file
+        env:
+          SIGN_KEY: ${{ secrets.SIGN_KEY }}
         run: |
-          echo ${{ secrets.SIGN_KEY }} > ./encoded_key
-          base64 -Dd -i encoded_key > key.jks
+          if [ -z "$SIGN_KEY" ]; then
+            echo "::error::The SIGN_KEY secret is required for a signed release."
+            exit 1
+          fi
+          printf '%s' "$SIGN_KEY" | base64 -D > key.jks
+          test -s key.jks
 
       - name: Build apk
         run: ./gradlew assembleDefaultRelease assembleDefaultDebug
@@ -65,10 +78,15 @@ jobs:
 
       - name: Get changelog
         id: changelog
+        env:
+          RELEASE_SHA: ${{ github.sha }}
         run: |
           {
             echo "changelog<<EOF"
-            echo "$(git log --pretty=format:"- %s (%h)" ${{ github.event.before }}..${{ github.sha }})"
+            echo "LiKPO4/bvNew 首个正式版本，提供可安装的签名 Release APK。"
+            echo
+            echo "近期变更："
+            git log --pretty=format:"- %s (%h)" -n 30 "$RELEASE_SHA"
             echo "EOF"
           } >> "$GITHUB_ENV"
 
