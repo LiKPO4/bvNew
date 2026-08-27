@@ -219,6 +219,7 @@ fun ControllerVideoInfo(
                 onRotationChange = onRotationChange,
                 fromSeason = videoPlayerVideoInfoData.fromSeason,
                 isLive = videoPlayerConfigData.isLive,
+                autoFocusControllerOnDown = videoPlayerConfigData.autoFocusControllerOnDown,
                 userActionContent = userActionContent,
                 onSeekBack = onSeekBack,
                 onSeekForward = onSeekForward,
@@ -321,6 +322,7 @@ fun ControllerVideoInfoBottom(
     onRotationChange: (VideoRotation) -> Unit,
     fromSeason: Boolean = false,
     isLive: Boolean = false,
+    autoFocusControllerOnDown: Boolean = false,
     isFollowingUp: Boolean = false,
     userActionContent: UserActionContent = EmptyUserActionContent,
     onSeekBack: () -> Unit,
@@ -584,9 +586,9 @@ fun ControllerVideoInfoBottom(
         )
     }
 
-    LaunchedEffect(show, isLive, videoPlayerConfigData.autoFocusControllerOnDown) {
+    LaunchedEffect(show, isLive, autoFocusControllerOnDown) {
         if (show) {
-            if (isLive || videoPlayerConfigData.autoFocusControllerOnDown) {
+            if (isLive || autoFocusControllerOnDown) {
                 if (!isLive) {
                     // AnimatedVisibility 首次展开时按钮节点可能尚未完成布局，稍候再请求可避免首次请求失效。
                     delay(100)
