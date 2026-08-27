@@ -60,7 +60,25 @@ fun AboutContent(
                 onClick = { showUpdateDialog = true }
             )
             textPreference(
-                title = "项目地址",
+                title = "当前项目",
+                summary = "https://github.com/LiKPO4/bvNew",
+                onClick = {
+                    val url = "https://github.com/LiKPO4/bvNew"
+                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+                    context.startActivity(intent)
+                }
+            )
+            textPreference(
+                title = "直接上游",
+                summary = "https://github.com/fantasytyx/bv",
+                onClick = {
+                    val url = "https://github.com/fantasytyx/bv"
+                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+                    context.startActivity(intent)
+                }
+            )
+            textPreference(
+                title = "原始项目",
                 summary = "https://github.com/aaa1115910/bv",
                 onClick = {
                     val url = "https://github.com/aaa1115910/bv"

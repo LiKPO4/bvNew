@@ -107,10 +107,14 @@ fun AboutSetting(
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             Text(
-                text = "https://github.com/fantasytyx/bv"
+                text = "当前项目：https://github.com/LiKPO4/bvNew"
             )
             Text(
-                text = "forked from aaa1115910/bv",
+                text = "直接上游：fantasytyx/bv",
+                style = MaterialTheme.typography.labelMedium
+            )
+            Text(
+                text = "原始项目：aaa1115910/bv",
                 style = MaterialTheme.typography.labelMedium
             )
         }
