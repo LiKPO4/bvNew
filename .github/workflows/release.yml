@@ -103,6 +103,7 @@ jobs:
             echo
             echo "近期变更："
             git log --pretty=format:"- %s (%h)" -n 30 "$RELEASE_SHA"
+            echo
             echo "EOF"
           } >> "$GITHUB_ENV"
 
