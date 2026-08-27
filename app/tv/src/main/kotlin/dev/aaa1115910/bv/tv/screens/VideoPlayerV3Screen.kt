@@ -129,6 +129,7 @@ private data class VideoPlayerScreenPrefsSnapshot(
     val seekBackwardStep: Int,
     val showBottomProgressBar: Boolean,
     val playerDoubleBackToExit: Boolean,
+    val playerAutoFocusControllerOnDown: Boolean,
     val portraitVideoFixMode: PortraitVideoFixMode,
     val exitWhenAllPlayed: Boolean,
     val longPressAction: Int,
@@ -160,6 +161,7 @@ fun VideoPlayerV3Screen(
             seekBackwardStep = Prefs.playerSeekBackwardStep,
             showBottomProgressBar = Prefs.playerShowBottomProgressBar,
             playerDoubleBackToExit = Prefs.playerDoubleBackToExit,
+            playerAutoFocusControllerOnDown = Prefs.playerAutoFocusControllerOnDown,
             portraitVideoFixMode = Prefs.portraitVideoFixMode,
             exitWhenAllPlayed = Prefs.playerExitWhenAllIsPlayed,
             longPressAction = Prefs.playerLongPressAction,
@@ -439,7 +441,8 @@ fun VideoPlayerV3Screen(
             controllerButtonsOrder = prefsSnapshot.controllerButtonsOrder,
             showDebugInfo = showDebugInfo,
             longPressAction = prefsSnapshot.longPressAction,
-            longPressSpeed = prefsSnapshot.longPressSpeed
+            longPressSpeed = prefsSnapshot.longPressSpeed,
+            autoFocusControllerOnDown = prefsSnapshot.playerAutoFocusControllerOnDown,
         ),
         LocalVideoPlayerDanmakuMasksData provides VideoPlayerDanmakuMasksData(
             danmakuMasks = playerViewModel.danmakuMasks,

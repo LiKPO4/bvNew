@@ -584,15 +584,19 @@ fun ControllerVideoInfoBottom(
         )
     }
 
-    LaunchedEffect(show, isLive) {
+    LaunchedEffect(show, isLive, videoPlayerConfigData.autoFocusControllerOnDown) {
         if (show) {
-            if (isLive) {
-                // 直播默认聚焦第一个按钮，因为直播进度条没用
+            if (isLive || videoPlayerConfigData.autoFocusControllerOnDown) {
+                if (!isLive) {
+                    // AnimatedVisibility 首次展开时按钮节点可能尚未完成布局，稍候再请求可避免首次请求失效。
+                    delay(100)
+                }
+                // 直播没有可操作进度条；点播开启选项后直接进入用户设置的默认按钮。
                 defaultFocusButtonId
                     ?.let { focusRequesters[it] }
-                    ?.requestFocus()
+                    ?.requestFocus(scope)
             } else {
-                // 初始聚焦 进度条
+                // 保持原行为：先聚焦进度条，再按一次下键进入按钮行。
                 seekbarFocusRequester.requestFocus()
             }
         }

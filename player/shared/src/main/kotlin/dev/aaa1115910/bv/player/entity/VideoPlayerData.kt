@@ -157,6 +157,7 @@ data class VideoPlayerConfigData(
     val showDebugInfo: Boolean = false,
     val longPressAction: Int = 0, // 0 = 打开菜单, 1 = 加速播放
     val longPressSpeed: Float = 2f,
+    val autoFocusControllerOnDown: Boolean = false,
 )
 
 data class VideoPlayerDanmakuMasksData(

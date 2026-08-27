@@ -103,6 +103,7 @@ fun PlayerSetting(
     var playerLongPressAction by remember { mutableIntStateOf(Prefs.playerLongPressAction) }
     var playerLongPressSpeed by remember { mutableDoubleStateOf(Prefs.playerLongPressSpeed.toDouble()) }
     var playerDoubleBackToExit by remember { mutableStateOf(Prefs.playerDoubleBackToExit) }
+    var playerAutoFocusControllerOnDown by remember { mutableStateOf(Prefs.playerAutoFocusControllerOnDown) }
 
 
     Column(
@@ -246,6 +247,17 @@ fun PlayerSetting(
                     onCheckedChange = {
                         playerDoubleBackToExit = it
                         Prefs.playerDoubleBackToExit = it
+                    }
+                )
+            }
+            item {
+                SettingSwitchListItem(
+                    title = "下键打开控制栏后自动聚焦",
+                    supportText = "开启后，播放中首次按下下键会显示控制栏，并聚焦到控制栏按钮中设置的默认按钮",
+                    checked = playerAutoFocusControllerOnDown,
+                    onCheckedChange = {
+                        playerAutoFocusControllerOnDown = it
+                        Prefs.playerAutoFocusControllerOnDown = it
                     }
                 )
             }

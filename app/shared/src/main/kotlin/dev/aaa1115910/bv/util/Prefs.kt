@@ -399,6 +399,10 @@ object Prefs {
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPlayerDoubleBackToExitRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerDoubleBackToExitKey, value) }
 
+    var playerAutoFocusControllerOnDown: Boolean
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPlayerAutoFocusControllerOnDownRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerAutoFocusControllerOnDownKey, value) }
+
     var playerExitWhenAllIsPlayed: Boolean
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPlayerExitWhenAllIsPlayedRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerExitWhenAllIsPlayedKey, value) }
@@ -601,6 +605,7 @@ object PrefKeys {
     val prefPortraitVideoFixModeKey = intPreferencesKey("portrait_video_fix_mode")
     val prefPlayerShowDebugInfoKey = booleanPreferencesKey("player_show_debug_info")
     val prefPlayerDoubleBackToExitKey = booleanPreferencesKey("player_double_back_to_exit")
+    val prefPlayerAutoFocusControllerOnDownKey = booleanPreferencesKey("player_auto_focus_controller_on_down")
     val prefPlayerExitWhenAllIsPlayedKey = booleanPreferencesKey("player_exit_when_all_is_played")
     val prefPlayerSeekForwardStepKey = intPreferencesKey("player_seek_forward_step")
     val prefPlayerSeekBackwardStepKey = intPreferencesKey("player_seek_backward_step")
@@ -700,6 +705,7 @@ object PrefKeys {
     val prefPortraitVideoFixModeRequest = PreferenceRequest(prefPortraitVideoFixModeKey, 0)
     val prefPlayerShowDebugInfoRequest = PreferenceRequest(prefPlayerShowDebugInfoKey, false)
     val prefPlayerDoubleBackToExitRequest = PreferenceRequest(prefPlayerDoubleBackToExitKey, false)
+    val prefPlayerAutoFocusControllerOnDownRequest = PreferenceRequest(prefPlayerAutoFocusControllerOnDownKey, false)
     val prefPlayerExitWhenAllIsPlayedRequest = PreferenceRequest(prefPlayerExitWhenAllIsPlayedKey, true)
     val prefPlayerSeekForwardStepRequest = PreferenceRequest(prefPlayerSeekForwardStepKey, 10)
     val prefPlayerSeekBackwardStepRequest = PreferenceRequest(prefPlayerSeekBackwardStepKey, 5)
