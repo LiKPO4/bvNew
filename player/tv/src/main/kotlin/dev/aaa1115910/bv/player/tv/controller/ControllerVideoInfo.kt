@@ -907,8 +907,8 @@ private fun PlayModeDialog(
     val availableModes = remember(hasPreloadedVideoList, hasRelatedVideos, fromSeason) {
         PlayMode.entries.filter { mode ->
             when (mode) {
-                PlayMode.ListOrder -> hasPreloadedVideoList && !fromSeason
-                PlayMode.ListOrderReverse -> hasPreloadedVideoList && !fromSeason
+                PlayMode.ListOrder -> hasPreloadedVideoList
+                PlayMode.ListOrderReverse -> hasPreloadedVideoList
                 PlayMode.RelatedVideo -> hasRelatedVideos && !fromSeason
                 else -> true
             }

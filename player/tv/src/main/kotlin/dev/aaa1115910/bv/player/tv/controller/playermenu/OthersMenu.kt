@@ -61,8 +61,8 @@ fun OthersMenuList(
                 VideoPlayerOthersMenuItem.PlayMode -> {
                     val availableModes = PlayMode.entries.filter { mode ->
                         when (mode) {
-                            PlayMode.ListOrder -> videoPlayerConfigData.hasPreloadedVideoList && !videoPlayerConfigData.fromSeason
-                            PlayMode.ListOrderReverse -> videoPlayerConfigData.hasPreloadedVideoList && !videoPlayerConfigData.fromSeason
+                            PlayMode.ListOrder -> videoPlayerConfigData.hasPreloadedVideoList
+                            PlayMode.ListOrderReverse -> videoPlayerConfigData.hasPreloadedVideoList
                             PlayMode.RelatedVideo -> videoPlayerConfigData.hasRelatedVideos && !videoPlayerConfigData.fromSeason
                             else -> true
                         }

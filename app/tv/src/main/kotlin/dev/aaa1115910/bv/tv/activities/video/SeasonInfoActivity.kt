@@ -15,13 +15,15 @@ class SeasonInfoActivity : ComponentActivity() {
             context: Context,
             epId: Int? = null,
             seasonId: Int? = null,
-            proxyArea: ProxyArea = ProxyArea.MainLand
+            proxyArea: ProxyArea = ProxyArea.MainLand,
+            autoPlay: Boolean = false,
         ) {
             context.startActivity(
                 Intent(context, SeasonInfoActivity::class.java).apply {
                     epId?.let { putExtra("epid", epId) }
                     seasonId?.let { putExtra("seasonid", seasonId) }
                     putExtra("proxy_area", proxyArea.ordinal)
+                    putExtra("auto_play", autoPlay)
                 }
             )
         }

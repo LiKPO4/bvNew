@@ -164,6 +164,7 @@ fun SeasonInfoScreen(
     var paused by remember { mutableStateOf(false) }
     var showSeasonSelector by remember { mutableStateOf(false) }
     var showCommentPanel by remember { mutableStateOf(false) }
+    var autoPlayPending by remember { mutableStateOf(intent.getBooleanExtra("auto_play", false)) }
     val commentButtonFocusRequester = remember { FocusRequester() }
     val playButtonFocusRequester = remember { FocusRequester() }
 
@@ -235,8 +236,8 @@ fun SeasonInfoScreen(
         val proxyArea = ProxyArea.entries[proxyAreaIndex]
         logger.fInfo { "Read extras from content: [epId=$epId, seasonId=$seasonId, proxyArea=$proxyArea]" }
 
-        seasonViewModel.epId = epId
-        seasonViewModel.seasonId = seasonId
+        seasonViewModel.epId = epId.takeIf { it != 0 }
+        seasonViewModel.seasonId = seasonId.takeIf { it != 0 }
         seasonViewModel.proxyArea = proxyArea
 
         if (seasonViewModel.epId != null || seasonViewModel.seasonId != null) {
@@ -252,6 +253,59 @@ fun SeasonInfoScreen(
         seasonViewModel.seasonData?.let {
             logger.fInfo { "season data change: ${seasonViewModel.seasonData}" }
             seasonViewModel.lastPlayProgress = it.userStatus.progress
+            if (autoPlayPending) {
+                autoPlayPending = false
+                intent.removeExtra("auto_play")
+
+                val requestedEpId = intent.getIntExtra("epid", 0)
+                val mainEpisode = it.episodes.firstOrNull { episode -> episode.id == requestedEpId }
+                val sectionEpisode = it.sections
+                    .asSequence()
+                    .flatMap { section -> section.episodes.asSequence() }
+                    .firstOrNull { episode -> episode.id == requestedEpId }
+                val targetEpisode = mainEpisode
+                    ?: sectionEpisode
+                    ?: it.episodes.firstOrNull()
+                    ?: it.sections.firstNotNullOfOrNull { section -> section.episodes.firstOrNull() }
+
+                if (targetEpisode == null) {
+                    logger.fWarn { "Auto play target episode not found: epId=$requestedEpId" }
+                    return@let
+                }
+
+                val episodeList = if (mainEpisode != null || it.episodes.any { episode -> episode.id == targetEpisode.id }) {
+                    it.episodes
+                } else {
+                    it.sections.firstOrNull { section ->
+                        section.episodes.any { episode -> episode.id == targetEpisode.id }
+                    }?.episodes.orEmpty()
+                }
+                videoInfoRepository.videoList.clear()
+                videoInfoRepository.videoList.addAll(
+                    episodeList.mapIndexed { index, episode ->
+                        VideoListPgcEpisode(
+                            aid = episode.aid,
+                            cid = episode.cid,
+                            epid = episode.id,
+                            seasonId = it.seasonId,
+                            title = it.title,
+                            partTitle = generateEpisodeTitle(episode, it.title),
+                            index = index,
+                            cover = episode.cover,
+                            duration = episode.duration / 1000,
+                            pubDate = episode.pubDate,
+                        )
+                    }
+                )
+                onClickVideo(
+                    targetEpisode.aid,
+                    targetEpisode.cid,
+                    targetEpisode.id,
+                    generateEpisodeTitle(targetEpisode, it.title),
+                    0,
+                )
+                return@let
+            }
             //请求默认焦点到播放按钮上
             delay(300)
             playButtonFocusRequester.requestFocus(scope)

@@ -25,6 +25,16 @@ class VideoInfoRepositoryTest {
         assertEquals(0, repository.resolveLastPreloadedVideoIndex(avid = 999))
     }
 
+    @Test
+    fun `unknown season episode aid keeps the outer list cursor`() {
+        val repository = VideoInfoRepository()
+        repository.setPreloadedVideoList(listOf(video(10), video(20), video(30)), currentAvid = 20)
+
+        assertEquals(1, repository.resolveLastPreloadedVideoIndex(avid = 200_001))
+        assertEquals(2, repository.resolveLastPreloadedVideoIndex(avid = 30))
+        assertEquals(2, repository.resolveLastPreloadedVideoIndex(avid = 300_001))
+    }
+
     private fun video(avid: Long) = VideoCardData(
         avid = avid,
         title = "video-$avid",

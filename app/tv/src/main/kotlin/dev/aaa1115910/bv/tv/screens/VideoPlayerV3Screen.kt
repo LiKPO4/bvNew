@@ -604,12 +604,12 @@ fun VideoPlayerV3Screen(
                     // 找出预加载列表的下一个
                     val preloaded = playerViewModel.preloadedVideoList
                     val preloadIndex = playerViewModel.resolveLastPreloadedVideoIndex()
-                    val nextPreloaded = if (!playerViewModel.fromSeason && preloadIndex >= 0 && preloadIndex + 1 < preloaded.size) {
+                    val nextPreloaded = if (preloadIndex >= 0 && preloadIndex + 1 < preloaded.size) {
                         preloaded[preloadIndex + 1]
                     } else null
 
                     // 找出预加载列表的上一个（逆序模式用）
-                    val prevPreloaded = if (!playerViewModel.fromSeason && preloadIndex > 0) {
+                    val prevPreloaded = if (preloadIndex > 0) {
                         preloaded[preloadIndex - 1]
                     } else null
 
@@ -706,12 +706,13 @@ fun VideoPlayerV3Screen(
                                 is VideoCardData -> {
                                     // 推荐视频卡片：跳转到视频详情（再进入播放器）
                                     PlayedAidsCache.markPlayed(nextVideo.avid)
-                                    if (nextVideo.jumpToSeason) {
+                                    if (nextVideo.jumpToSeason && nextVideo.epId != null && nextVideo.seasonId != null) {
                                         SeasonInfoActivity.actionStart(
                                             context = context,
                                             epId = nextVideo.epId!!,
                                             seasonId = nextVideo.seasonId!!,
-                                            proxyArea = ProxyArea.checkProxyArea(nextVideo.title)
+                                            proxyArea = ProxyArea.checkProxyArea(nextVideo.title),
+                                            autoPlay = true,
                                         )
                                     } else {
                                         VideoInfoActivity.actionStart(
@@ -1188,7 +1189,8 @@ fun VideoPlayerV3Screen(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth(),
-                visible = playerViewModel.showRelatedVideos && !playerViewModel.isLive && !playerViewModel.fromSeason,
+                visible = playerViewModel.showRelatedVideos && !playerViewModel.isLive &&
+                    (!playerViewModel.fromSeason || playerViewModel.preloadedVideoList.isNotEmpty()),
                 enter = expandVertically(),
                 exit = shrinkVertically(),
                 label = "RelatedVideosForPlayer"

@@ -455,16 +455,11 @@ class VideoPlayerV3ViewModel(
         }
         epid?.let { this.epid = it }
         seasonId?.let { this.seasonId = it }
-        if (fromSeason && currentPlayMode in listOf(PlayMode.ListOrder, PlayMode.ListOrderReverse, PlayMode.RelatedVideo)) {
+        if (currentPlayMode in listOf(PlayMode.ListOrder, PlayMode.ListOrderReverse) && preloadedVideoList.isEmpty()) {
             currentPlayMode = PlayMode.PartAndEpisode
         }
-        if (!fromSeason) {
-            if (currentPlayMode in listOf(PlayMode.ListOrder, PlayMode.ListOrderReverse) && preloadedVideoList.isEmpty()) {
-                currentPlayMode = PlayMode.PartAndEpisode
-            }
-            if (currentPlayMode == PlayMode.RelatedVideo && relatedVideos.isEmpty()) {
-                currentPlayMode = PlayMode.PartAndEpisode
-            }
+        if (currentPlayMode == PlayMode.RelatedVideo && (fromSeason || relatedVideos.isEmpty())) {
+            currentPlayMode = PlayMode.PartAndEpisode
         }
         cancelPlayUrlAutoRefresh("new_media")
         viewModelScope.launch(Dispatchers.Default) {

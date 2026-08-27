@@ -425,9 +425,11 @@ fun VideoInfoScreen(
                             SeasonInfoActivity.actionStart(
                                 context = context,
                                 seasonId = seasonId,
-                                proxyArea = proxyArea
+                                proxyArea = proxyArea,
+                                autoPlay = fromPlayer,
                             )
                             context.finish()
+                            return@launch
                         }
                     }.onFailure {
                         logger.fWarn { "Redirect failed: ${it.stackTraceToString()}" }
@@ -439,6 +441,18 @@ fun VideoInfoScreen(
                     updateVideoUserActionData()
                     withContext(Dispatchers.Main) {
                         setHistory()
+                    }
+
+                    val videoDetail = videoDetailViewModel.videoDetail!!
+                    if (fromPlayer && videoDetail.redirectToEp) {
+                        SeasonInfoActivity.actionStart(
+                            context = context,
+                            epId = videoDetail.epid,
+                            proxyArea = proxyArea,
+                            autoPlay = true,
+                        )
+                        context.finish()
+                        return@runCatching
                     }
 
                     videoInfoRepository.relatedVideos.clear()
@@ -537,7 +551,8 @@ fun VideoInfoScreen(
                             SeasonInfoActivity.actionStart(
                                 context = context,
                                 seasonId = seasonId,
-                                proxyArea = ProxyArea.HongKong
+                                proxyArea = ProxyArea.HongKong,
+                                autoPlay = fromPlayer,
                             )
                             context.finish()
                         } ?: let {
@@ -560,7 +575,7 @@ fun VideoInfoScreen(
 
     LaunchedEffect(videoDetailViewModel.videoDetail) {
         //如果是从剧集页跳转回来的，那就不需要再跳转到剧集页了
-        if (fromSeason || (!showUGCVideoInfo && !forceShowDetail)) return@LaunchedEffect
+        if (fromPlayer || fromSeason || (!showUGCVideoInfo && !forceShowDetail)) return@LaunchedEffect
 
         videoDetailViewModel.videoDetail?.let {
             if (it.redirectToEp) {
