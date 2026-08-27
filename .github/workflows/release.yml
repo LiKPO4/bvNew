@@ -5,9 +5,18 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing semantic version tag to build and publish
+        required: true
+        type: string
 
 permissions:
   contents: write
+
+env:
+  RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
 
 jobs:
   build-release:
@@ -16,10 +25,17 @@ jobs:
     if: github.repository == 'LiKPO4/bvNew'
 
     steps:
+      - name: Validate release tag
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "::error::Invalid release tag: $RELEASE_TAG"
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ env.RELEASE_TAG }}
           fetch-depth: 0
 
       - name: Set up JDK 21
@@ -79,7 +95,7 @@ jobs:
       - name: Get changelog
         id: changelog
         env:
-          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_SHA: ${{ env.RELEASE_TAG }}
         run: |
           {
             echo "changelog<<EOF"
@@ -126,8 +142,8 @@ jobs:
             app/build/outputs/apk/default/debug/BV_${{ env.release_debug_info_version_code }}_${{ env.release_debug_info_version_name }}_default_universal.apk
             app/build/outputs/apk/default/release/BV_${{ env.release_info_version_code }}_${{ env.release_info_version_name }}_default_universal.apk
             mapping.zip
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
           name: ${{ env.release_info_version_name }}
           prerelease: false
           body: ${{ env.changelog }}
-          target_commitish: ${{ github.sha }}
+          target_commitish: ${{ env.RELEASE_TAG }}
