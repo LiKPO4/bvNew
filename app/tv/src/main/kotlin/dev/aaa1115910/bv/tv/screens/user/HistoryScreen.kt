@@ -222,7 +222,10 @@ fun HistoryScreen(
                                     selectedIndex = index
                                     showDeleteConfirmDialog = true
                                 } else {
-                                    videoInfoRepository.setPreloadedVideoList(historyViewModel.histories)
+                                    videoInfoRepository.setPreloadedVideoList(
+                                        items = historyViewModel.histories,
+                                        currentAvid = history.avid
+                                    )
                                     if (history.jumpToSeason) {
                                         SeasonInfoActivity.actionStart(
                                             context = context,
