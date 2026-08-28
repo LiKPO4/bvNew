@@ -18,6 +18,8 @@ jobs:
             core.info(`repo permission of token: ${JSON.stringify(res.data.permissions)}`)
 
       - name: Try create a test release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh api -X POST repos/${{ github.repository }}/releases \
             -f tag_name=perm-check-tmp \
