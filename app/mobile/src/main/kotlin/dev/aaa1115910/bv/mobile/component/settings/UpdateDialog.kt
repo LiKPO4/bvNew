@@ -20,15 +20,17 @@ fun UpdateDialog(
         text = { text ->
             Text(text = text)
         },
-        button = { enabled, onClick, content ->
+        button = { buttonModifier, enabled, onClick, content ->
             Button(
+                modifier = buttonModifier,
                 enabled = enabled,
                 onClick = onClick,
                 content = content
             )
         },
-        outlinedButton = { enabled, onClick, content ->
+        outlinedButton = { buttonModifier, enabled, onClick, content ->
             OutlinedButton(
+                modifier = buttonModifier,
                 enabled = enabled,
                 onClick = onClick,
                 content = content

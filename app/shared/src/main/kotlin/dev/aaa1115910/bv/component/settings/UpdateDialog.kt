@@ -7,7 +7,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -69,8 +68,8 @@ fun UpdateDialog(
     show: Boolean,
     onHideDialog: () -> Unit,
     text: @Composable ((text: String) -> Unit),
-    button: @Composable ((enabled: Boolean, onClick: () -> Unit, content: @Composable (RowScope.() -> Unit)) -> Unit),
-    outlinedButton: @Composable ((enabled: Boolean, onClick: () -> Unit, content: @Composable (RowScope.() -> Unit)) -> Unit)
+    button: @Composable ((modifier: Modifier, enabled: Boolean, onClick: () -> Unit, content: @Composable (RowScope.() -> Unit)) -> Unit),
+    outlinedButton: @Composable ((modifier: Modifier, enabled: Boolean, onClick: () -> Unit, content: @Composable (RowScope.() -> Unit)) -> Unit)
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -208,8 +207,8 @@ private fun UpdateDialogContent(
     checkUpdate: () -> Unit,
     startUpdate: () -> Unit,
     text: @Composable ((text: String) -> Unit),
-    button: @Composable ((enabled: Boolean, onClick: () -> Unit, content: @Composable (RowScope.() -> Unit)) -> Unit),
-    outlinedButton: @Composable ((enabled: Boolean, onClick: () -> Unit, content: @Composable (RowScope.() -> Unit)) -> Unit)
+    button: @Composable ((modifier: Modifier, enabled: Boolean, onClick: () -> Unit, content: @Composable (RowScope.() -> Unit)) -> Unit),
+    outlinedButton: @Composable ((modifier: Modifier, enabled: Boolean, onClick: () -> Unit, content: @Composable (RowScope.() -> Unit)) -> Unit)
 ) {
     val configuration = LocalConfiguration.current
     val maxHeight = (configuration.screenHeightDp * 0.8).dp
@@ -217,6 +216,22 @@ private fun UpdateDialogContent(
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val confirmButtonFocusRequester = remember { FocusRequester() }
+    val dismissButtonFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(updateStatus) {
+        when (updateStatus) {
+            UpdateStatus.Ready,
+            UpdateStatus.CheckError,
+            UpdateStatus.DownloadError,
+            UpdateStatus.InstallError -> confirmButtonFocusRequester.requestFocus()
+
+            UpdateStatus.UpdatingInfo,
+            UpdateStatus.NoAvailableUpdate -> dismissButtonFocusRequester.requestFocus()
+
+            UpdateStatus.Downloading,
+            UpdateStatus.Installing -> Unit
+        }
+    }
 
     AlertDialog(
         modifier = modifier
@@ -260,8 +275,19 @@ private fun UpdateDialogContent(
                                     if (canScrollDown) {
                                         scrollState.animateScrollBy(100f)
                                     } else {
-                                        // 已经滚动到底部，将焦点转移到确认按钮
-                                        confirmButtonFocusRequester.requestFocus()
+                                        // 已经滚动到底部，将焦点转移到当前状态下可操作的按钮。
+                                        when (updateStatus) {
+                                            UpdateStatus.Ready,
+                                            UpdateStatus.CheckError,
+                                            UpdateStatus.DownloadError,
+                                            UpdateStatus.InstallError -> confirmButtonFocusRequester.requestFocus()
+
+                                            UpdateStatus.UpdatingInfo,
+                                            UpdateStatus.NoAvailableUpdate -> dismissButtonFocusRequester.requestFocus()
+
+                                            UpdateStatus.Downloading,
+                                            UpdateStatus.Installing -> Unit
+                                        }
                                     }
                                 }
                                 true
@@ -316,38 +342,41 @@ private fun UpdateDialogContent(
                 UpdateStatus.UpdatingInfo, UpdateStatus.NoAvailableUpdate, UpdateStatus.Downloading, UpdateStatus.Installing -> {}
 
                 UpdateStatus.Ready -> {
-                    Box(modifier = Modifier.focusRequester(confirmButtonFocusRequester)) {
-                        button(true, startUpdate) {
-                            text("立即更新")
-                        }
+                    button(
+                        Modifier.focusRequester(confirmButtonFocusRequester),
+                        true,
+                        startUpdate
+                    ) {
+                        text("立即更新")
                     }
                 }
 
                 UpdateStatus.InstallError, UpdateStatus.DownloadError, UpdateStatus.CheckError -> {
-                    Box(modifier = Modifier.focusRequester(confirmButtonFocusRequester)) {
-                        button(true, checkUpdate) {
-                            text("再试一次")
-                        }
+                    button(
+                        Modifier.focusRequester(confirmButtonFocusRequester),
+                        true,
+                        checkUpdate
+                    ) {
+                        text("再试一次")
                     }
                 }
             }
         },
         dismissButton = {
-            Box(modifier = Modifier.focusRequester(confirmButtonFocusRequester)) {
-                outlinedButton(
-                    !(updateStatus == UpdateStatus.Downloading || updateStatus == UpdateStatus.Installing),
-                    onHideDialog
-                ) {
-                    text(
-                        when (updateStatus) {
-                            UpdateStatus.UpdatingInfo -> "我点错了"
-                            UpdateStatus.Ready -> "打死不更"
-                            UpdateStatus.NoAvailableUpdate -> "走了走了"
-                            UpdateStatus.CheckError, UpdateStatus.DownloadError, UpdateStatus.InstallError -> "算了算了"
-                            UpdateStatus.Downloading, UpdateStatus.Installing -> "你已经无路可逃！"
-                        }
-                    )
-                }
+            outlinedButton(
+                Modifier.focusRequester(dismissButtonFocusRequester),
+                !(updateStatus == UpdateStatus.Downloading || updateStatus == UpdateStatus.Installing),
+                onHideDialog
+            ) {
+                text(
+                    when (updateStatus) {
+                        UpdateStatus.UpdatingInfo -> "我点错了"
+                        UpdateStatus.Ready -> "打死不更"
+                        UpdateStatus.NoAvailableUpdate -> "走了走了"
+                        UpdateStatus.CheckError, UpdateStatus.DownloadError, UpdateStatus.InstallError -> "算了算了"
+                        UpdateStatus.Downloading, UpdateStatus.Installing -> "你已经无路可逃！"
+                    }
+                )
             }
         },
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -419,15 +448,17 @@ private fun UpdateDialogPreview(
             checkUpdate = {},
             startUpdate = {},
             text = { Text(text = it) },
-            button = { enabled, onClick, content ->
+            button = { modifier, enabled, onClick, content ->
                 Button(
+                    modifier = modifier,
                     enabled = enabled,
                     onClick = onClick,
                     content = content
                 )
             },
-            outlinedButton = { enabled, onClick, content ->
+            outlinedButton = { modifier, enabled, onClick, content ->
                 OutlinedButton(
+                    modifier = modifier,
                     enabled = enabled,
                     onClick = onClick,
                     content = content
