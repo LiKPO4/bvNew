@@ -123,16 +123,17 @@ jobs:
       - name: Zip mapping
         run: zip -rj mapping.zip app/build/outputs/mapping/defaultRelease
 
-      # upload to github release
-
+      # 用 gh CLI 发布（softprops/action-gh-release 在 fork 仓库上会 403，gh + GITHUB_TOKEN 已验证可行）
       - name: Publish Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            app/build/outputs/apk/default/release/BV_${{ env.release_info_version_code }}_${{ env.release_info_version_name }}_default_universal.apk
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release delete "$RELEASE_TAG" --yes
+          fi
+          printf '%s' "$changelog" > release-notes.md
+          gh release create "$RELEASE_TAG" \
+            --title "${{ env.release_info_version_name }}" \
+            --notes-file release-notes.md \
+            app/build/outputs/apk/default/release/BV_${{ env.release_info_version_code }}_${{ env.release_info_version_name }}_default_universal.apk \
             mapping.zip
-          tag_name: ${{ env.RELEASE_TAG }}
-          name: ${{ env.release_info_version_name }}
-          prerelease: false
-          body: ${{ env.changelog }}
-          target_commitish: ${{ env.RELEASE_TAG }}
