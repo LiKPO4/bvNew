@@ -281,7 +281,8 @@ val pgcNavItemsFlow: Flow<List<PgcTopNavItem>>
  * @return 过滤和排序后的导航项列表
  */
 fun parseHomeNavItemsOrder(orderString: String): List<HomeTopNavItem> {
-    return parseTopNavItemsOrder(orderString, defaultHomeNavOrder)
+    if (orderString.isBlank()) return defaultHomeNavOrder
+    return parseTopNavItemsOrder(orderString, HomeTopNavItem.entries)
 }
 
 /**
