@@ -87,9 +87,14 @@ fun DynamicsScreen(
                     play = item.play,
                     danmaku = item.danmaku,
                     time = item.duration * 1000L,
-                    pubTime = item.pubTime
+                    jumpToSeason = item.seasonId != null || item.epid != null,
+                    epId = item.epid,
+                    seasonId = item.seasonId,
+                    pubTime = item.pubTime,
                 )
-            }
+            },
+            currentAvid = dynamic.aid,
+            preferListPlayback = true,
         )
 
         if (hasSeasonHint) {
