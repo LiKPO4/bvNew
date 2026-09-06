@@ -83,6 +83,49 @@ class VideoInfoRepositoryTest {
         assertFalse(repository.preferPreloadedVideoListPlayback)
     }
 
+    @Test
+    fun `feed playback keeps selected position after duplicate cards are removed`() {
+        val repository = VideoInfoRepository()
+        repository.setPreloadedVideoList(
+            items = listOf(video(10), video(10), video(20), video(30)),
+            currentAvid = 20,
+            preferListPlayback = true,
+        )
+
+        val index = repository.resolveLastPreloadedVideoIndex(avid = 20)
+        assertEquals(1, index)
+        assertEquals(30L, repository.preloadedVideoList[index + 1].avid)
+        assertEquals(10L, repository.preloadedVideoList[index - 1].avid)
+        // 跨稿件会新建播放器，重新从默认的合集/分P模式解析，仍应沿用来源列表。
+        repeat(2) {
+            assertEquals(
+                PlayMode.ListOrder,
+                repository.resolvePlayModeForPreloadedList(PlayMode.PartAndEpisode),
+            )
+        }
+    }
+
+    @Test
+    fun `feed playback respects explicitly selected non episode modes`() {
+        val repository = VideoInfoRepository()
+        repository.setPreloadedVideoList(
+            items = listOf(video(10), video(20)),
+            currentAvid = 10,
+            preferListPlayback = true,
+        )
+
+        listOf(
+            PlayMode.SingleVideo,
+            PlayMode.SingleLoop,
+            PlayMode.ListOrder,
+            PlayMode.ListOrderReverse,
+            PlayMode.RelatedVideo,
+            PlayMode.Custom,
+        ).forEach { mode ->
+            assertEquals(mode, repository.resolvePlayModeForPreloadedList(mode))
+        }
+    }
+
     private fun video(avid: Long) = VideoCardData(
         avid = avid,
         title = "video-$avid",

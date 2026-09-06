@@ -73,7 +73,9 @@ fun RecommendScreen(
                     pubTime = item.pubTime,
                     isInteractive = item.isInteractive
                 )
-            }
+            },
+            currentAvid = ugcItem.aid,
+            preferListPlayback = true,
         )
         VideoInfoActivity.actionStart(context, ugcItem.aid)
     }
