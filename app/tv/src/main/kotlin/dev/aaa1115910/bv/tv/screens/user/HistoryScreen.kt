@@ -224,7 +224,8 @@ fun HistoryScreen(
                                 } else {
                                     videoInfoRepository.setPreloadedVideoList(
                                         items = historyViewModel.histories,
-                                        currentAvid = history.avid
+                                        currentAvid = history.avid,
+                                        preferListPlayback = true
                                     )
                                     if (history.jumpToSeason) {
                                         SeasonInfoActivity.actionStart(

@@ -141,7 +141,11 @@ fun TagScreen(
                             modifier = listFocusRestorer.firstItemModifier(index),
                             data = video,
                             onClick = {
-                                videoInfoRepository.setPreloadedVideoList(tagViewModel.topVideos)
+                                videoInfoRepository.setPreloadedVideoList(
+                                    items = tagViewModel.topVideos,
+                                    currentAvid = video.avid,
+                                    preferListPlayback = true
+                                )
                                 VideoInfoActivity.actionStart(context, video.avid)
                             },
                             onLongClick = {

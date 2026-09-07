@@ -38,6 +38,7 @@ import dev.aaa1115910.biliapi.entity.season.Timeline
 import dev.aaa1115910.biliapi.entity.season.TimelineFilter
 import dev.aaa1115910.biliapi.repositories.SeasonRepository
 import dev.aaa1115910.bv.R
+import dev.aaa1115910.bv.repository.VideoInfoRepository
 import dev.aaa1115910.bv.tv.component.videocard.SeasonCard
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
 import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
@@ -55,6 +56,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.getKoin
+import org.koin.compose.koinInject
 
 @Composable
 fun AnimeTimelineScreen(
@@ -62,6 +64,7 @@ fun AnimeTimelineScreen(
     seasonRepository: SeasonRepository = getKoin().get()
 ) {
     val context = LocalContext.current
+    val videoInfoRepository: VideoInfoRepository = koinInject()
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger { }
     val listState = rememberLazyListState()
@@ -148,6 +151,7 @@ fun AnimeTimelineScreen(
                         currentEpisodeIndex = episodeIndex
                     },
                     onClick = { seasonId ->
+                        videoInfoRepository.clearPreloadedVideoList()
                         SeasonInfoActivity.actionStart(
                             context = context,
                             seasonId = seasonId

@@ -44,6 +44,7 @@ import dev.aaa1115910.biliapi.entity.season.FollowingSeason
 import dev.aaa1115910.biliapi.entity.season.FollowingSeasonStatus
 import dev.aaa1115910.biliapi.entity.season.FollowingSeasonType
 import dev.aaa1115910.bv.R
+import dev.aaa1115910.bv.repository.VideoInfoRepository
 import dev.aaa1115910.bv.tv.component.TvAlertDialog
 import dev.aaa1115910.bv.tv.component.videocard.SeasonCard
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
@@ -62,6 +63,7 @@ import dev.aaa1115910.bv.viewmodel.user.FollowingSeasonViewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun FollowingSeasonScreen(
@@ -72,6 +74,7 @@ fun FollowingSeasonScreen(
     followingSeasonType: FollowingSeasonType = FollowingSeasonType.Bangumi
 ) {
     val context = LocalContext.current
+    val videoInfoRepository: VideoInfoRepository = koinInject()
     val logger = KotlinLogging.logger { }
     val scope = rememberCoroutineScope()
     val gridFocusRestorer = rememberTvLazyListFocusRestorer()
@@ -282,6 +285,7 @@ fun FollowingSeasonScreen(
                                 selectedIndex = index
                                 showDeleteConfirmDialog = true
                             } else {
+                                videoInfoRepository.clearPreloadedVideoList()
                                 SeasonInfoActivity.actionStart(
                                     context = context,
                                     seasonId = followingSeason.seasonId,

@@ -77,6 +77,7 @@ import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
+import dev.aaa1115910.bv.repository.VideoInfoRepository
 import dev.aaa1115910.bv.tv.activities.user.FavoriteActivity
 import dev.aaa1115910.bv.tv.activities.user.FollowActivity
 import dev.aaa1115910.bv.tv.activities.user.FollowingSeasonActivity
@@ -690,6 +691,7 @@ private fun RecentVideosRow(
     showMore: () -> Unit
 ) {
     val context = LocalContext.current
+    val videoInfoRepository: VideoInfoRepository = getKoin().get()
     VideosRow(
         modifier = modifier
             .padding(vertical = 8.dp),
@@ -698,6 +700,7 @@ private fun RecentVideosRow(
         showMore = showMore,
         videos = videos,
         onOpenSeasonInfo = { videoData ->
+            videoInfoRepository.setPreloadedVideoList(videos, currentAvid = videoData.avid)
             SeasonInfoActivity.actionStart(
                 context = context,
                 epId = videoData.epId!!,
@@ -706,6 +709,7 @@ private fun RecentVideosRow(
             )
         },
         onOpenVideoInfo = { videoData ->
+            videoInfoRepository.setPreloadedVideoList(videos, currentAvid = videoData.avid)
             VideoInfoActivity.actionStart(context, videoData.avid)
         }
     )
@@ -718,6 +722,7 @@ private fun FollowingAnimeVideosRow(
     showMore: () -> Unit
 ) {
     val context = LocalContext.current
+    val videoInfoRepository: VideoInfoRepository = getKoin().get()
     val density = LocalDensity.current
     var hasFocus by remember { mutableStateOf(false) }
     val titleFontSize by animateFloatAsState(
@@ -759,6 +764,7 @@ private fun FollowingAnimeVideosRow(
                     modifier = Modifier.width(150.dp),
                     data = seasonCardData,
                     onClick = {
+                        videoInfoRepository.clearPreloadedVideoList()
                         SeasonInfoActivity.actionStart(
                             context = context,
                             seasonId = seasonCardData.seasonId,
@@ -792,6 +798,7 @@ private fun FavoriteVideosRow(
     showMore: () -> Unit
 ) {
     val context = LocalContext.current
+    val videoInfoRepository: VideoInfoRepository = getKoin().get()
     VideosRow(
         modifier = modifier
             .padding(vertical = 8.dp),
@@ -800,6 +807,7 @@ private fun FavoriteVideosRow(
         showMore = showMore,
         videos = videos,
         onOpenSeasonInfo = { videoData ->
+            videoInfoRepository.setPreloadedVideoList(videos, currentAvid = videoData.avid)
             SeasonInfoActivity.actionStart(
                 context = context,
                 epId = videoData.epId!!,
@@ -808,6 +816,7 @@ private fun FavoriteVideosRow(
             )
         },
         onOpenVideoInfo = { videoData ->
+            videoInfoRepository.setPreloadedVideoList(videos, currentAvid = videoData.avid)
             VideoInfoActivity.actionStart(context, videoData.avid)
         }
     )

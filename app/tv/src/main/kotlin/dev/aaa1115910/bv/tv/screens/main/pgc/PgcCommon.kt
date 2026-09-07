@@ -57,6 +57,7 @@ import dev.aaa1115910.biliapi.entity.pgc.PgcItem
 import dev.aaa1115910.biliapi.entity.pgc.PgcType
 import dev.aaa1115910.biliapi.http.SeasonIndexType
 import dev.aaa1115910.bv.BVApp
+import dev.aaa1115910.bv.repository.VideoInfoRepository
 import dev.aaa1115910.bv.tv.component.PgcCarousel
 import dev.aaa1115910.bv.tv.component.videocard.SeasonCard
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
@@ -71,6 +72,7 @@ import dev.aaa1115910.bv.util.resizedImageUrl
 import dev.aaa1115910.bv.util.toast
 import dev.aaa1115910.bv.viewmodel.pgc.FeedListType
 import dev.aaa1115910.bv.viewmodel.pgc.PgcViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun PgcScaffold(
@@ -81,6 +83,7 @@ fun PgcScaffold(
     featureButtons: (@Composable () -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val videoInfoRepository: VideoInfoRepository = koinInject()
     val carouselFocusRequester = remember { FocusRequester() }
     val carouselFocusRestorer = rememberTvLazyListFocusRestorer(carouselFocusRequester)
     val currentFeedIndex = remember { mutableIntStateOf(0) }
@@ -115,6 +118,7 @@ fun PgcScaffold(
                             .focusRequester(carouselFocusRequester),
                         data = carouselItems,
                         onClick = { item ->
+                            videoInfoRepository.clearPreloadedVideoList()
                             SeasonInfoActivity.actionStart(
                                 context = context,
                                 epId = item.episodeId,
@@ -163,11 +167,13 @@ fun PgcScaffold(
                 ) {
                     when (feedListItem.type) {
                         FeedListType.Ep -> PgcFeedVideoRow(
-                            data = feedListItem.items!!
+                            data = feedListItem.items!!,
+                            videoInfoRepository = videoInfoRepository
                         )
 
                         FeedListType.Rank -> PgcFeedRankRow(
-                            data = feedListItem.rank!!
+                            data = feedListItem.rank!!,
+                            videoInfoRepository = videoInfoRepository
                         )
                     }
                 }
@@ -179,7 +185,8 @@ fun PgcScaffold(
 @Composable
 fun PgcFeedVideoRow(
     modifier: Modifier = Modifier,
-    data: List<PgcItem>
+    data: List<PgcItem>,
+    videoInfoRepository: VideoInfoRepository
 ) {
     val context = LocalContext.current
     val listFocusRestorer = rememberTvLazyListFocusRestorer()
@@ -214,6 +221,7 @@ fun PgcFeedVideoRow(
                     rating = feedItem.rating
                 ),
                 onClick = {
+                    videoInfoRepository.clearPreloadedVideoList()
                     SeasonInfoActivity.actionStart(
                         context = context,
                         seasonId = feedItem.seasonId,
@@ -228,7 +236,8 @@ fun PgcFeedVideoRow(
 @Composable
 fun PgcFeedRankRow(
     modifier: Modifier = Modifier,
-    data: PgcFeedData.FeedRank
+    data: PgcFeedData.FeedRank,
+    videoInfoRepository: VideoInfoRepository
 ) {
     val context = LocalContext.current
     val listFocusRestorer = rememberTvLazyListFocusRestorer()
@@ -332,6 +341,7 @@ fun PgcFeedRankRow(
                             rating = feedItem.rating
                         ),
                         onClick = {
+                            videoInfoRepository.clearPreloadedVideoList()
                             SeasonInfoActivity.actionStart(
                                 context = context,
                                 seasonId = feedItem.seasonId,
@@ -365,7 +375,7 @@ fun PgcFeedRankRowPreview() {
         }
     )
     BVTheme {
-        PgcFeedRankRow(data = data)
+        PgcFeedRankRow(data = data, videoInfoRepository = remember { VideoInfoRepository() })
     }
 }
 

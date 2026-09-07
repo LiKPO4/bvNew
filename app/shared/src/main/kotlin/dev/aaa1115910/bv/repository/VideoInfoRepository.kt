@@ -16,10 +16,12 @@ data class InteractivePlaybackContext(
 class VideoInfoRepository {
     val videoList = mutableListOf<VideoListItem>()
     val relatedVideos = mutableListOf<VideoCardData>()
-    val preloadedVideoList = mutableListOf<VideoCardData>()
+    var preloadedVideoList: List<VideoCardData> = emptyList()
+        private set
     var description: String = ""
     var tags: List<Tag> = emptyList()
     var lastPreloadedVideoIndex = 0
+        private set
     var preferPreloadedVideoListPlayback = false
         private set
     var interactivePlaybackContext: InteractivePlaybackContext? = null
@@ -27,18 +29,23 @@ class VideoInfoRepository {
     val preloadedLiveRoomList = mutableListOf<LiveRoomItem>()
     var lastPreloadedRoomIndex = 0
 
+    // 视频列表入口默认沿来源列表连播，必须提供当前卡片以定位游标。
     fun setPreloadedVideoList(
         items: List<VideoCardData>,
-        currentAvid: Long? = null,
-        preferListPlayback: Boolean = false,
+        currentAvid: Long,
+        preferListPlayback: Boolean = true,
     ) {
-        preloadedVideoList.clear()
-        preloadedVideoList.addAll(items.distinctBy { it.avid })
+        preloadedVideoList = items.distinctBy { it.avid }
         preferPreloadedVideoListPlayback = preferListPlayback && preloadedVideoList.isNotEmpty()
-        lastPreloadedVideoIndex = currentAvid
-            ?.let { avid -> preloadedVideoList.indexOfFirst { it.avid == avid } }
-            ?.takeIf { it >= 0 }
+        lastPreloadedVideoIndex = preloadedVideoList.indexOfFirst { it.avid == currentAvid }
+            .takeIf { it >= 0 }
             ?: 0
+    }
+
+    fun clearPreloadedVideoList() {
+        preloadedVideoList = emptyList()
+        lastPreloadedVideoIndex = 0
+        preferPreloadedVideoListPlayback = false
     }
 
     fun finishPreloadedVideoListPlayback() {

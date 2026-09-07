@@ -1072,6 +1072,10 @@ fun VideoInfoScreen(
                                 videos = videoDetailViewModel.relatedVideos,
                                 showMore = {},
                                 onOpenSeasonInfo = { videoData ->
+                                    videoInfoRepository.setPreloadedVideoList(
+                                        items = videoDetailViewModel.relatedVideos,
+                                        currentAvid = videoData.avid,
+                                    )
                                     SeasonInfoActivity.actionStart(
                                         context = context,
                                         epId = videoData.epId!!,
@@ -1079,6 +1083,10 @@ fun VideoInfoScreen(
                                     )
                                 },
                                 onOpenVideoInfo = { videoData ->
+                                    videoInfoRepository.setPreloadedVideoList(
+                                        items = videoDetailViewModel.relatedVideos,
+                                        currentAvid = videoData.avid,
+                                    )
                                     VideoInfoActivity.actionStart(context, videoData.avid)
                                 }
                             )

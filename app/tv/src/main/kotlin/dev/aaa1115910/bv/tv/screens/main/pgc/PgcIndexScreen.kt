@@ -35,6 +35,7 @@ import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.pgc.PgcType
 import dev.aaa1115910.bv.R
+import dev.aaa1115910.bv.repository.VideoInfoRepository
 import dev.aaa1115910.bv.tv.component.pgc.IndexFilter
 import dev.aaa1115910.bv.tv.component.videocard.SeasonCard
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
@@ -50,6 +51,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun PgcIndexScreen(
@@ -57,6 +59,7 @@ fun PgcIndexScreen(
     pgcIndexViewModel: PgcIndexViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
+    val videoInfoRepository: VideoInfoRepository = koinInject()
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger { }
     val gridFocusRestorer = rememberTvLazyListFocusRestorer()
@@ -164,6 +167,7 @@ fun PgcIndexScreen(
                             }
                         },
                         onClick = {
+                            videoInfoRepository.clearPreloadedVideoList()
                             SeasonInfoActivity.actionStart(
                                 context = context,
                                 seasonId = pgcItem.seasonId,

@@ -139,7 +139,7 @@ fun UgcRegionScaffold(
                         modifier = carouselFocusRestorer.firstItemModifier(0, Modifier.fillMaxWidth()),
                         data = ugcViewModel.carouselItems,
                         onClick = { item -> 
-                            videoInfoRepository.preloadedVideoList.clear()
+                            videoInfoRepository.clearPreloadedVideoList()
                             VideoInfoActivity.actionStart(
                                 context = context,
                                 aid = item.avid!!
@@ -190,7 +190,9 @@ fun UgcRegionScaffold(
                                     pubTime = ugcItem.pubTime,
                                     isInteractive = ugcItem.isInteractive
                                 )
-                            }
+                            },
+                            currentAvid = item.aid,
+                            preferListPlayback = true
                         )
                         VideoInfoActivity.actionStart(context, item.aid)
                     },

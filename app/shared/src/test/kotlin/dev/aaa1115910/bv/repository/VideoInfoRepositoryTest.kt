@@ -70,7 +70,7 @@ class VideoInfoRepositoryTest {
     }
 
     @Test
-    fun `ordinary list replaces watch later playback request`() {
+    fun `explicit opt out replaces previous list playback request`() {
         val repository = VideoInfoRepository()
         repository.setPreloadedVideoList(
             items = listOf(video(10), video(20)),
@@ -78,9 +78,75 @@ class VideoInfoRepositoryTest {
             preferListPlayback = true,
         )
 
-        repository.setPreloadedVideoList(listOf(video(30), video(40)), currentAvid = 30)
+        repository.setPreloadedVideoList(
+            listOf(video(30), video(40)),
+            currentAvid = 30,
+            preferListPlayback = false,
+        )
 
         assertFalse(repository.preferPreloadedVideoListPlayback)
+    }
+
+    @Test
+    fun `video list entry enables source list playback by default`() {
+        val repository = VideoInfoRepository()
+        repository.setPreloadedVideoList(listOf(video(10), video(20), video(30)), currentAvid = 20)
+
+        assertTrue(repository.preferPreloadedVideoListPlayback)
+        assertEquals(1, repository.resolveLastPreloadedVideoIndex(avid = 200_001))
+        assertEquals(
+            PlayMode.ListOrder,
+            repository.resolvePlayModeForPreloadedList(PlayMode.PartAndEpisode),
+        )
+        assertEquals(
+            PlayMode.ListOrderReverse,
+            repository.resolvePlayModeForPreloadedList(PlayMode.PartAndEpisodeReverse),
+        )
+    }
+
+    @Test
+    fun `empty list removes previous playback request and cursor`() {
+        val repository = VideoInfoRepository()
+        repository.setPreloadedVideoList(listOf(video(10), video(20)), currentAvid = 20)
+
+        repository.setPreloadedVideoList(emptyList(), currentAvid = 20)
+
+        assertFalse(repository.preferPreloadedVideoListPlayback)
+        assertEquals(0, repository.resolveLastPreloadedVideoIndex(avid = 20))
+        assertEquals(
+            PlayMode.PartAndEpisode,
+            repository.resolvePlayModeForPreloadedList(PlayMode.PartAndEpisode),
+        )
+    }
+
+    @Test
+    fun `clearing source list resets list cursor and playback request together`() {
+        val repository = VideoInfoRepository()
+        repository.setPreloadedVideoList(listOf(video(10), video(20)), currentAvid = 20)
+
+        repository.clearPreloadedVideoList()
+
+        assertTrue(repository.preloadedVideoList.isEmpty())
+        assertFalse(repository.preferPreloadedVideoListPlayback)
+        assertEquals(0, repository.resolveLastPreloadedVideoIndex(avid = 20))
+        assertEquals(
+            PlayMode.PartAndEpisodeReverse,
+            repository.resolvePlayModeForPreloadedList(PlayMode.PartAndEpisodeReverse),
+        )
+    }
+
+    @Test
+    fun `source list snapshot survives replacement from itself and changes to original list`() {
+        val repository = VideoInfoRepository()
+        val items = mutableListOf(video(10), video(20), video(30))
+        repository.setPreloadedVideoList(items, currentAvid = 20)
+        items.clear()
+
+        repository.setPreloadedVideoList(repository.preloadedVideoList, currentAvid = 30)
+
+        assertEquals(listOf(10L, 20L, 30L), repository.preloadedVideoList.map { it.avid })
+        assertEquals(2, repository.resolveLastPreloadedVideoIndex(avid = 999))
+        assertTrue(repository.preferPreloadedVideoListPlayback)
     }
 
     @Test

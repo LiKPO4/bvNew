@@ -127,7 +127,9 @@ fun SearchResultScreen(
                             danmaku = with(video.danmaku) { if (this == -1) null else this },
                             time = video.duration * 1000L
                         )
-                    }
+                    },
+                    currentAvid = resultItem.aid,
+                    preferListPlayback = true
                 )
                 VideoInfoActivity.actionStart(
                     context = context,
@@ -138,6 +140,7 @@ fun SearchResultScreen(
             }
 
             is SearchTypeResult.Pgc -> {
+                videoInfoRepository.clearPreloadedVideoList()
                 SeasonInfoActivity.actionStart(
                     context = context,
                     seasonId = resultItem.seasonId,

@@ -298,7 +298,11 @@ fun FavoriteScreen(
                                     selectedIndex = index
                                     showDeleteConfirmDialog = true
                                 } else {
-                                    videoInfoRepository.setPreloadedVideoList(favoriteViewModel.favorites)
+                                    videoInfoRepository.setPreloadedVideoList(
+                                        items = favoriteViewModel.favorites,
+                                        currentAvid = history.avid,
+                                        preferListPlayback = true
+                                    )
                                     if (history.jumpToSeason) {
                                         SeasonInfoActivity.actionStart(
                                             context = context,
